@@ -1,6 +1,6 @@
 // "Dartball" v0.1 Scolia Dartspiel
 
-// 1) Init-Funktion nach Login (v1.11)
+// 1) Init-Funktion nach Login (v1.12)
 function initApp() {
   // Anmeldedaten aus config (bzw. localStorage) übernehmen
   const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
