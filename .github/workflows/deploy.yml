@@ -25,6 +25,7 @@ jobs:
           local-dir: ./           # oder ./web/, je nach Struktur
           exclude: |
             **/.git/**
+            **/.git*
             **/.github/**
             **/node_modules/**
             **/*.md
