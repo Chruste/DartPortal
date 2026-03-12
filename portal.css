@@ -1,0 +1,122 @@
+/* Global */
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 240px;
+  height: 100%;
+  background: #111;
+  overflow: hidden;
+  transition: transform .3s ease;
+  transform: translateX(0);
+}
+.sidebar.collapsed {
+  transform: translateX(-240px);
+}
+
+/* Desktop toggle button */
+#toggleSidebar {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5em;
+  margin: 8px;
+  cursor: pointer;
+}
+
+/* Mobile menu button */
+.mobile-menu-button {
+  display: none;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5em;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 102;
+  cursor: pointer;
+}
+
+@media (max-width: 599px) {
+  /* Mobile: Sidebar hidden off-canvas */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .3s ease;
+  }
+  /* Show when .visible */
+  .sidebar.visible {
+    transform: translateX(0);
+  }
+  /* Content occupies full width on mobile */
+  .content {
+    margin-left: 0 !important;
+  }
+  /* Mobile menu button visible and above header */
+  .mobile-menu-button {
+    display: block;
+    z-index: 200; /* above topbar */
+  }
+  /* Hide desktop toggle on mobile */
+  #toggleSidebar { display: none; }
+}
+
+  .sidebar.visible {
+    display: block;
+    position: fixed;
+    top: 50px;
+    left: 0;
+    width: 240px;
+    height: calc(100% - 50px);
+    background: #111;
+    z-index: 100;
+  }
+  /* Content occupies full width on mobile */
+  .content {
+    margin-left: 0 !important;
+  }
+  /* Mobile menu button visible */
+  .mobile-menu-button { display: block; }
+  /* Hide desktop toggle on mobile */
+  #toggleSidebar { display: none; }
+
+  .sidebar { transform: translateX(-240px); }
+  .sidebar.visible { transform: translateX(0); }
+
+/* Topbar */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: #222;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1em 0 3em; /* Platz für mobilen Menü-Button */
+  z-index: 101;
+}
+.topbar #pageTitle,
+.topbar #userInfo {
+  color: #fff;
+}
+
+/* Content area */
+.content {
+  padding: 70px 1em 1em;
+  margin-left: 0;
+}
+@media (min-width: 600px) {
+  .content { margin-left: 240px; }
+}
