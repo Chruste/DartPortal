@@ -1,4 +1,4 @@
-name: Deploy to lima-city via FTP
+name: Deploy to lima-city via FTPS
 
 on:
   push:
@@ -13,14 +13,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy via FTP
+      - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps          # WICHTIG: Explizites FTP über TLS
+          port: 21                # oder der FTPS-Port von lima-city, falls abweichend
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          local-dir: ./   # Root des Repos
+          local-dir: ./           # oder ./web/, je nach Struktur
           exclude: |
             **/.git*
             **/.github/**
