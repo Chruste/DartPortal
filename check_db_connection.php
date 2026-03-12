@@ -3,12 +3,12 @@ header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-$mysqlHost = $data['mysqlHost'] ?? '';
-$mysqlDb   = $data['mysqlDb']   ?? '';
-$mysqlUser = $data['mysqlUser'] ?? '';
-$mysqlPass = $data['mysqlPass'] ?? '';
+$host = $data['host'] ?? '';
+$db   = $data['db']   ?? '';
+$user = $data['user'] ?? '';
+$pass = $data['pass'] ?? '';
 
-$conn = @new mysqli($mysqlHost, $mysqlUser, $mysqlPass, $mysqlDb);
+$conn = @new mysqli($host, $user, $pass, $db);
 
 if ($conn->connect_error) {
     echo json_encode(['success' => false, 'message' => 'DB-Verbindung fehlgeschlagen.']);

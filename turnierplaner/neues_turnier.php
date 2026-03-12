@@ -17,7 +17,13 @@
 <h2>Neues Turnier erstellen</h2>
 
 <form id="tournamentForm">
-        <label for="players">Anzahl Teilnehmer:</label><br>
+    <label id="dbUserLabel" for="dbUser">DB-Benutzername:</label><br>
+    <input type="text" id="dbUser" name="dbUser"><br>
+
+    <label id="dbPasswordLabel" for="dbPassword">DB-Passwort:</label><br>
+    <input type="password" id="dbPassword" name="dbPassword"><br>
+  
+    <label for="players">Anzahl Teilnehmer:</label><br>
     <select id="players" name="players">
         <?php for($i=3; $i<=32; $i++): ?>
             <option value="<?php echo $i; ?>"> <?php echo $i; ?> </option>
@@ -29,18 +35,31 @@
 <script>
     // Lade DB-Login aus Local Storage
     window.onload = function() {
-        document.getElementById('mysqlHost').value = localStorage.getItem('mysqlHost') || '';
-        document.getElementById('mysqlDb').value   = localStorage.getItem('mysqlDb') || '';
-        document.getElementById('mysqlUser').value = localStorage.getItem('mysqlUser') || '';
-        document.getElementById('mysqlPass').value = localStorage.getItem('mysqlPass') || '';
+        document.getElementById('dbUser').value = localStorage.getItem('dbUser') || '';
+        document.getElementById('dbPassword').value = localStorage.getItem('dbPassword') || '';
+      
+      // Login-Maske nur einmalig anzeigen
+      if(localStorage.getItem('dbUser') && localStorage.getItem('dbPassword')){
+          document.getElementById('dbUser').style.display = 'none';
+          document.getElementById('dbPassword').style.display = 'none';
+          document.getElementById('dbUserLabel').style.display = 'none';
+          document.getElementById('dbPasswordLabel').style.display = 'none';
+      } else {
+          document.getElementById('dbUser').style.display = 'block';
+          document.getElementById('dbPassword').style.display = 'block';
+          document.getElementById('dbUserLabel').style.display = 'block';
+          document.getElementById('dbPasswordLabel').style.display = 'block';
+      }
     };
   
     function createTournament() {
-        const players   = document.getElementById('players').value;
-        const mysqlHost = document.getElementById('mysqlHost').value;
-        const mysqlDb   = document.getElementById('mysqlDb').value;
-        const mysqlUser = document.getElementById('mysqlUser').value;
-        const mysqlPass = document.getElementById('mysqlPass').value;
+        const players = document.getElementById('players').value;
+        const dbUser = document.getElementById('dbUser').value;
+        const dbPassword = document.getElementById('dbPassword').value;
+
+        // DB-Login speichern
+        localStorage.setItem('dbUser', dbUser);
+        localStorage.setItem('dbPassword', dbPassword);  
       
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "create_tournament.php", true);
@@ -52,11 +71,9 @@
                 alert('Verbindung zum Server fehlgeschlagen.');
             }
         };
-        xhr.send("players=" + encodeURIComponent(players) +
-                 "&mysqlHost=" + encodeURIComponent(mysqlHost) +
-                 "&mysqlDb=" + encodeURIComponent(mysqlDb) + 
-                 "&mysqlUser=" + encodeURIComponent(mysqlUser) + 
-                 "&mysqlPass=" + encodeURIComponent(mysqlPass));
+        xhr.send("players=" + encodeURIComponent(players) + 
+                 "&dbUser=" + encodeURIComponent(dbUser) + 
+                 "&dbPassword=" + encodeURIComponent(dbPassword));
     }
 </script>
 

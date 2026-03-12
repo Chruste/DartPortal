@@ -1,6 +1,6 @@
 <?php
 session_start();
-$pageTitle = 'Shanghai 21';
+$pageTitle = 'Dartball';
 $username  = $_SESSION['username'] ?? null;
 include __DIR__ . '/../header.php';
 ?>

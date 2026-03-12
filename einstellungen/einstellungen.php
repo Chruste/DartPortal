@@ -10,7 +10,7 @@
     <br>
     <label for="scoliaToken">Scolia Access Token:</label>
     <br>
-    <input type="password" id="scoliaToken" required>
+    <input type="text" id="scoliaToken" required>
     <br>
     <br>
     <label for="mysqlHost">MySQL Host:</label>

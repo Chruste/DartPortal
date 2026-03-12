@@ -21,10 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            mysqlHost: mysqlHost,
-            mysqlDb: mysqlDb,
-            mysqlUser: mysqlUser,
-            mysqlPass: mysqlPass
+            host: mysqlHost,
+            db: mysqlDb,
+            user: mysqlUser,
+            pass: mysqlPass
         })
     })
     .then(response => response.json())
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch('set_session_username.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({mysqlUser: mysqlUser})
+                body: JSON.stringify({username: mysqlUser})
             });
         }
     })

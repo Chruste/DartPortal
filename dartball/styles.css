@@ -1,0 +1,88 @@
+/* Global */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000;
+    background: #000 url('img/background.png') no-repeat bottom center;
+    color: #fff;
+    font-family: sans-serif;
+    text-align: center;
+  }
+  
+  /* Header */
+  header {
+    margin: 0.5em 0;
+  }
+  header img {
+    width: 50%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+  
+  /* Status */
+  #status {
+    margin: 0.5em 0;
+  }
+  
+  /* Manuelle Eingabe */
+  #manualInput input {
+    background: #222;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 4px;
+    margin-right: 4px;
+  }
+  #manualButtons button,
+  #manualInput button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 2px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  
+  /* Tabelle */
+  table {
+    border-collapse: collapse;
+    width: 360px;
+    margin: 1em auto;
+    table-layout: fixed;
+  }
+  th, td {
+    border: 1px solid #fff;
+    padding: 4px 8px;
+    text-align: center;
+  }
+  tfoot td {
+    font-weight: bold;
+  }
+  
+  /* Treffer-Markierung */
+  tr.hit td {
+    color: #FFD700;
+  }
+  
+  /* Aktuelle Wurfzeile und Summenzeile */
+  tr.current-row td,
+  tfoot tr.current-row td {
+    font-size: 3em;
+    font-weight: bold;
+  }
+  
+  /* Summenzeile immer Gold */
+  #resultsTable tfoot tr td {
+    color: #FFD700;
+  }
+  
+  /* Feste Spaltenbreite für Ziel-Spalte */
+  #resultsTable th:first-child,
+  #resultsTable td:first-child {
+    width: 80px;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  

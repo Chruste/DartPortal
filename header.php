@@ -18,8 +18,10 @@
       <ul>
         <li><a href="/index.php" data-title="Home">Home</a></li>
         <li><a href="/shanghai21/index.php" data-title="Shanghai 21">Shanghai 21</a></li>
+        <li><a href="/dartball/index.php" data-title="Dartball">Dartball</a></li>
         <li><a href="/turnierplaner/turnierplaner.php" data-title="Turnierplaner">Turnierplaner</a></li>
         <li><a href="/einstellungen/einstellungen.php" data-title="Einstellungen">Einstellungen</a></li>
+        <li><a href="/login.php" data-title="DB-Login">DB-Login</a></li>
       </ul>
     </nav>
   </div>
@@ -28,8 +30,8 @@
     <header class="topbar">
       <button id="mobileMenuButton" class="mobile-menu-button" aria-label="Menü">☰</button>
       <h1 id="pageTitle"><?= $pageTitle ?? 'Home'; ?></h1>
-      <a href="../einstellungen/einstellungen.php"  id="userInfo" class="mysqlUser">
-        <?php echo $_SESSION['mysqlUser'] ?? 'Login'; ?> <!-- dein mysqlUser aus Session oder anderem Speicher -->
+      <a href="./einstellungen/einstellungen.php"  id="userInfo" class="username">
+        <?php echo $_SESSION['username'] ?? 'Login'; ?> <!-- dein Username aus Session oder anderem Speicher -->
       </a>
     </header>
     <section class="content">

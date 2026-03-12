@@ -2,13 +2,13 @@
 <?php
 //include '../db.php';
 
+$host  = 'chruste.lima-db.de';
+$db    = 'db_447002_2';
 // Hole Zugangsdaten aus POST-Request
-$mysqlHost = $_POST['mysqlHost'];
-$mysqlDb   = $_POST['mysqlDb'];
-$mysqlUser = $_POST['mysqlUser'];
-$mysqlPass = $_POST['mysqlPass'];
+$user = $_POST['dbUser'];
+$pw = $_POST['dbPassword'];
 
-$conn = new mysqli($mysqlHost, $mysqlUser, $mysqlPass, $mysqlDb);
+$conn = new mysqli($host, $user, $pw, $db);
 
 if ($conn->connect_error) {
     die("Fehler bei Verbindung zur Datenbank: " . $conn->connect_error);

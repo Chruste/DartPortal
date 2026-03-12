@@ -120,29 +120,3 @@ body, html {
 @media (min-width: 600px) {
   .content { margin-left: 240px; }
 }
-
-/* Kachel-Layout für die Startseite */
-.tile-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: 2rem 0;
-}
-.tile {
-  flex: 1 1 180px;
-  min-width: 150px;
-  max-width: 220px;
-  background: #f3f3f3;
-  border-radius: 10px;
-  padding: 2rem 1rem;
-  text-align: center;
-  text-decoration: none;
-  color: #222;
-  font-size: 1.2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.tile:hover {
-  background: #e0eaff;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-}

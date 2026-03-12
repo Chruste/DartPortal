@@ -1,4 +1,4 @@
-// "Shanghai 21" v1.11 Scolia Dartspiel
+// "Dartball" v0.1 Scolia Dartspiel
 
 // 1) Init-Funktion nach Login (v1.11)
 function initApp() {
