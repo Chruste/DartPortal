@@ -1,0 +1,31 @@
+name: Deploy DEV to lima-city via FTPS
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  ftp-deploy-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+      uses: actions/checkout@v4
+
+      - name: Deploy via FTPS (DEV)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps          # oder sftp, wenn du das nutzt
+          port: 21                # oder dein FTPS/SFTP-Port
+          server-dir: ${{ secrets.FTP_DEV_DIR }}  # z.B. /dev/
+          local-dir: ./
+          exclude: |
+            **/.git/**
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            **/*.md
