@@ -18,6 +18,7 @@
       <ul>
         <li><a href="/index.php" data-title="Home">Home</a></li>
         <li><a href="/shanghai21/index.php" data-title="Shanghai 21">Shanghai 21</a></li>
+        <li><a href="/shanghai42/index.php" data-title="Shanghai 42">Shanghai 42</a></li>
         <li><a href="/dartball/index.php" data-title="Dartball">Dartball</a></li>
         <li><a href="/turnierplaner/turnierplaner.php" data-title="Turnierplaner">Turnierplaner</a></li>
         <li><a href="/einstellungen/einstellungen.php" data-title="Einstellungen">Einstellungen</a></li>
