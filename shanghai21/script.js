@@ -1,6 +1,6 @@
-// "Shanghai 21" v1.12 Scolia Dartspiel
+// "Shanghai 21" v2.0 Scolia Dartspiel
 
-// 1) Init-Funktion nach Login (v1.12)
+// 1) Init-Funktion nach Login (v2.0)
 function initApp() {
   // Anmeldedaten aus config (bzw. localStorage) übernehmen
   const { serialNumber, accessToken } = window.SCOLIA_CONFIG;

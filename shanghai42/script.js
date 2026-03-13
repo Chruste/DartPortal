@@ -1,4 +1,4 @@
-// "Shanghai 42" v1.0 Scolia Dartspiel
+// "Shanghai 42" v2.0 Scolia Dartspiel
 
 function initApp() {
   const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
