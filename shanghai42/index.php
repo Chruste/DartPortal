@@ -1,6 +1,6 @@
 <?php
 session_start();
-$pageTitle = 'Dartball';
+$pageTitle = 'Shanghai 42';
 $username  = $_SESSION['username'] ?? null;
 include __DIR__ . '/../header.php';
 ?>
@@ -10,7 +10,7 @@ include __DIR__ . '/../header.php';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>"Shanghai 21" v2.0 Scolia Dartspiel</title>
+  <title>"Shanghai 42" v2.0 Scolia Dartspiel</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -25,7 +25,7 @@ include __DIR__ . '/../header.php';
   <!-- Haupt-App (versteckt bis Login) -->
   <div id="appContainer" style="display:none;">
     <header>
-      <img src="img/headline.png" alt="Shanghai 21">
+      <img src="img/headline.png" alt="Shanghai 42">
     </header>
     <div id="status">Board-Status: –</div>
     <div id="manualInput">
