@@ -103,6 +103,8 @@ body {
   #editControls {
     margin: 1em auto;
     width: 360px;
+    display: flex;
+    justify-content: space-between;
   }
   #editControls button {
     background: #333;
