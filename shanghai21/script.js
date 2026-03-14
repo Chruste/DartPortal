@@ -273,6 +273,9 @@ function setActivePlayer(index) {
   updateAllActivateBtns();
   // Update Triple Button für aktiven Spieler
   players[activePlayerIndex].updateTripleButton();
+  // Update Undo Button basierend auf neuem aktiven Spieler
+  const undoBtn = document.getElementById('undoButton');
+  undoBtn.style.display = players[activePlayerIndex].currentIndex > 0 ? 'inline' : 'none';
 }
 
 function updateAllActivateBtns() {

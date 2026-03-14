@@ -43,10 +43,16 @@ include __DIR__ . '/../header.php';
     
     <!-- Edit-Controls -->
     <div id="controlButtons">
-      <button id="addPlayerButton">Spieler hinzufügen</button>
-      <button id="editButton">Bearbeiten</button>
-      <button id="saveButton" style="display:none;">Speichern</button>
-      <button id="undoButton" style="display:none;">Rückgängig</button>
+      <div class="left-buttons">
+        <button id="addPlayerButton">Spieler hinzufügen</button>
+      </div>
+      <div class="center-buttons">
+        <button id="editButton">Bearbeiten</button>
+        <button id="saveButton" style="display:none;">Speichern</button>
+      </div>
+      <div class="right-buttons">
+        <button id="undoButton" style="display:none;">Rückgängig</button>
+      </div>
     </div>
     
     <div id="tablesContainer"></div>

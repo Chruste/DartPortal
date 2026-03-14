@@ -159,6 +159,14 @@ body {
     width: 360px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+  }
+  .left-buttons, .center-buttons, .right-buttons {
+    display: flex;
+  }
+  .center-buttons {
+    flex: 1;
+    justify-content: center;
   }
   #controlButtons button {
     background: #333;
