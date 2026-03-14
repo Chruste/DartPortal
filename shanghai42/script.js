@@ -62,8 +62,10 @@ class Player {
   }
 
   updateActivateBtn() {
-    this.activateBtn.disabled = activePlayerIndex === this.index;
-    if (activePlayerIndex === this.index) {
+    const isActive = activePlayerIndex === this.index;
+    this.activateBtn.disabled = isActive;
+    this.activateBtn.style.display = isActive ? 'none' : 'block';
+    if (isActive) {
       this.container.classList.remove('inactive');
     } else {
       this.container.classList.add('inactive');
@@ -176,6 +178,8 @@ class Player {
   enterEditMode() {
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
+    document.getElementById('deletePlayerButton').style.display = 'inline';
+    document.getElementById('confirmDeletePlayerButton').style.display = 'none';
     editingPlayerIndex = this.index;
     const nameCell = document.getElementById(`playerNameCell${this.index}`);
     nameCell.innerHTML = `<input id="playerNameInput${this.index}" type="text" value="${this.name}" class="hit-input">`;
@@ -190,6 +194,8 @@ class Player {
   exitEditMode() {
     document.getElementById('editButton').style.display = 'inline';
     document.getElementById('saveButton').style.display = 'none';
+    document.getElementById('deletePlayerButton').style.display = 'none';
+    document.getElementById('confirmDeletePlayerButton').style.display = 'none';
     editingPlayerIndex = null;
     const nameInput = document.getElementById(`playerNameInput${this.index}`);
     if (nameInput) {
@@ -234,10 +240,19 @@ class Player {
 }
 
 // Globale Variablen
-let players = [];
+let players = {};
 let activePlayerIndex = 0;
 let editingPlayerIndex = null;
+let nextPlayerId = 0;
 const tablesContainer = document.getElementById('tablesContainer');
+
+function getPlayerIds() {
+  return Object.keys(players).map(Number).sort((first, second) => first - second);
+}
+
+function getActivePlayer() {
+  return players[activePlayerIndex] || null;
+}
 
 // 1) Init-Funktion nach Login (v2.0)
 function initApp() {
@@ -259,47 +274,114 @@ function initApp() {
 
   // 3) Event-Listener
   document.getElementById('addPlayerButton').onclick = addPlayer;
-  document.getElementById('editButton').onclick = () => players[activePlayerIndex].enterEditMode();
-  document.getElementById('saveButton').onclick = () => players[activePlayerIndex].exitEditMode();
-  document.getElementById('undoButton').onclick = () => players[activePlayerIndex].undoLastThrow();
+  document.getElementById('editButton').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.enterEditMode();
+  };
+  document.getElementById('saveButton').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.exitEditMode();
+  };
+  document.getElementById('undoButton').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.undoLastThrow();
+  };
+  document.getElementById('deletePlayerButton').onclick = () => {
+    document.getElementById('deletePlayerButton').style.display = 'none';
+    document.getElementById('confirmDeletePlayerButton').style.display = 'inline';
+  };
+  document.getElementById('confirmDeletePlayerButton').onclick = () => {
+    deleteActivePlayer();
+  };
 
   // Manueller Input
   document.getElementById('manualSubmit').onclick = () => {
     const val = document.getElementById('manualSector').value.trim();
-    if (val) players[activePlayerIndex].processThrow(val);
+    const player = getActivePlayer();
+    if (val && player) player.processThrow(val);
   };
   document.getElementById('manualSector').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('manualSubmit').click();
   });
-  document.getElementById('btnMiss').onclick = () => players[activePlayerIndex].processThrow('None', 'miss');
-  document.getElementById('btnSingle').onclick = () => players[activePlayerIndex].processThrow(players[activePlayerIndex].sequence[players[activePlayerIndex].currentIndex], 'Single');
-  document.getElementById('btnDouble').onclick = () => players[activePlayerIndex].processThrow(players[activePlayerIndex].sequence[players[activePlayerIndex].currentIndex], 'Double');
-  document.getElementById('btnTriple').onclick = () => players[activePlayerIndex].processThrow(players[activePlayerIndex].sequence[players[activePlayerIndex].currentIndex], 'Triple');
+  document.getElementById('btnMiss').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.processThrow('None', 'miss');
+  };
+  document.getElementById('btnSingle').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.processThrow(player.sequence[player.currentIndex], 'Single');
+  };
+  document.getElementById('btnDouble').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.processThrow(player.sequence[player.currentIndex], 'Double');
+  };
+  document.getElementById('btnTriple').onclick = () => {
+    const player = getActivePlayer();
+    if (player) player.processThrow(player.sequence[player.currentIndex], 'Triple');
+  };
 }
 
 function addPlayer() {
-  const playerIndex = players.length;
+  const playerIndex = nextPlayerId++;
   const player = new Player(`Spieler ${playerIndex + 1}`, playerIndex);
-  players.push(player);
+  players[playerIndex] = player;
   tablesContainer.appendChild(player.container);
+  if (getPlayerIds().length === 1) {
+    activePlayerIndex = playerIndex;
+  }
+  updateAllActivateBtns();
+}
+
+function deleteActivePlayer() {
+  const player = getActivePlayer();
+  if (!player) return;
+
+  if (editingPlayerIndex === player.index) {
+    editingPlayerIndex = null;
+  }
+
+  player.container.remove();
+  delete players[player.index];
+
+  const remainingIds = getPlayerIds();
+  if (remainingIds.length === 0) {
+    addPlayer();
+  } else {
+    activePlayerIndex = remainingIds[0];
+    const activePlayer = getActivePlayer();
+    if (activePlayer) {
+      activePlayer.updateTripleButton();
+    }
+    const undoBtn = document.getElementById('undoButton');
+    undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
+  }
+
+  document.getElementById('editButton').style.display = 'inline';
+  document.getElementById('saveButton').style.display = 'none';
+  document.getElementById('deletePlayerButton').style.display = 'none';
+  document.getElementById('confirmDeletePlayerButton').style.display = 'none';
   updateAllActivateBtns();
 }
 
 function setActivePlayer(index) {
-  if (editingPlayerIndex !== null && editingPlayerIndex !== index) {
+  if (!players[index]) return;
+  if (editingPlayerIndex !== null && editingPlayerIndex !== index && players[editingPlayerIndex]) {
     players[editingPlayerIndex].exitEditMode();
   }
   activePlayerIndex = index;
   updateAllActivateBtns();
   // Update Triple Button für aktiven Spieler
-  players[activePlayerIndex].updateTripleButton();
+  const activePlayer = getActivePlayer();
+  if (activePlayer) {
+    activePlayer.updateTripleButton();
+  }
   // Update Undo Button basierend auf neuem aktiven Spieler
   const undoBtn = document.getElementById('undoButton');
-  undoBtn.style.display = players[activePlayerIndex].currentIndex > 0 ? 'inline' : 'none';
+  undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
 }
 
 function updateAllActivateBtns() {
-  players.forEach(p => p.updateActivateBtn());
+  getPlayerIds().forEach(id => players[id].updateActivateBtn());
 }
 
 function handleMessage(msg) {
@@ -309,6 +391,9 @@ function handleMessage(msg) {
     const bounceout = Boolean(msg.payload.bounceout);
     const miss = bounceout || sector === 'none';
     console.debug('THROW_DETECTED', { sector, bounceout, miss, payload: msg.payload });
-    players[activePlayerIndex].processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
+    const player = getActivePlayer();
+    if (player) {
+      player.processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
+    }
   }
 }
