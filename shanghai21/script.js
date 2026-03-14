@@ -151,6 +151,7 @@ class Player {
   enterEditMode() {
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
+    editingPlayerIndex = this.index;
     const nameCell = document.getElementById(`playerNameCell${this.index}`);
     nameCell.innerHTML = `<input id="playerNameInput${this.index}" type="text" value="${this.name}" class="hit-input">`;
     const rows = this.tbody.children;
@@ -164,6 +165,7 @@ class Player {
   exitEditMode() {
     document.getElementById('editButton').style.display = 'inline';
     document.getElementById('saveButton').style.display = 'none';
+    editingPlayerIndex = null;
     const nameInput = document.getElementById(`playerNameInput${this.index}`);
     if (nameInput) {
       this.name = nameInput.value.trim() || 'Spieler';
@@ -208,6 +210,7 @@ class Player {
 // Globale Variablen
 let players = [];
 let activePlayerIndex = 0;
+let editingPlayerIndex = null;
 const tablesContainer = document.getElementById('tablesContainer');
 
 // 1) Init-Funktion nach Login (v2.0)
@@ -257,6 +260,9 @@ function addPlayer() {
 }
 
 function setActivePlayer(index) {
+  if (editingPlayerIndex !== null && editingPlayerIndex !== index) {
+    players[editingPlayerIndex].exitEditMode();
+  }
   activePlayerIndex = index;
   updateAllActivateBtns();
   // Update Triple Button für aktiven Spieler
