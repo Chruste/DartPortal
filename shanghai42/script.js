@@ -102,8 +102,12 @@ function initApp() {
   }
 
   function handleMessage(msg) {
+    console.debug('WS message:', msg);
     if (msg.type === 'THROW_DETECTED') {
-      const miss = msg.payload.sector === 'None' || msg.payload.bounceout;
+      const sector = (msg.payload.sector || '').toString().toLowerCase();
+      const bounceout = Boolean(msg.payload.bounceout);
+      const miss = bounceout || sector === 'none';
+      console.debug('THROW_DETECTED', { sector, bounceout, miss, payload: msg.payload });
       processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
     }
   }
