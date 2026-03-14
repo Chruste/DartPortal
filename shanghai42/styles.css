@@ -88,3 +88,27 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* Input-Felder im Bearbeitungsmodus */
+  .hit-input {
+    background: #222;
+    color: #fff;
+    border: 1px solid #555;
+    width: 100%;
+    text-align: center;
+    padding: 2px;
+  }
+
+  /* Edit-Controls */
+  #editControls {
+    margin: 1em auto;
+    width: 360px;
+  }
+  #editControls button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 2px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }

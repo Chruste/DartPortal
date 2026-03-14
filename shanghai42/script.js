@@ -107,4 +107,46 @@ function initApp() {
   document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex]);
   document.getElementById('btnDouble').onclick = () => processThrow(sequence[currentIndex], 'Double');
   document.getElementById('btnTriple').onclick = () => processThrow(sequence[currentIndex], 'Triple');
+
+  // Bearbeitungsmodus
+  function calculatePoints(hit, target) {
+    if (hit === '0' || hit === '') return 0;
+    const isBull = target === 'Bull';
+    const correctDouble = (isBull && hit === '50') || hit === `D ${target}`;
+    return correctDouble ? (isBull ? 50 : 2 * parseInt(target, 10)) : -1;
+  }
+
+  function enterEditMode() {
+    document.getElementById('editButton').style.display = 'none';
+    document.getElementById('saveButton').style.display = 'inline';
+    const rows = tbody.children;
+    for (let i = 0; i < rows.length; i++) {
+      const cell = rows[i].cells[2];
+      const currentHit = cell.textContent;
+      cell.innerHTML = `<input type="text" value="${currentHit}" class="hit-input">`;
+    }
+  }
+
+  function exitEditMode() {
+    document.getElementById('editButton').style.display = 'inline';
+    document.getElementById('saveButton').style.display = 'none';
+    const rows = tbody.children;
+    totalScore = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const cell = rows[i].cells[2];
+      const input = cell.querySelector('.hit-input');
+      const newHit = input.value.trim();
+      cell.textContent = newHit;
+      const pts = calculatePoints(newHit, sequence[i]);
+      rows[i].cells[1].textContent = pts;
+      totalScore += pts;
+      rows[i].classList.remove('hit', 'miss');
+      if (pts > 0) rows[i].classList.add('hit');
+      else if (pts < 0) rows[i].classList.add('miss');
+    }
+    sumCell.textContent = totalScore;
+  }
+
+  document.getElementById('editButton').onclick = enterEditMode;
+  document.getElementById('saveButton').onclick = exitEditMode;
 }
