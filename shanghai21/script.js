@@ -258,6 +258,7 @@ let players = {};
 let activePlayerIndex = 0;
 let editingPlayerIndex = null;
 let nextPlayerId = 0;
+let autoPlayerSwitch = false;
 const tablesContainer = document.getElementById('tablesContainer');
 
 function getPlayerIds() {
@@ -300,7 +301,14 @@ function initApp() {
     const player = getActivePlayer();
     if (player) player.undoLastThrow();
   };
-
+  document.getElementById('autoPlayerBtn').onclick = () => {
+    autoPlayerSwitch = true;
+    updateAutoPlayerSwitchBtn();
+  };
+  document.getElementById('manualPlayerBtn').onclick = () => {
+    autoPlayerSwitch = false;
+    updateAutoPlayerSwitchBtn();
+  };
 
   // Manueller Input
   document.getElementById('manualSubmit').onclick = () => {
@@ -338,6 +346,7 @@ function addPlayer() {
     activePlayerIndex = playerIndex;
   }
   updateAllActivateBtns();
+  updateAutoPlayerSwitchBtn();
 }
 
 function deletePlayer(index) {
@@ -362,6 +371,7 @@ function deletePlayer(index) {
 
   activePlayerIndex = remainingIds[0];
   updateAllActivateBtns();
+  updateAutoPlayerSwitchBtn();
   const activePlayer = getActivePlayer();
   if (activePlayer) activePlayer.updateTripleButton();
   const undoBtn = document.getElementById('undoButton');
@@ -389,6 +399,33 @@ function updateAllActivateBtns() {
   getPlayerIds().forEach(id => players[id].updateActivateBtn());
 }
 
+function switchToNextPlayer() {
+  const ids = getPlayerIds();
+  if (ids.length <= 1) return;
+  const currentPos = ids.indexOf(activePlayerIndex);
+  const nextPos = (currentPos + 1) % ids.length;
+  setActivePlayer(ids[nextPos]);
+}
+
+function updateAutoPlayerSwitchBtn() {
+  const count = getPlayerIds().length;
+  const autoBtn = document.getElementById('autoPlayerBtn');
+  const manualBtn = document.getElementById('manualPlayerBtn');
+  if (count <= 1) {
+    autoPlayerSwitch = false;
+    autoBtn.style.display = 'inline';
+    autoBtn.disabled = true;
+    manualBtn.style.display = 'none';
+  } else if (autoPlayerSwitch) {
+    autoBtn.style.display = 'none';
+    manualBtn.style.display = 'inline';
+  } else {
+    autoBtn.style.display = 'inline';
+    autoBtn.disabled = false;
+    manualBtn.style.display = 'none';
+  }
+}
+
 function handleMessage(msg) {
   console.debug('WS message:', msg);
   if (msg.type === 'THROW_DETECTED') {
@@ -400,5 +437,8 @@ function handleMessage(msg) {
     if (player) {
       player.processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
     }
+  }
+  if (msg.type === 'TAKEOUT_FINISHED' && autoPlayerSwitch) {
+    switchToNextPlayer();
   }
 }

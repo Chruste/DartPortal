@@ -183,7 +183,7 @@ body {
   /* Edit-Controls */
   #controlButtons {
     margin: 1em auto;
-    width: 360px;
+    width: auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -201,5 +201,9 @@ body {
     margin: 2px;
     padding: 8px 16px;
     cursor: pointer;
+  }
+  #controlButtons button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
