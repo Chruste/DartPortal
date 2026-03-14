@@ -87,7 +87,9 @@ function initApp() {
   // 5) WebSocket-Messages
   function handleMessage(msg) {
     if (msg.type === 'THROW_DETECTED') {
-      const miss = msg.payload.sector === 'None' || msg.payload.bounceout;
+      const sector = (msg.payload.sector || '').toString().toLowerCase();
+      const bounceout = Boolean(msg.payload.bounceout);
+      const miss = bounceout || sector === 'none';
       processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
     }
   }
