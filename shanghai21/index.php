@@ -38,6 +38,10 @@ include __DIR__ . '/../header.php';
       <button id="btnDouble">Double</button>
       <button id="btnTriple">Triple</button>
     </div>
+    <div id="editControls">
+      <button id="editButton">Bearbeiten</button>
+      <button id="saveButton" style="display:none;">Speichern</button>
+    </div>
     <table id="resultsTable">
       <thead>
         <tr><th>Ziel</th><th>Punkte</th><th>Treffer</th></tr>
@@ -47,10 +51,6 @@ include __DIR__ . '/../header.php';
         <tr class="current-row"><td>Total</td><td id="sumCell">0</td><td></td></tr>
       </tfoot>
     </table>
-    <div id="editControls">
-      <button id="editButton">Bearbeiten</button>
-      <button id="saveButton" style="display:none;">Speichern</button>
-    </div>
   </div>
 
   <!-- Login-Handler -->
