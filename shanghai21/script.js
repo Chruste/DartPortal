@@ -107,6 +107,7 @@ function initApp() {
   }
 
   function enterEditMode() {
+    console.log('Entering edit mode');
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
     const rows = tbody.children;
@@ -136,6 +137,6 @@ function initApp() {
     sumCell.textContent = totalScore;
   }
 
-  document.getElementById('editButton').onclick = enterEditMode;
-  document.getElementById('saveButton').onclick = exitEditMode;
+  document.getElementById('editButton').addEventListener('click', enterEditMode);
+  document.getElementById('saveButton').addEventListener('click', exitEditMode);
 }
