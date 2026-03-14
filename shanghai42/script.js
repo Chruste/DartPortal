@@ -117,7 +117,6 @@ function initApp() {
   }
 
   function enterEditMode() {
-    console.log('Entering edit mode');
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
     const rows = tbody.children;
@@ -139,7 +138,11 @@ function initApp() {
       const newHit = input.value.trim();
       cell.textContent = newHit;
       const pts = calculatePoints(newHit, sequence[i]);
-      rows[i].cells[1].textContent = pts;
+      if (newHit === '') {
+        rows[i].cells[1].textContent = '';
+      } else {
+        rows[i].cells[1].textContent = pts;
+      }
       totalScore += pts;
       rows[i].classList.remove('hit', 'miss');
       if (pts > 0) rows[i].classList.add('hit');
