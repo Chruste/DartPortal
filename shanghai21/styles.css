@@ -151,13 +151,13 @@ body {
   }
 
   /* Edit-Controls */
-  #editControls {
+  #controlButtons {
     margin: 1em auto;
     width: 360px;
     display: flex;
     justify-content: space-between;
   }
-  #editControls button {
+  #controlButtons button {
     background: #333;
     color: #fff;
     border: 1px solid #555;
