@@ -147,6 +147,11 @@ body {
   #resultsTable tfoot tr.current-row td {
     font-size: 2em;
   }
+
+  /* Ziel-Spalte der hervorgehobenen Bull-Zeile kleiner als Punkte/Treffer */
+  tbody tr:last-child.current-row td:first-child {
+    font-size: 1.5em;
+  }
   
   /* Summenzeile immer Gold und hervorgehoben */
   table tfoot tr {
