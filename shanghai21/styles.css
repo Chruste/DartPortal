@@ -163,7 +163,6 @@ body {
   }
   .center-buttons {
     flex: 1;
-    justify-content: center;
   }
   #controlButtons button {
     background: #333;
