@@ -31,6 +31,12 @@ function initApp() {
     if (rows[i]) rows[i].classList.add('current-row');
   }
 
+  function updateTripleButton() {
+    const btn = document.getElementById('btnTriple');
+    if (!btn) return;
+    btn.style.display = sequence[currentIndex] === 'Bull' ? 'none' : 'inline';
+  }
+
   // Tabelle initial füllen und erstes Ziel markieren
   sequence.forEach(t => {
     const row = document.createElement('tr');
@@ -38,6 +44,7 @@ function initApp() {
     tbody.appendChild(row);
   });
   highlightRow(0);
+  updateTripleButton();
 
   // 4) Wurf verarbeiten
   function processThrow(sec, type = null) {
@@ -70,10 +77,10 @@ function initApp() {
     sumCell.textContent = totalScore;
     currentIndex++;
     highlightRow(currentIndex);
+    updateTripleButton();
     if (currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     }
-    if (sequence[currentIndex] === 'Bull') document.getElementById('btnTriple').style.display = 'none';
   }
 
   // 5) WebSocket-Messages
@@ -126,6 +133,7 @@ function initApp() {
       }
       sumCell.textContent = totalScore;
       highlightRow(currentIndex);
+      updateTripleButton();
       if (currentIndex === 0) {
         document.getElementById('undoButton').style.display = 'none';
       }
@@ -174,6 +182,7 @@ function initApp() {
     }
     currentIndex = newIndex;
     highlightRow(currentIndex);
+    updateTripleButton();
     if (currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     } else {
