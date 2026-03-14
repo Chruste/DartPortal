@@ -40,6 +40,7 @@ include __DIR__ . '/../header.php';
     </div>
     <div id="editControls">
       <button id="editButton">Bearbeiten</button>
+      <button id="undoButton" style="display:none;">Rückgängig</button>
       <button id="saveButton" style="display:none;">Speichern</button>
     </div>
     <table id="resultsTable">

@@ -47,9 +47,10 @@ function initApp() {
       : type === 'Triple' ? 3
       : sector.startsWith('D') ? 2
       : sector.startsWith('T') ? 3
+      : sector === 'BULL' ? 2  // Double Bull
       : 1;
-    let base = sector === '25' ? '25'
-      : sector === 'BULL' ? 'Bull'
+    let base = sector === '25' ? 'Bull'  // Single Bull
+      : sector === 'BULL' ? 'Bull'  // Double Bull
       : (sector.match(/(20|1[0-9]|[1-9])/) || [''])[0];
     let hit = mult === 0 ? '0'
       : base === 'Bull' ? (mult === 2 ? '50' : '25')
@@ -69,6 +70,9 @@ function initApp() {
     sumCell.textContent = totalScore;
     currentIndex++;
     highlightRow(currentIndex);
+    if (currentIndex > 0) {
+      document.getElementById('undoButton').style.display = 'inline';
+    }
     if (sequence[currentIndex] === 'Bull') document.getElementById('btnTriple').style.display = 'none';
   }
 
@@ -100,10 +104,32 @@ function initApp() {
     const hitBase = hit.replace(/^D |^T /, '');
     const hitMult = hit.startsWith('D ') ? 2 : hit.startsWith('T ') ? 3 : 1;
     let pts = 0;
-    if ((isBull && (hit === '25' || hit === '50')) || (!isBull && hitBase === target)) {
-      pts = isBull ? (hit === '50' ? 50 : 25) : hitMult * parseInt(hitBase, 10);
+    if (isBull && hitBase === 'Bull') {
+      pts = hitMult * 25;
+    } else if (!isBull && hitBase === target) {
+      pts = hitMult * parseInt(hitBase, 10);
     }
     return pts;
+  }
+
+  function undoLastThrow() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      const row = tbody.children[currentIndex];
+      row.cells[1].textContent = '';
+      row.cells[2].textContent = '';
+      row.classList.remove('hit', 'miss');
+      totalScore = 0;
+      for (let i = 0; i < currentIndex; i++) {
+        const pts = calculatePoints(tbody.children[i].cells[2].textContent, sequence[i]);
+        totalScore += pts;
+      }
+      sumCell.textContent = totalScore;
+      highlightRow(currentIndex);
+      if (currentIndex === 0) {
+        document.getElementById('undoButton').style.display = 'none';
+      }
+    }
   }
 
   function enterEditMode() {
@@ -148,8 +174,14 @@ function initApp() {
     }
     currentIndex = newIndex;
     highlightRow(currentIndex);
+    if (currentIndex > 0) {
+      document.getElementById('undoButton').style.display = 'inline';
+    } else {
+      document.getElementById('undoButton').style.display = 'none';
+    }
   }
 
   document.getElementById('editButton').addEventListener('click', enterEditMode);
   document.getElementById('saveButton').addEventListener('click', exitEditMode);
+  document.getElementById('undoButton').addEventListener('click', undoLastThrow);
 }
