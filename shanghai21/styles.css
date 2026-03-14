@@ -183,7 +183,7 @@ body {
   /* Edit-Controls */
   #controlButtons {
     margin: 1em auto;
-    width: auto;
+    width: 400px;
     display: flex;
     justify-content: space-between;
     align-items: center;
