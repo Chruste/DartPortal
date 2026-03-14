@@ -73,6 +73,12 @@ body {
     font-size: 3em;
     font-weight: bold;
   }
+
+  /* Bull- und Total-Zeile: keine so große Schrift beim Hervorheben */
+  #resultsTable tbody tr:last-child.current-row td,
+  #resultsTable tfoot tr.current-row td {
+    font-size: 2em;
+  }
   
   /* Summenzeile immer Gold */
   #resultsTable tfoot tr td {
