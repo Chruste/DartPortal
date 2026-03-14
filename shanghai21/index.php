@@ -10,7 +10,7 @@ include __DIR__ . '/../header.php';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>"Shanghai 21" v3.0 Scolia Dartspiel</title>
+  <title>"Shanghai 21" v3.1 Scolia Dartspiel</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -44,6 +44,8 @@ include __DIR__ . '/../header.php';
     <!-- Edit-Controls -->
     <div id="controlButtons">
       <div class="left-buttons">
+        <button id="autoPlayerBtn" disabled>Automatischen Spielerwechsel aktivieren</button>
+        <button id="manualPlayerBtn" style="display:none;">Manuellen Spielerwechsel aktivieren</button>
         <button id="addPlayerButton">Spieler hinzufügen</button>
       </div>
       <div class="center-buttons">

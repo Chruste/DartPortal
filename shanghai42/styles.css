@@ -186,7 +186,7 @@ body {
   /* Edit-Controls */
   #controlButtons {
     margin: 1em auto;
-    width: 360px;
+    width: 600px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -202,6 +202,21 @@ body {
     color: #fff;
     border: 1px solid #555;
     margin: 2px;
+    width: 150px;
+    height: 64px;
     padding: 8px 16px;
     cursor: pointer;
+  }
+  #autoPlayerBtn,
+  #manualPlayerBtn {
+    width: 150px;
+  }
+  #controlButtons #manualPlayerBtn {
+    background: #8b0000 !important;
+    color: #fff !important;
+    border: 1px solid #f55 !important;
+  }
+  #controlButtons button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
