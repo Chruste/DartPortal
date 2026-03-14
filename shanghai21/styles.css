@@ -64,6 +64,13 @@ body {
     display: block;
   }
 
+  /* Spieler-Container nebeneinander */
+  #tablesContainer > div {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0 1em 1em 0;
+  }
+
   /* Aktivieren Button über Tabelle */
   .playerActivateBtn {
     background: #333;
