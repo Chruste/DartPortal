@@ -49,6 +49,71 @@ body {
     width: 360px;
     margin: 1em auto;
     table-layout: fixed;
+    display: inline-block;
+    vertical-align: top;
+  }
+
+  /* Spieler hinzufügen Button */
+  #addPlayerButton {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 0.5em auto;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
+  }
+
+  /* Spieler-Container nebeneinander */
+  #tablesContainer > div {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0 1em 1em 0;
+  }
+
+  /* Inaktive Spieler: nur Tabelle halbtransparent */
+  #tablesContainer .tableArea.inactive {
+    opacity: 0.5;
+  }
+
+  /* Aktivieren Button über Tabelle */
+  .playerActivateBtn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 0.5em auto;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
+  }
+  .playerActivateBtn:disabled {
+    background: #666;
+    cursor: not-allowed;
+  }
+
+  /* Löschen-Buttons pro Spieler */
+  .playerDeleteBtn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 0.5em auto;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
+    opacity: 0.5;
+  }
+  .playerDeleteBtn:not([disabled]) {
+    opacity: 1;
+    cursor: pointer;
+  }
+  .playerConfirmDeleteBtn {
+    background: #8b0000;
+    color: #fff;
+    border: 1px solid #f55;
+    margin: 0.5em auto;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
   }
   th, td {
     border: 1px solid #fff;
@@ -59,6 +124,12 @@ body {
     font-weight: bold;
   }
   
+  /* Spielername größer */
+  .player-name {
+    font-size: 1.5em;
+    font-weight: bold;
+  }
+
   /* Treffer-Markierung */
   tr.hit td {
     color: #FFD700;
@@ -76,15 +147,22 @@ body {
   #resultsTable tfoot tr.current-row td {
     font-size: 2em;
   }
-  
-  /* Summenzeile immer Gold */
-  #resultsTable tfoot tr td {
-    color: #FFD700;
+
+  /* Ziel-Spalte der hervorgehobenen Bull-Zeile kleiner als Punkte/Treffer */
+  tbody tr:last-child.current-row td:first-child {
+    font-size: 2em;
   }
   
+  /* Summenzeile immer Gold und hervorgehoben */
+  table tfoot tr {
+    color: #FFD700;
+    font-weight: bold;
+    font-size: 2em;
+  }
+
   /* Feste Spaltenbreite für Ziel-Spalte */
-  #resultsTable th:first-child,
-  #resultsTable td:first-child {
+  table th:first-child,
+  table td:first-child {
     width: 80px;
     max-width: 80px;
     overflow: hidden;
@@ -103,13 +181,20 @@ body {
   }
 
   /* Edit-Controls */
-  #editControls {
+  #controlButtons {
     margin: 1em auto;
     width: 360px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
   }
-  #editControls button {
+  .left-buttons, .center-buttons, .right-buttons {
+    display: flex;
+  }
+  .center-buttons {
+    flex: 1;
+  }
+  #controlButtons button {
     background: #333;
     color: #fff;
     border: 1px solid #555;
