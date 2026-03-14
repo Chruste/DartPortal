@@ -15,8 +15,11 @@ function initApp() {
   const sequence = Array.from({ length: 20 }, (_, i) => (i + 1).toString()).concat('Bull');
   let currentIndex = 0;
   let totalScore = 0;
+  let playerName = 'Spieler';
   const tbody = document.querySelector('#resultsTable tbody');
   const sumCell = document.getElementById('sumCell');
+  const playerNameCell = document.getElementById('playerNameCell');
+  playerNameCell.textContent = playerName;
 
   function highlightRow(i) {
     document.querySelectorAll('#resultsTable tr').forEach(r => r.classList.remove('current-row'));
@@ -160,6 +163,10 @@ function initApp() {
   function enterEditMode() {
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
+
+    // Spielername editierbar machen
+    playerNameCell.innerHTML = `<input id="playerNameInput" type="text" value="${playerName}" class="hit-input">`;
+
     const rows = tbody.children;
     for (let i = 0; i < rows.length; i++) {
       const cell = rows[i].cells[2];
@@ -171,6 +178,14 @@ function initApp() {
   function exitEditMode() {
     document.getElementById('editButton').style.display = 'inline';
     document.getElementById('saveButton').style.display = 'none';
+
+    // Spielername speichern
+    const nameInput = document.getElementById('playerNameInput');
+    if (nameInput) {
+      playerName = nameInput.value.trim() || 'Spieler';
+      playerNameCell.textContent = playerName;
+    }
+
     const rows = tbody.children;
     totalScore = 0;
     for (let i = 0; i < rows.length; i++) {

@@ -45,6 +45,7 @@ include __DIR__ . '/../header.php';
     </div>
     <table id="resultsTable">
       <thead>
+        <tr><th id="playerNameCell" colspan="3">Spieler</th></tr>
         <tr><th>Ziel</th><th>Punkte</th><th>Treffer</th></tr>
       </thead>
       <tbody></tbody>
