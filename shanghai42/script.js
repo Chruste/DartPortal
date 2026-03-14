@@ -1,49 +1,82 @@
 // "Shanghai 42" v2.0 Scolia Dartspiel
 
-function initApp() {
-  const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
+class Player {
+  constructor(name, index) {
+    this.name = name;
+    this.index = index;
+    this.currentIndex = 0;
+    this.totalScore = 0;
+    this.sequence = Array.from({ length: 20 }, (_, i) => (i + 1).toString()).concat('Bull');
+    this.table = this.createTable();
+    this.activateBtn = this.createActivateBtn();
+    this.container = document.createElement('div');
+    this.container.appendChild(this.activateBtn);
+    this.container.appendChild(this.table);
+    this.updateActivateBtn();
+  }
 
-  const statusEl = document.getElementById('status');
-  let ws = new WebSocket(
-    `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
-  );
-  ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
-  ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
-  ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
-  ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  createTable() {
+    const table = document.createElement('table');
+    table.id = `playerTable${this.index}`;
+    const thead = document.createElement('thead');
+    const nameRow = document.createElement('tr');
+    const nameCell = document.createElement('th');
+    nameCell.colSpan = 3;
+    nameCell.textContent = this.name;
+    nameCell.id = `playerNameCell${this.index}`;
+    nameRow.appendChild(nameCell);
+    thead.appendChild(nameRow);
+    const headerRow = document.createElement('tr');
+    ['Ziel', 'Punkte', 'Treffer'].forEach(text => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    this.sequence.forEach(t => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${t}</td><td></td><td></td>`;
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    const tfoot = document.createElement('tfoot');
+    const totalRow = document.createElement('tr');
+    totalRow.classList.add('current-row');
+    totalRow.innerHTML = `<td>Total</td><td id="sumCell${this.index}">0</td><td></td>`;
+    tfoot.appendChild(totalRow);
+    table.appendChild(tfoot);
+    this.tbody = tbody;
+    this.sumCell = document.getElementById(`sumCell${this.index}`);
+    return table;
+  }
 
-  const sequence = Array.from({ length: 20 }, (_, i) => (i + 1).toString()).concat('Bull');
-  let currentIndex = 0;
-  let totalScore = 0;
-  let playerName = 'Spieler';
-  const tbody = document.querySelector('#resultsTable tbody');
-  const sumCell = document.getElementById('sumCell');
-  const playerNameCell = document.getElementById('playerNameCell');
-  playerNameCell.textContent = playerName;
+  createActivateBtn() {
+    const btn = document.createElement('button');
+    btn.className = 'playerActivateBtn';
+    btn.textContent = 'Aktivieren';
+    btn.onclick = () => setActivePlayer(this.index);
+    return btn;
+  }
 
-  function highlightRow(i) {
-    document.querySelectorAll('#resultsTable tr').forEach(r => r.classList.remove('current-row'));
-    const rows = Array.from(document.querySelectorAll('#resultsTable tbody tr')).concat(
-      document.querySelector('#resultsTable tfoot tr')
-    );
+  updateActivateBtn() {
+    this.activateBtn.disabled = activePlayerIndex === this.index;
+  }
+
+  highlightRow(i) {
+    this.table.querySelectorAll('tr').forEach(r => r.classList.remove('current-row'));
+    const rows = Array.from(this.tbody.children).concat(this.table.querySelector('tfoot tr'));
     if (rows[i]) rows[i].classList.add('current-row');
   }
 
-  function updateTripleButton() {
+  updateTripleButton() {
     const btn = document.getElementById('btnTriple');
     if (!btn) return;
-    btn.style.display = sequence[currentIndex] === 'Bull' ? 'none' : 'inline';
+    btn.style.display = this.sequence[this.currentIndex] === 'Bull' ? 'none' : 'inline';
   }
 
-  sequence.forEach(t => {
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${t}</td><td></td><td></td>`;
-    tbody.appendChild(row);
-  });
-  highlightRow(0);
-  updateTripleButton();
-
-  function parseHit(sector, type = null) {
+  parseHit(sector, type = null) {
     const raw = sector.toString().toUpperCase();
     const mult = type === 'miss' ? 0
       : type === 'Double' ? 2
@@ -74,9 +107,9 @@ function initApp() {
     return { hit, value, base, mult };
   }
 
-  function processThrow(sec, type = null) {
-    const { hit, value, base, mult } = parseHit(sec, type);
-    const target = sequence[currentIndex];
+  processThrow(sec, type = null) {
+    const { hit, value } = this.parseHit(sec, type);
+    const target = this.sequence[this.currentIndex];
 
     // Scoring rule: only doubles of the current target score give positive points.
     // Any other hit (including singles/triples of the target or any other number) gives -1.
@@ -87,48 +120,22 @@ function initApp() {
       pts = correctDouble ? value : -1;
     }
 
-    totalScore += pts;
-
-    const row = tbody.children[currentIndex];
+    this.totalScore += pts;
+    const row = this.tbody.children[this.currentIndex];
     row.cells[1].textContent = pts;
     row.cells[2].textContent = hit;
     row.classList.toggle('hit', pts > 0);
     row.classList.toggle('miss', pts < 0);
-
-    sumCell.textContent = totalScore;
-    currentIndex++;
-    highlightRow(currentIndex);
-    updateTripleButton();
-    if (currentIndex > 0) {
+    this.sumCell.textContent = this.totalScore;
+    this.currentIndex++;
+    this.highlightRow(this.currentIndex);
+    this.updateTripleButton();
+    if (this.currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     }
   }
 
-  function handleMessage(msg) {
-    console.debug('WS message:', msg);
-    if (msg.type === 'THROW_DETECTED') {
-      const sector = (msg.payload.sector || '').toString().toLowerCase();
-      const bounceout = Boolean(msg.payload.bounceout);
-      const miss = bounceout || sector === 'none';
-      console.debug('THROW_DETECTED', { sector, bounceout, miss, payload: msg.payload });
-      processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
-    }
-  }
-
-  document.getElementById('manualSubmit').onclick = () => {
-    const val = document.getElementById('manualSector').value.trim();
-    if (val) processThrow(val);
-  };
-  document.getElementById('manualSector').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('manualSubmit').click();
-  });
-  document.getElementById('btnMiss').onclick = () => processThrow('None', 'miss');
-  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex], 'Single');
-  document.getElementById('btnDouble').onclick = () => processThrow(sequence[currentIndex], 'Double');
-  document.getElementById('btnTriple').onclick = () => processThrow(sequence[currentIndex], 'Triple');
-
-  // Bearbeitungsmodus
-  function calculatePoints(hit, target) {
+  calculatePoints(hit, target) {
     if (hit === '0' || hit === '') return 0;
     const isBull = target === 'Bull';
     const hitBase = hit.replace(/^D |^T /, '');
@@ -139,35 +146,33 @@ function initApp() {
     return -1;
   }
 
-  function undoLastThrow() {
-    if (currentIndex > 0) {
-      currentIndex--;
-      const row = tbody.children[currentIndex];
+  undoLastThrow() {
+    if (this.currentIndex > 0) {
+      this.currentIndex--;
+      const row = this.tbody.children[this.currentIndex];
       row.cells[1].textContent = '';
       row.cells[2].textContent = '';
       row.classList.remove('hit', 'miss');
-      totalScore = 0;
-      for (let i = 0; i < currentIndex; i++) {
-        const pts = calculatePoints(tbody.children[i].cells[2].textContent, sequence[i]);
-        totalScore += pts;
+      this.totalScore = 0;
+      for (let i = 0; i < this.currentIndex; i++) {
+        const pts = this.calculatePoints(this.tbody.children[i].cells[2].textContent, this.sequence[i]);
+        this.totalScore += pts;
       }
-      sumCell.textContent = totalScore;
-      highlightRow(currentIndex);
-      updateTripleButton();
-      if (currentIndex === 0) {
+      this.sumCell.textContent = this.totalScore;
+      this.highlightRow(this.currentIndex);
+      this.updateTripleButton();
+      if (this.currentIndex === 0) {
         document.getElementById('undoButton').style.display = 'none';
       }
     }
   }
 
-  function enterEditMode() {
+  enterEditMode() {
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
-
-    // Spielername editierbar machen
-    playerNameCell.innerHTML = `<input id="playerNameInput" type="text" value="${playerName}" class="hit-input">`;
-
-    const rows = tbody.children;
+    const nameCell = document.getElementById(`playerNameCell${this.index}`);
+    nameCell.innerHTML = `<input id="playerNameInput${this.index}" type="text" value="${this.name}" class="hit-input">`;
+    const rows = this.tbody.children;
     for (let i = 0; i < rows.length; i++) {
       const cell = rows[i].cells[2];
       const currentHit = cell.textContent;
@@ -175,55 +180,120 @@ function initApp() {
     }
   }
 
-  function exitEditMode() {
+  exitEditMode() {
     document.getElementById('editButton').style.display = 'inline';
     document.getElementById('saveButton').style.display = 'none';
-
-    // Spielername speichern
-    const nameInput = document.getElementById('playerNameInput');
+    const nameInput = document.getElementById(`playerNameInput${this.index}`);
     if (nameInput) {
-      playerName = nameInput.value.trim() || 'Spieler';
-      playerNameCell.textContent = playerName;
+      this.name = nameInput.value.trim() || 'Spieler';
+      document.getElementById(`playerNameCell${this.index}`).textContent = this.name;
     }
-
-    const rows = tbody.children;
-    totalScore = 0;
+    const rows = this.tbody.children;
+    this.totalScore = 0;
     for (let i = 0; i < rows.length; i++) {
       const cell = rows[i].cells[2];
       const input = cell.querySelector('.hit-input');
       const newHit = input.value.trim();
       cell.textContent = newHit;
-      const pts = calculatePoints(newHit, sequence[i]);
+      const pts = this.calculatePoints(newHit, this.sequence[i]);
       if (newHit === '') {
         rows[i].cells[1].textContent = '';
       } else {
         rows[i].cells[1].textContent = pts;
       }
-      totalScore += pts;
+      this.totalScore += pts;
       rows[i].classList.remove('hit', 'miss');
       if (pts > 0) rows[i].classList.add('hit');
       else if (pts < 0) rows[i].classList.add('miss');
     }
-    sumCell.textContent = totalScore;
-    // Finde die nächste leere Zeile
-    let newIndex = sequence.length;
+    this.sumCell.textContent = this.totalScore;
+    let newIndex = this.sequence.length;
     for (let i = 0; i < rows.length; i++) {
       if (rows[i].cells[2].textContent === '') {
         newIndex = i;
         break;
       }
     }
-    currentIndex = newIndex;
-    highlightRow(currentIndex);
-    updateTripleButton();
-    if (currentIndex > 0) {
+    this.currentIndex = newIndex;
+    this.highlightRow(this.currentIndex);
+    this.updateTripleButton();
+    if (this.currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     } else {
       document.getElementById('undoButton').style.display = 'none';
     }
   }
+}
 
-  document.getElementById('editButton').addEventListener('click', enterEditMode);
-  document.getElementById('saveButton').addEventListener('click', exitEditMode);
-  document.getElementById('undoButton').addEventListener('click', undoLastThrow);
+// Globale Variablen
+let players = [];
+let activePlayerIndex = 0;
+const tablesContainer = document.getElementById('tablesContainer');
+
+// 1) Init-Funktion nach Login (v2.0)
+function initApp() {
+  // Anmeldedaten aus config (bzw. localStorage) übernehmen
+  const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
+
+  // 2) WebSocket-Verbindung initialisieren
+  const statusEl = document.getElementById('status');
+  let ws = new WebSocket(
+    `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
+  );
+  ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
+  ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
+  ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
+  ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+
+  // Ersten Spieler hinzufügen
+  addPlayer();
+
+  // 3) Event-Listener
+  document.getElementById('addPlayerButton').onclick = addPlayer;
+  document.getElementById('editButton').onclick = () => players[activePlayerIndex].enterEditMode();
+  document.getElementById('saveButton').onclick = () => players[activePlayerIndex].exitEditMode();
+  document.getElementById('undoButton').onclick = () => players[activePlayerIndex].undoLastThrow();
+
+  // Manueller Input
+  document.getElementById('manualSubmit').onclick = () => {
+    const val = document.getElementById('manualSector').value.trim();
+    if (val) players[activePlayerIndex].processThrow(val);
+  };
+  document.getElementById('manualSector').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('manualSubmit').click();
+  });
+  document.getElementById('btnMiss').onclick = () => players[activePlayerIndex].processThrow('None', 'miss');
+  document.getElementById('btnSingle').onclick = () => players[activePlayerIndex].processThrow(players[activePlayerIndex].sequence[players[activePlayerIndex].currentIndex], 'Single');
+  document.getElementById('btnDouble').onclick = () => players[activePlayerIndex].processThrow(players[activePlayerIndex].sequence[players[activePlayerIndex].currentIndex], 'Double');
+  document.getElementById('btnTriple').onclick = () => players[activePlayerIndex].processThrow(players[activePlayerIndex].sequence[players[activePlayerIndex].currentIndex], 'Triple');
+}
+
+function addPlayer() {
+  const playerIndex = players.length;
+  const player = new Player(`Spieler ${playerIndex + 1}`, playerIndex);
+  players.push(player);
+  tablesContainer.appendChild(player.container);
+  updateAllActivateBtns();
+}
+
+function setActivePlayer(index) {
+  activePlayerIndex = index;
+  updateAllActivateBtns();
+  // Update Triple Button für aktiven Spieler
+  players[activePlayerIndex].updateTripleButton();
+}
+
+function updateAllActivateBtns() {
+  players.forEach(p => p.updateActivateBtn());
+}
+
+function handleMessage(msg) {
+  console.debug('WS message:', msg);
+  if (msg.type === 'THROW_DETECTED') {
+    const sector = (msg.payload.sector || '').toString().toLowerCase();
+    const bounceout = Boolean(msg.payload.bounceout);
+    const miss = bounceout || sector === 'none';
+    console.debug('THROW_DETECTED', { sector, bounceout, miss, payload: msg.payload });
+    players[activePlayerIndex].processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
+  }
 }

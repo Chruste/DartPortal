@@ -28,31 +28,8 @@ include __DIR__ . '/../header.php';
       <img src="img/headline.png" alt="Shanghai 21">
     </header>
     <div id="status">Board-Status: –</div>
-    <div id="manualInput">
-      <input id="manualSector" placeholder="z.B. D20 oder Bull eingeben">
-      <button id="manualSubmit">Manuellen Wurf hinzufügen</button>
-    </div>
-    <div id="manualButtons">
-      <button id="btnMiss">Fehlwurf</button>
-      <button id="btnSingle">Single</button>
-      <button id="btnDouble">Double</button>
-      <button id="btnTriple">Triple</button>
-    </div>
-    <div id="editControls">
-      <button id="editButton">Bearbeiten</button>
-      <button id="undoButton" style="display:none;">Rückgängig</button>
-      <button id="saveButton" style="display:none;">Speichern</button>
-    </div>
-    <table id="resultsTable">
-      <thead>
-        <tr><th id="playerNameCell" colspan="3">Spieler</th></tr>
-        <tr><th>Ziel</th><th>Punkte</th><th>Treffer</th></tr>
-      </thead>
-      <tbody></tbody>
-      <tfoot>
-        <tr class="current-row"><td>Total</td><td id="sumCell">0</td><td></td></tr>
-      </tfoot>
-    </table>
+    <button id="addPlayerButton">Spieler hinzufügen</button>
+    <div id="tablesContainer"></div>
   </div>
 
   <!-- Login-Handler -->
