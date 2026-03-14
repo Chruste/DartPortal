@@ -13,6 +13,7 @@ class Player {
     this.container.appendChild(this.activateBtn);
     this.container.appendChild(this.table);
     this.updateActivateBtn();
+    this.highlightRow(this.currentIndex);
   }
 
   createTable() {
@@ -43,12 +44,11 @@ class Player {
     table.appendChild(tbody);
     const tfoot = document.createElement('tfoot');
     const totalRow = document.createElement('tr');
-    totalRow.classList.add('current-row');
     totalRow.innerHTML = `<td>Total</td><td id="sumCell${this.index}">0</td><td></td>`;
     tfoot.appendChild(totalRow);
     table.appendChild(tfoot);
     this.tbody = tbody;
-    this.sumCell = document.getElementById(`sumCell${this.index}`);
+    this.sumCell = this.table.querySelector(`#sumCell${this.index}`);
     return table;
   }
 
