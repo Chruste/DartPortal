@@ -71,6 +71,11 @@ body {
     margin: 0 1em 1em 0;
   }
 
+  /* Inaktive Spieler halbtransparent */
+  #tablesContainer > div.inactive {
+    opacity: 0.5;
+  }
+
   /* Aktivieren Button über Tabelle */
   .playerActivateBtn {
     background: #333;
@@ -94,6 +99,12 @@ body {
     font-weight: bold;
   }
   
+  /* Spielername größer */
+  .player-name {
+    font-size: 1.5em;
+    font-weight: bold;
+  }
+
   /* Treffer-Markierung */
   tr.hit td {
     color: #FFD700;
@@ -115,11 +126,13 @@ body {
     font-size: 2em;
   }
   
-  /* Summenzeile immer Gold */
-  table tfoot tr td {
+  /* Summenzeile immer Gold und hervorgehoben */
+  table tfoot tr {
     color: #FFD700;
+    font-weight: bold;
+    font-size: 2em;
   }
-  
+
   /* Feste Spaltenbreite für Ziel-Spalte */
   table th:first-child,
   table td:first-child {

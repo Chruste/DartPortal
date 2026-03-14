@@ -25,6 +25,7 @@ class Player {
     nameCell.colSpan = 3;
     nameCell.textContent = this.name;
     nameCell.id = `playerNameCell${this.index}`;
+    nameCell.classList.add('player-name');
     nameRow.appendChild(nameCell);
     thead.appendChild(nameRow);
     const headerRow = document.createElement('tr');
@@ -62,6 +63,11 @@ class Player {
 
   updateActivateBtn() {
     this.activateBtn.disabled = activePlayerIndex === this.index;
+    if (activePlayerIndex === this.index) {
+      this.container.classList.remove('inactive');
+    } else {
+      this.container.classList.add('inactive');
+    }
   }
 
   highlightRow(i) {
