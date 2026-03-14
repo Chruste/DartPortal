@@ -71,8 +71,8 @@ body {
     margin: 0 1em 1em 0;
   }
 
-  /* Inaktive Spieler halbtransparent */
-  #tablesContainer > div.inactive {
+  /* Inaktive Spieler: nur Tabelle halbtransparent */
+  #tablesContainer .tableArea.inactive {
     opacity: 0.5;
   }
 
@@ -89,6 +89,31 @@ body {
   .playerActivateBtn:disabled {
     background: #666;
     cursor: not-allowed;
+  }
+
+  /* Löschen-Buttons pro Spieler */
+  .playerDeleteBtn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 0.5em auto;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
+    opacity: 0.5;
+  }
+  .playerDeleteBtn:not([disabled]) {
+    opacity: 1;
+    cursor: pointer;
+  }
+  .playerConfirmDeleteBtn {
+    background: #8b0000;
+    color: #fff;
+    border: 1px solid #f55;
+    margin: 0.5em auto;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: block;
   }
   th, td {
     border: 1px solid #fff;

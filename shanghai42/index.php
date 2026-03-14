@@ -49,8 +49,6 @@ include __DIR__ . '/../header.php';
       <div class="center-buttons">
         <button id="editButton">Bearbeiten</button>
         <button id="saveButton" style="display:none;">Speichern</button>
-        <button id="deletePlayerButton" style="display:none;">Spieler löschen</button>
-        <button id="confirmDeletePlayerButton" style="display:none;">Spieler wirklich löschen?</button>
       </div>
       <div class="right-buttons">
         <button id="undoButton" style="display:none;">Rückgängig</button>

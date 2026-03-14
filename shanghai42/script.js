@@ -9,9 +9,18 @@ class Player {
     this.sequence = Array.from({ length: 20 }, (_, i) => (i + 1).toString()).concat('Bull');
     this.table = this.createTable();
     this.activateBtn = this.createActivateBtn();
+    this.deleteBtn = this.createDeleteBtn();
+    this.confirmDeleteBtn = this.createConfirmDeleteBtn();
+    const btnArea = document.createElement('div');
+    btnArea.appendChild(this.activateBtn);
+    btnArea.appendChild(this.deleteBtn);
+    btnArea.appendChild(this.confirmDeleteBtn);
+    this.tableArea = document.createElement('div');
+    this.tableArea.classList.add('tableArea');
+    this.tableArea.appendChild(this.table);
     this.container = document.createElement('div');
-    this.container.appendChild(this.activateBtn);
-    this.container.appendChild(this.table);
+    this.container.appendChild(btnArea);
+    this.container.appendChild(this.tableArea);
     this.updateActivateBtn();
     this.highlightRow(this.currentIndex);
   }
@@ -61,14 +70,37 @@ class Player {
     return btn;
   }
 
+  createDeleteBtn() {
+    const btn = document.createElement('button');
+    btn.className = 'playerDeleteBtn';
+    btn.textContent = 'Spieler löschen';
+    btn.style.display = 'none';
+    btn.disabled = true;
+    btn.onclick = () => {
+      this.deleteBtn.style.display = 'none';
+      this.confirmDeleteBtn.style.display = 'block';
+    };
+    return btn;
+  }
+
+  createConfirmDeleteBtn() {
+    const btn = document.createElement('button');
+    btn.className = 'playerConfirmDeleteBtn';
+    btn.textContent = 'Spieler wirklich löschen?';
+    btn.style.display = 'none';
+    btn.onclick = () => deletePlayer(this.index);
+    return btn;
+  }
+
   updateActivateBtn() {
     const isActive = activePlayerIndex === this.index;
-    this.activateBtn.disabled = isActive;
     this.activateBtn.style.display = isActive ? 'none' : 'block';
+    this.deleteBtn.style.display = isActive ? 'block' : 'none';
+    this.confirmDeleteBtn.style.display = 'none';
     if (isActive) {
-      this.container.classList.remove('inactive');
+      this.tableArea.classList.remove('inactive');
     } else {
-      this.container.classList.add('inactive');
+      this.tableArea.classList.add('inactive');
     }
   }
 
@@ -178,9 +210,8 @@ class Player {
   enterEditMode() {
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
-    document.getElementById('deletePlayerButton').style.display = 'inline';
-    document.getElementById('confirmDeletePlayerButton').style.display = 'none';
     editingPlayerIndex = this.index;
+    this.deleteBtn.disabled = false;
     const nameCell = document.getElementById(`playerNameCell${this.index}`);
     nameCell.innerHTML = `<input id="playerNameInput${this.index}" type="text" value="${this.name}" class="hit-input">`;
     const rows = this.tbody.children;
@@ -194,9 +225,10 @@ class Player {
   exitEditMode() {
     document.getElementById('editButton').style.display = 'inline';
     document.getElementById('saveButton').style.display = 'none';
-    document.getElementById('deletePlayerButton').style.display = 'none';
-    document.getElementById('confirmDeletePlayerButton').style.display = 'none';
     editingPlayerIndex = null;
+    this.deleteBtn.disabled = true;
+    this.confirmDeleteBtn.style.display = 'none';
+    this.deleteBtn.style.display = 'block';
     const nameInput = document.getElementById(`playerNameInput${this.index}`);
     if (nameInput) {
       this.name = nameInput.value.trim() || 'Spieler';
@@ -286,13 +318,7 @@ function initApp() {
     const player = getActivePlayer();
     if (player) player.undoLastThrow();
   };
-  document.getElementById('deletePlayerButton').onclick = () => {
-    document.getElementById('deletePlayerButton').style.display = 'none';
-    document.getElementById('confirmDeletePlayerButton').style.display = 'inline';
-  };
-  document.getElementById('confirmDeletePlayerButton').onclick = () => {
-    deleteActivePlayer();
-  };
+
 
   // Manueller Input
   document.getElementById('manualSubmit').onclick = () => {
@@ -332,8 +358,8 @@ function addPlayer() {
   updateAllActivateBtns();
 }
 
-function deleteActivePlayer() {
-  const player = getActivePlayer();
+function deletePlayer(index) {
+  const player = players[index];
   if (!player) return;
 
   if (editingPlayerIndex === player.index) {
@@ -343,24 +369,21 @@ function deleteActivePlayer() {
   player.container.remove();
   delete players[player.index];
 
+  document.getElementById('editButton').style.display = 'inline';
+  document.getElementById('saveButton').style.display = 'none';
+
   const remainingIds = getPlayerIds();
   if (remainingIds.length === 0) {
     addPlayer();
-  } else {
-    activePlayerIndex = remainingIds[0];
-    const activePlayer = getActivePlayer();
-    if (activePlayer) {
-      activePlayer.updateTripleButton();
-    }
-    const undoBtn = document.getElementById('undoButton');
-    undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
+    return;
   }
 
-  document.getElementById('editButton').style.display = 'inline';
-  document.getElementById('saveButton').style.display = 'none';
-  document.getElementById('deletePlayerButton').style.display = 'none';
-  document.getElementById('confirmDeletePlayerButton').style.display = 'none';
+  activePlayerIndex = remainingIds[0];
   updateAllActivateBtns();
+  const activePlayer = getActivePlayer();
+  if (activePlayer) activePlayer.updateTripleButton();
+  const undoBtn = document.getElementById('undoButton');
+  undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
 }
 
 function setActivePlayer(index) {
