@@ -48,7 +48,7 @@ class Player {
     tfoot.appendChild(totalRow);
     table.appendChild(tfoot);
     this.tbody = tbody;
-    this.sumCell = this.table.querySelector(`#sumCell${this.index}`);
+    this.sumCell = table.querySelector(`#sumCell${this.index}`);
     return table;
   }
 
