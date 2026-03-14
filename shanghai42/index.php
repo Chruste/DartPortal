@@ -28,6 +28,26 @@ include __DIR__ . '/../header.php';
       <img src="img/headline.png" alt="Shanghai 42">
     </header>
     <div id="status">Board-Status: –</div>
+    
+    <!-- Manuelle Eingabe -->
+    <div id="manualInput">
+      <input id="manualSector" placeholder="Sektor" />
+      <button id="manualSubmit">Eingeben</button>
+    </div>
+    <div id="manualButtons">
+      <button id="btnMiss">Miss</button>
+      <button id="btnSingle">Single</button>
+      <button id="btnDouble">Double</button>
+      <button id="btnTriple">Triple</button>
+    </div>
+    
+    <!-- Edit-Controls -->
+    <div id="editControls">
+      <button id="editButton">Bearbeiten</button>
+      <button id="saveButton" style="display:none;">Speichern</button>
+      <button id="undoButton" style="display:none;">Rückgängig</button>
+    </div>
+    
     <button id="addPlayerButton">Spieler hinzufügen</button>
     <div id="tablesContainer"></div>
   </div>
