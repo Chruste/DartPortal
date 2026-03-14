@@ -106,8 +106,10 @@ class Player {
 
   highlightRow(i) {
     this.table.querySelectorAll('tr').forEach(r => r.classList.remove('current-row'));
-    const rows = Array.from(this.tbody.children).concat(this.table.querySelector('tfoot tr'));
-    if (rows[i]) rows[i].classList.add('current-row');
+    if (i < this.sequence.length) {
+      const rows = Array.from(this.tbody.children);
+      if (rows[i]) rows[i].classList.add('current-row');
+    }
   }
 
   updateTripleButton() {
