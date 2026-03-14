@@ -52,9 +52,10 @@ function initApp() {
     let mult = type === 'miss' ? 0
       : type === 'Double' ? 2
       : type === 'Triple' ? 3
+      : type === 'Single' ? 1
       : sector.startsWith('D') ? 2
       : sector.startsWith('T') ? 3
-      : sector === 'BULL' ? 2  // Double Bull
+      : sector === 'BULL' ? 2  // Double Bull (API reports "Bull")
       : 1;
     let base = sector === '25' ? 'Bull'  // Single Bull
       : sector === 'BULL' ? 'Bull'  // Double Bull
@@ -100,7 +101,7 @@ function initApp() {
     if (e.key === 'Enter') document.getElementById('manualSubmit').click();
   });
   document.getElementById('btnMiss').onclick = () => processThrow('None', 'miss');
-  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex]);
+  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex], 'Single');
   document.getElementById('btnDouble').onclick = () => processThrow(sequence[currentIndex], 'Double');
   document.getElementById('btnTriple').onclick = () => processThrow(sequence[currentIndex], 'Triple');
 

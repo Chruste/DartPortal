@@ -45,6 +45,7 @@ function initApp() {
     const mult = type === 'miss' ? 0
       : type === 'Double' ? 2
       : type === 'Triple' ? 3
+      : type === 'Single' ? 1
       : raw.startsWith('D') ? 2
       : raw.startsWith('T') ? 3
       : raw === 'BULL' ? 2  // Double Bull
@@ -115,7 +116,7 @@ function initApp() {
     if (e.key === 'Enter') document.getElementById('manualSubmit').click();
   });
   document.getElementById('btnMiss').onclick = () => processThrow('None', 'miss');
-  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex]);
+  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex], 'Single');
   document.getElementById('btnDouble').onclick = () => processThrow(sequence[currentIndex], 'Double');
   document.getElementById('btnTriple').onclick = () => processThrow(sequence[currentIndex], 'Triple');
 
