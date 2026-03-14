@@ -1,4 +1,4 @@
-// "Shanghai 42" v2.0 Scolia Dartspiel
+// "Shanghai 42" v3.0 Scolia Dartspiel
 
 class Player {
   constructor(name, index) {
@@ -288,7 +288,7 @@ function getActivePlayer() {
   return players[activePlayerIndex] || null;
 }
 
-// 1) Init-Funktion nach Login (v2.0)
+// 1) Init-Funktion nach Login (v3.0)
 function initApp() {
   // Anmeldedaten aus config (bzw. localStorage) übernehmen
   const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
