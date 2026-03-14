@@ -10,7 +10,7 @@ include __DIR__ . '/../header.php';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>"Shanghai 21" v2.0 Scolia Dartspiel</title>
+  <title>"Shanghai 21" v3.0 Scolia Dartspiel</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
