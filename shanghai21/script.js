@@ -31,6 +31,12 @@ function initApp() {
     if (rows[i]) rows[i].classList.add('current-row');
   }
 
+  function updateTripleButton() {
+    const btn = document.getElementById('btnTriple');
+    if (!btn) return;
+    btn.style.display = sequence[currentIndex] === 'Bull' ? 'none' : 'inline';
+  }
+
   // Tabelle initial füllen und erstes Ziel markieren
   sequence.forEach(t => {
     const row = document.createElement('tr');
@@ -38,6 +44,7 @@ function initApp() {
     tbody.appendChild(row);
   });
   highlightRow(0);
+  updateTripleButton();
 
   // 4) Wurf verarbeiten
   function processThrow(sec, type = null) {
@@ -45,9 +52,10 @@ function initApp() {
     let mult = type === 'miss' ? 0
       : type === 'Double' ? 2
       : type === 'Triple' ? 3
+      : type === 'Single' ? 1
       : sector.startsWith('D') ? 2
       : sector.startsWith('T') ? 3
-      : sector === 'BULL' ? 2  // Double Bull
+      : sector === 'BULL' ? 2  // Double Bull (API reports "Bull")
       : 1;
     let base = sector === '25' ? 'Bull'  // Single Bull
       : sector === 'BULL' ? 'Bull'  // Double Bull
@@ -70,10 +78,10 @@ function initApp() {
     sumCell.textContent = totalScore;
     currentIndex++;
     highlightRow(currentIndex);
+    updateTripleButton();
     if (currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     }
-    if (sequence[currentIndex] === 'Bull') document.getElementById('btnTriple').style.display = 'none';
   }
 
   // 5) WebSocket-Messages
@@ -93,7 +101,7 @@ function initApp() {
     if (e.key === 'Enter') document.getElementById('manualSubmit').click();
   });
   document.getElementById('btnMiss').onclick = () => processThrow('None', 'miss');
-  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex]);
+  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex], 'Single');
   document.getElementById('btnDouble').onclick = () => processThrow(sequence[currentIndex], 'Double');
   document.getElementById('btnTriple').onclick = () => processThrow(sequence[currentIndex], 'Triple');
 
@@ -126,6 +134,7 @@ function initApp() {
       }
       sumCell.textContent = totalScore;
       highlightRow(currentIndex);
+      updateTripleButton();
       if (currentIndex === 0) {
         document.getElementById('undoButton').style.display = 'none';
       }
@@ -174,6 +183,7 @@ function initApp() {
     }
     currentIndex = newIndex;
     highlightRow(currentIndex);
+    updateTripleButton();
     if (currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     } else {

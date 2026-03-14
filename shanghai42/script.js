@@ -26,18 +26,26 @@ function initApp() {
     if (rows[i]) rows[i].classList.add('current-row');
   }
 
+  function updateTripleButton() {
+    const btn = document.getElementById('btnTriple');
+    if (!btn) return;
+    btn.style.display = sequence[currentIndex] === 'Bull' ? 'none' : 'inline';
+  }
+
   sequence.forEach(t => {
     const row = document.createElement('tr');
     row.innerHTML = `<td>${t}</td><td></td><td></td>`;
     tbody.appendChild(row);
   });
   highlightRow(0);
+  updateTripleButton();
 
   function parseHit(sector, type = null) {
     const raw = sector.toString().toUpperCase();
     const mult = type === 'miss' ? 0
       : type === 'Double' ? 2
       : type === 'Triple' ? 3
+      : type === 'Single' ? 1
       : raw.startsWith('D') ? 2
       : raw.startsWith('T') ? 3
       : raw === 'BULL' ? 2  // Double Bull
@@ -87,10 +95,10 @@ function initApp() {
     sumCell.textContent = totalScore;
     currentIndex++;
     highlightRow(currentIndex);
+    updateTripleButton();
     if (currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     }
-    if (sequence[currentIndex] === 'Bull') document.getElementById('btnTriple').style.display = 'none';
   }
 
   function handleMessage(msg) {
@@ -108,7 +116,7 @@ function initApp() {
     if (e.key === 'Enter') document.getElementById('manualSubmit').click();
   });
   document.getElementById('btnMiss').onclick = () => processThrow('None', 'miss');
-  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex]);
+  document.getElementById('btnSingle').onclick = () => processThrow(sequence[currentIndex], 'Single');
   document.getElementById('btnDouble').onclick = () => processThrow(sequence[currentIndex], 'Double');
   document.getElementById('btnTriple').onclick = () => processThrow(sequence[currentIndex], 'Triple');
 
@@ -138,6 +146,7 @@ function initApp() {
       }
       sumCell.textContent = totalScore;
       highlightRow(currentIndex);
+      updateTripleButton();
       if (currentIndex === 0) {
         document.getElementById('undoButton').style.display = 'none';
       }
@@ -187,6 +196,7 @@ function initApp() {
     }
     currentIndex = newIndex;
     highlightRow(currentIndex);
+    updateTripleButton();
     if (currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     } else {
