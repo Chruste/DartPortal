@@ -138,6 +138,16 @@ function initApp() {
       if (pts > 0) rows[i].classList.add('hit');
     }
     sumCell.textContent = totalScore;
+    // Finde die nächste leere Zeile
+    let newIndex = sequence.length;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].cells[2].textContent === '') {
+        newIndex = i;
+        break;
+      }
+    }
+    currentIndex = newIndex;
+    highlightRow(currentIndex);
   }
 
   document.getElementById('editButton').addEventListener('click', enterEditMode);
