@@ -2,18 +2,9 @@
 session_start();
 $pageTitle = 'Shanghai 42';
 $username  = $_SESSION['username'] ?? null;
+$extraHead = '<link rel="stylesheet" href="/shanghai42/styles.css">';
 include __DIR__ . '/../header.php';
 ?>
-
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>"Shanghai 42" v3.1 Scolia Dartspiel</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
   <!-- Login-Maske -->
   <div id="loginContainer">
     <h2>Anmelden</h2>
@@ -90,7 +81,5 @@ include __DIR__ . '/../header.php';
       initApp();
     });
   </script>
-</body>
-</html>
 
 <?php include __DIR__ . '/../footer.php'; ?>

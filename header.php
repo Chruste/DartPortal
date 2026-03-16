@@ -9,6 +9,7 @@
   <title><?= $pageTitle ?? 'Portal'; ?></title>
   <link rel="stylesheet" href="/portal.css">
   <link rel="manifest" href="/manifest.json">
+  <?= $extraHead ?? '' ?>
 </head>
 <body>
   <!-- Sidebar -->

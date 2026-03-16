@@ -2,18 +2,9 @@
 session_start();
 $pageTitle = 'Dartball';
 $username  = $_SESSION['username'] ?? null;
+$extraHead = '<link rel="stylesheet" href="/dartball/styles.css">';
 include __DIR__ . '/../header.php';
 ?>
-
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>"Shanghai 21" v3.1 Scolia Dartspiel</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
   <!-- Login-Maske -->
   <div id="loginContainer">
     <h2>Anmelden</h2>
@@ -25,7 +16,7 @@ include __DIR__ . '/../header.php';
   <!-- Haupt-App (versteckt bis Login) -->
   <div id="appContainer" style="display:none;">
     <header>
-      <img src="img/headline.png" alt="Shanghai 21">
+      <img src="img/headline.png" alt="Dartball">
     </header>
     <div id="status">Board-Status: –</div>
     <div id="manualInput">
@@ -79,7 +70,5 @@ include __DIR__ . '/../header.php';
       initApp();
     });
   </script>
-</body>
-</html>
 
 <?php include __DIR__ . '/../footer.php'; ?>
