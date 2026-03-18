@@ -284,6 +284,16 @@ let nextPlayerId = 0;
 let autoPlayerSwitch = false;
 const tablesContainer = document.getElementById('tablesContainer');
 let overviewTableBody = null;
+let overviewResizeHandlerRegistered = false;
+
+function syncOverviewFooterHeight() {
+  const appContainer = document.getElementById('appContainer');
+  const wrapper = document.getElementById('playerOverviewWrapper');
+  if (!appContainer || !wrapper) return;
+
+  const footerHeight = Math.ceil(wrapper.getBoundingClientRect().height);
+  appContainer.style.paddingBottom = `${footerHeight + 16}px`;
+}
 
 function ensureOverviewTable() {
   if (overviewTableBody) return;
@@ -318,6 +328,13 @@ function ensureOverviewTable() {
   wrapper.appendChild(table);
 
   tablesContainer.insertAdjacentElement('afterend', wrapper);
+
+  if (!overviewResizeHandlerRegistered) {
+    window.addEventListener('resize', syncOverviewFooterHeight);
+    overviewResizeHandlerRegistered = true;
+  }
+
+  syncOverviewFooterHeight();
 }
 
 function updateOverviewTable() {
@@ -347,6 +364,8 @@ function updateOverviewTable() {
     row.appendChild(pointsCell);
     overviewTableBody.appendChild(row);
   });
+
+  syncOverviewFooterHeight();
 }
 
 function getPlayerIds() {

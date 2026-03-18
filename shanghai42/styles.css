@@ -223,8 +223,21 @@ body {
     cursor: not-allowed;
   }
 
+  #appContainer {
+    padding-bottom: 120px;
+  }
+
   #playerOverviewWrapper {
-    margin: 1.5em auto 2em;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    margin: 0;
+    padding: 0.5em 1em 0.75em;
+    background: rgba(0, 0, 0, 0.88);
+    border-top: 1px solid #444;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
     text-align: center;
   }
 
@@ -236,7 +249,7 @@ body {
     width: 300px;
     table-layout: auto;
     display: table;
-    margin: 1em auto;
+    margin: 0.5em auto 0;
   }
 
   #playerOverviewTable th:first-child,
