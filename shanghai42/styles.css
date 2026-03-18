@@ -203,13 +203,15 @@ body {
     border: 1px solid #555;
     margin: 2px;
     width: 150px;
-    height: 64px;
     padding: 8px 16px;
     cursor: pointer;
   }
   #autoPlayerBtn,
   #manualPlayerBtn {
     width: 150px;
+    height: auto;
+    padding: 6px 8px;
+    white-space: nowrap;
   }
   #controlButtons #manualPlayerBtn {
     background: #8b0000 !important;
@@ -221,9 +223,45 @@ body {
     cursor: not-allowed;
   }
 
+  #appContainer {
+    padding-bottom: 120px;
+  }
+
   #playerOverviewWrapper {
-    margin: 1.5em auto 2em;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    margin: 0;
+    padding: 0.5em 1em 0.75em;
+    background: rgba(0, 0, 0, 0.88);
+    border-top: 1px solid #444;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
     text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  #playerOverviewWrapper.collapsed {
+    padding: 0.35em 1em;
+  }
+
+  .overviewToggleBtn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: #444;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 0.85em;
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .overviewToggleBtn:hover {
+    background: #666;
   }
 
   #playerOverviewTitle {
@@ -234,7 +272,7 @@ body {
     width: 300px;
     table-layout: auto;
     display: table;
-    margin: 1em auto;
+    margin: 0.5em auto 0;
   }
 
   #playerOverviewTable th:first-child,

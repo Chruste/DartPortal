@@ -35,8 +35,8 @@ include __DIR__ . '/../header.php';
     <!-- Edit-Controls -->
     <div id="controlButtons">
       <div class="left-buttons">
-        <button id="autoPlayerBtn" disabled>Automatischen Spielerwechsel aktivieren</button>
-        <button id="manualPlayerBtn" style="display:none;">Manuellen Spielerwechsel aktivieren</button>
+        <button id="autoPlayerBtn" title="Automatischen Spielerwechsel aktivieren" disabled>Manueller Wechsel</button>
+        <button id="manualPlayerBtn" title="Manuellen Spielerwechsel aktivieren" style="display:none;">Automat. Wechsel</button>
         <button id="addPlayerButton">Spieler hinzufügen</button>
       </div>
       <div class="center-buttons">
