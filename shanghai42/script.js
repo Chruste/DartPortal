@@ -289,6 +289,10 @@ let overviewFooterCollapsed = localStorage.getItem('overviewFooterCollapsed') ==
 let controlsFooterCollapsed = localStorage.getItem('controlsFooterCollapsed') === 'true';
 let controlsFooterInitialized = false;
 
+function updateFooterLayout() {
+  syncOverviewFooterHeight();
+}
+
 function syncOverviewFooterHeight() {
   const appContainer = document.getElementById('appContainer');
   const wrapper = document.getElementById('playerOverviewWrapper');
@@ -298,6 +302,10 @@ function syncOverviewFooterHeight() {
   const overviewHeight = Math.ceil(wrapper.getBoundingClientRect().height);
   const controlsHeight = controlsWrapper ? Math.ceil(controlsWrapper.getBoundingClientRect().height) : 0;
   const totalFooterHeight = overviewHeight + controlsHeight;
+
+  if (controlsWrapper) {
+    controlsWrapper.style.bottom = `${overviewHeight}px`;
+  }
   
   appContainer.style.paddingBottom = `${totalFooterHeight + 16}px`;
 }
@@ -320,8 +328,7 @@ function toggleOverviewFooter() {
     if (toggleBtn) toggleBtn.textContent = '▼';
   }
   
-  syncOverviewFooterHeight();
-  syncControlsFooterHeight();
+  updateFooterLayout();
 }
 
 function toggleControlsFooter() {
@@ -341,21 +348,11 @@ function toggleControlsFooter() {
     if (toggleBtn) toggleBtn.textContent = '▼';
   }
   
-  syncControlsFooterHeight();
-  syncOverviewFooterHeight();
+  updateFooterLayout();
 }
 
 function syncControlsFooterHeight() {
-  const appContainer = document.getElementById('appContainer');
-  const wrapper = document.getElementById('controlsFooterWrapper');
-  const overviewWrapper = document.getElementById('playerOverviewWrapper');
-  if (!appContainer || !wrapper) return;
-
-  const controlsHeight = Math.ceil(wrapper.getBoundingClientRect().height);
-  const overviewHeight = overviewWrapper ? Math.ceil(overviewWrapper.getBoundingClientRect().height) : 0;
-  const totalFooterHeight = controlsHeight + overviewHeight;
-  
-  appContainer.style.paddingBottom = `${totalFooterHeight + 16}px`;
+  syncOverviewFooterHeight();
 }
 
 function ensureOverviewTable() {
@@ -406,11 +403,11 @@ function ensureOverviewTable() {
   tablesContainer.insertAdjacentElement('afterend', wrapper);
 
   if (!overviewResizeHandlerRegistered) {
-    window.addEventListener('resize', syncOverviewFooterHeight);
+    window.addEventListener('resize', updateFooterLayout);
     overviewResizeHandlerRegistered = true;
   }
 
-  syncOverviewFooterHeight();
+  updateFooterLayout();
 }
 
 function updateOverviewTable() {
@@ -441,7 +438,7 @@ function updateOverviewTable() {
     overviewTableBody.appendChild(row);
   });
 
-  syncOverviewFooterHeight();
+  updateFooterLayout();
 }
 
 function getPlayerIds() {
@@ -490,14 +487,6 @@ function ensureControlsFooter() {
   appContainer.appendChild(wrapper);
   
   setupControlsFooterButtons(contentDiv);
-  
-  if (!overviewResizeHandlerRegistered) {
-    window.addEventListener('resize', () => {
-      syncControlsFooterHeight();
-      syncOverviewFooterHeight();
-    });
-    overviewResizeHandlerRegistered = true;
-  }
   
   syncControlsFooterHeight();
   controlsFooterInitialized = true;
