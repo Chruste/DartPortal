@@ -265,6 +265,7 @@ let autoPlayerSwitch = false;
 const tablesContainer = document.getElementById('tablesContainer');
 let overviewTableBody = null;
 let overviewResizeHandlerRegistered = false;
+let overviewFooterCollapsed = localStorage.getItem('overviewFooterCollapsed') === 'true';
 
 function syncOverviewFooterHeight() {
   const appContainer = document.getElementById('appContainer');
@@ -273,6 +274,27 @@ function syncOverviewFooterHeight() {
 
   const footerHeight = Math.ceil(wrapper.getBoundingClientRect().height);
   appContainer.style.paddingBottom = `${footerHeight + 16}px`;
+}
+
+function toggleOverviewFooter() {
+  overviewFooterCollapsed = !overviewFooterCollapsed;
+  localStorage.setItem('overviewFooterCollapsed', overviewFooterCollapsed);
+  const wrapper = document.getElementById('playerOverviewWrapper');
+  const table = document.getElementById('playerOverviewTable');
+  const title = document.getElementById('playerOverviewTitle');
+  const toggleBtn = document.getElementById('overviewToggleBtn');
+  
+  if (overviewFooterCollapsed) {
+    if (table) table.style.display = 'none';
+    if (wrapper) wrapper.classList.add('collapsed');
+    if (toggleBtn) toggleBtn.textContent = '▲';
+  } else {
+    if (table) table.style.display = 'table';
+    if (wrapper) wrapper.classList.remove('collapsed');
+    if (toggleBtn) toggleBtn.textContent = '▼';
+  }
+  
+  syncOverviewFooterHeight();
 }
 
 function ensureOverviewTable() {
@@ -304,8 +326,21 @@ function ensureOverviewTable() {
 
   table.appendChild(thead);
   table.appendChild(overviewTableBody);
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'overviewToggleBtn';
+  toggleBtn.className = 'overviewToggleBtn';
+  toggleBtn.textContent = overviewFooterCollapsed ? '▲' : '▼';
+  toggleBtn.onclick = toggleOverviewFooter;
+  toggleBtn.title = 'Spielerliste ein-/ausklappen';
+  
+  wrapper.appendChild(toggleBtn);
   wrapper.appendChild(title);
   wrapper.appendChild(table);
+
+  if (overviewFooterCollapsed) {
+    table.style.display = 'none';
+    wrapper.classList.add('collapsed');
+  }
 
   tablesContainer.insertAdjacentElement('afterend', wrapper);
 
