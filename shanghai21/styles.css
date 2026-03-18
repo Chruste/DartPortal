@@ -217,4 +217,42 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  #playerOverviewWrapper {
+    margin: 1.5em auto 2em;
+    text-align: center;
+  }
+
+  #playerOverviewTitle {
+    margin: 0.25em 0;
+  }
+
+  #playerOverviewTable {
+    width: 300px;
+    table-layout: auto;
+    display: table;
+    margin: 1em auto;
+  }
+
+  #playerOverviewTable th:first-child,
+  #playerOverviewTable td:first-child {
+    width: 70%;
+    max-width: none;
+    white-space: normal;
+    color: #fff;
+  }
+
+  #playerOverviewTable th:last-child,
+  #playerOverviewTable td:last-child {
+    width: 30%;
+  }
+
+  #playerOverviewTable tbody td {
+    font-size: 2em;
+    font-weight: bold;
+  }
+
+  #playerOverviewTable tbody td:last-child {
+    color: #FFD700;
+  }
   
