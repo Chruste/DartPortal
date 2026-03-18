@@ -242,6 +242,7 @@ body {
 
   #controlsFooterContent {
     display: flex;
+    flex-direction: column;
     flex-wrap: wrap;
     gap: 0.5em;
     justify-content: center;
@@ -250,6 +251,7 @@ body {
 
   #controlsFooterContent #manualInput {
     display: flex;
+    justify-content: center;
     align-items: center;
     gap: 0.35em;
     margin: 0;
@@ -262,12 +264,24 @@ body {
 
   #controlsFooterContent #manualButtons {
     display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 0.3em;
   }
 
   #controlsFooterContent #controlButtons {
     display: flex;
+    width: auto;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 0.3em;
+  }
+
+  #controlsFooterContent #controlButtons .left-buttons,
+  #controlsFooterContent #controlButtons .center-buttons,
+  #controlsFooterContent #controlButtons .right-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   #controlsFooterContent #manualButtons button,
