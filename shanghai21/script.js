@@ -266,14 +266,28 @@ const tablesContainer = document.getElementById('tablesContainer');
 let overviewTableBody = null;
 let overviewResizeHandlerRegistered = false;
 let overviewFooterCollapsed = localStorage.getItem('overviewFooterCollapsed') === 'true';
+let controlsFooterCollapsed = localStorage.getItem('controlsFooterCollapsed') === 'true';
+let controlsFooterInitialized = false;
+
+function updateFooterLayout() {
+  syncOverviewFooterHeight();
+}
 
 function syncOverviewFooterHeight() {
   const appContainer = document.getElementById('appContainer');
   const wrapper = document.getElementById('playerOverviewWrapper');
+  const controlsWrapper = document.getElementById('controlsFooterWrapper');
   if (!appContainer || !wrapper) return;
 
-  const footerHeight = Math.ceil(wrapper.getBoundingClientRect().height);
-  appContainer.style.paddingBottom = `${footerHeight + 16}px`;
+  const overviewHeight = Math.ceil(wrapper.getBoundingClientRect().height);
+  const controlsHeight = controlsWrapper ? Math.ceil(controlsWrapper.getBoundingClientRect().height) : 0;
+  const totalFooterHeight = overviewHeight + controlsHeight;
+
+  if (controlsWrapper) {
+    controlsWrapper.style.bottom = `${overviewHeight}px`;
+  }
+  
+  appContainer.style.paddingBottom = `${totalFooterHeight + 16}px`;
 }
 
 function toggleOverviewFooter() {
@@ -294,6 +308,30 @@ function toggleOverviewFooter() {
     if (toggleBtn) toggleBtn.textContent = '▼';
   }
   
+  updateFooterLayout();
+}
+
+function toggleControlsFooter() {
+  controlsFooterCollapsed = !controlsFooterCollapsed;
+  localStorage.setItem('controlsFooterCollapsed', controlsFooterCollapsed);
+  const wrapper = document.getElementById('controlsFooterWrapper');
+  const content = document.getElementById('controlsFooterContent');
+  const toggleBtn = document.getElementById('controlsToggleBtn');
+  
+  if (controlsFooterCollapsed) {
+    if (content) content.style.display = 'none';
+    if (wrapper) wrapper.classList.add('collapsed');
+    if (toggleBtn) toggleBtn.textContent = '▲';
+  } else {
+    if (content) content.style.display = 'block';
+    if (wrapper) wrapper.classList.remove('collapsed');
+    if (toggleBtn) toggleBtn.textContent = '▼';
+  }
+  
+  updateFooterLayout();
+}
+
+function syncControlsFooterHeight() {
   syncOverviewFooterHeight();
 }
 
@@ -345,11 +383,11 @@ function ensureOverviewTable() {
   tablesContainer.insertAdjacentElement('afterend', wrapper);
 
   if (!overviewResizeHandlerRegistered) {
-    window.addEventListener('resize', syncOverviewFooterHeight);
+    window.addEventListener('resize', updateFooterLayout);
     overviewResizeHandlerRegistered = true;
   }
 
-  syncOverviewFooterHeight();
+  updateFooterLayout();
 }
 
 function updateOverviewTable() {
@@ -380,7 +418,7 @@ function updateOverviewTable() {
     overviewTableBody.appendChild(row);
   });
 
-  syncOverviewFooterHeight();
+  updateFooterLayout();
 }
 
 function getPlayerIds() {
@@ -389,6 +427,136 @@ function getPlayerIds() {
 
 function getActivePlayer() {
   return players[activePlayerIndex] || null;
+}
+
+function ensureControlsFooter() {
+  if (controlsFooterInitialized) return;
+
+  const appContainer = document.getElementById('appContainer');
+  const manualInputDiv = document.getElementById('manualInput');
+  const manualButtonsDiv = document.getElementById('manualButtons');
+  const controlButtonsDiv = document.getElementById('controlButtons');
+  
+  if (!appContainer || !manualInputDiv || !manualButtonsDiv || !controlButtonsDiv) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.id = 'controlsFooterWrapper';
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'controlsToggleBtn';
+  toggleBtn.className = 'controlsToggleBtn';
+  toggleBtn.textContent = controlsFooterCollapsed ? '▲' : '▼';
+  toggleBtn.onclick = toggleControlsFooter;
+  toggleBtn.title = 'Bedienelemente ein-/ausklappen';
+  
+  const contentDiv = document.createElement('div');
+  contentDiv.id = 'controlsFooterContent';
+
+  contentDiv.appendChild(manualInputDiv);
+  contentDiv.appendChild(manualButtonsDiv);
+  contentDiv.appendChild(controlButtonsDiv);
+  
+  wrapper.appendChild(toggleBtn);
+  wrapper.appendChild(contentDiv);
+  
+  if (controlsFooterCollapsed) {
+    contentDiv.style.display = 'none';
+    wrapper.classList.add('collapsed');
+  }
+  
+  appContainer.appendChild(wrapper);
+  
+  setupControlsFooterButtons(contentDiv);
+  
+  syncControlsFooterHeight();
+  controlsFooterInitialized = true;
+}
+
+function setupControlsFooterButtons(container) {
+  const manualSubmitBtn = container.querySelector('#manualSubmit');
+  const manualSectorInput = container.querySelector('#manualSector');
+
+  if (manualSubmitBtn) {
+    manualSubmitBtn.onclick = () => {
+      const val = manualSectorInput ? manualSectorInput.value.trim() : '';
+      const player = getActivePlayer();
+      if (val && player) player.processThrow(val);
+    };
+  }
+  if (manualSectorInput && manualSubmitBtn) {
+    manualSectorInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') manualSubmitBtn.click();
+    });
+  }
+
+  const btnMiss = container.querySelector('#btnMiss');
+  const btnSingle = container.querySelector('#btnSingle');
+  const btnDouble = container.querySelector('#btnDouble');
+  const btnTriple = container.querySelector('#btnTriple');
+  
+  if (btnMiss) {
+    btnMiss.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.processThrow('None', 'miss');
+    };
+  }
+  if (btnSingle) {
+    btnSingle.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.processThrow(player.sequence[player.currentIndex], 'Single');
+    };
+  }
+  if (btnDouble) {
+    btnDouble.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.processThrow(player.sequence[player.currentIndex], 'Double');
+    };
+  }
+  if (btnTriple) {
+    btnTriple.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.processThrow(player.sequence[player.currentIndex], 'Triple');
+    };
+  }
+  
+  const addPlayerBtn = container.querySelector('#addPlayerButton');
+  const editBtn = container.querySelector('#editButton');
+  const saveBtn = container.querySelector('#saveButton');
+  const undoBtn = container.querySelector('#undoButton');
+  const autoBtn = container.querySelector('#autoPlayerBtn');
+  const manualBtn = container.querySelector('#manualPlayerBtn');
+  
+  if (addPlayerBtn) addPlayerBtn.onclick = addPlayer;
+  if (editBtn) {
+    editBtn.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.enterEditMode();
+    };
+  }
+  if (saveBtn) {
+    saveBtn.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.exitEditMode();
+    };
+  }
+  if (undoBtn) {
+    undoBtn.onclick = () => {
+      const player = getActivePlayer();
+      if (player) player.undoLastThrow();
+    };
+  }
+  if (autoBtn) {
+    autoBtn.onclick = () => {
+      autoPlayerSwitch = true;
+      updateAutoPlayerSwitchBtn();
+    };
+  }
+  if (manualBtn) {
+    manualBtn.onclick = () => {
+      autoPlayerSwitch = false;
+      updateAutoPlayerSwitchBtn();
+    };
+  }
 }
 
 // 1) Init-Funktion nach Login (v3.1)
@@ -406,58 +574,10 @@ function initApp() {
   ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
   ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
 
-  // Ersten Spieler hinzufügen
+  // Erstelle Controls Footer
+  ensureControlsFooter();
   addPlayer();
   updateOverviewTable();
-
-  // 3) Event-Listener
-  document.getElementById('addPlayerButton').onclick = addPlayer;
-  document.getElementById('editButton').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.enterEditMode();
-  };
-  document.getElementById('saveButton').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.exitEditMode();
-  };
-  document.getElementById('undoButton').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.undoLastThrow();
-  };
-  document.getElementById('autoPlayerBtn').onclick = () => {
-    autoPlayerSwitch = true;
-    updateAutoPlayerSwitchBtn();
-  };
-  document.getElementById('manualPlayerBtn').onclick = () => {
-    autoPlayerSwitch = false;
-    updateAutoPlayerSwitchBtn();
-  };
-
-  // Manueller Input
-  document.getElementById('manualSubmit').onclick = () => {
-    const val = document.getElementById('manualSector').value.trim();
-    const player = getActivePlayer();
-    if (val && player) player.processThrow(val);
-  };
-  document.getElementById('manualSector').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('manualSubmit').click();
-  });
-  document.getElementById('btnMiss').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.processThrow('None', 'miss');
-  };
-  document.getElementById('btnSingle').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.processThrow(player.sequence[player.currentIndex], 'Single');
-  };
-  document.getElementById('btnDouble').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.processThrow(player.sequence[player.currentIndex], 'Double');
-  };
-  document.getElementById('btnTriple').onclick = () => {
-    const player = getActivePlayer();
-    if (player) player.processThrow(player.sequence[player.currentIndex], 'Triple');
-  };
 }
 
 function addPlayer() {
