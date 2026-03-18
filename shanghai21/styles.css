@@ -220,6 +220,96 @@ body {
     cursor: not-allowed;
   }
 
+  /* Controls Footer */
+  #controlsFooterWrapper {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 48;
+    margin: 0;
+    padding: 0.5em 1em 0.75em;
+    background: rgba(0, 0, 0, 0.88);
+    border-top: 1px solid #333;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.35);
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  #controlsFooterWrapper.collapsed {
+    padding: 0.35em 1em;
+  }
+
+  #controlsFooterContent {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #controlsFooterContent #manualInput {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    margin: 0;
+  }
+
+  #controlsFooterContent #manualInput input {
+    margin-right: 0;
+    min-width: 110px;
+  }
+
+  #controlsFooterContent #manualButtons {
+    display: flex;
+    gap: 0.3em;
+  }
+
+  #controlsFooterContent #controlButtons {
+    display: flex;
+    gap: 0.3em;
+  }
+
+  #controlsFooterContent #manualButtons button,
+  #controlsFooterContent #controlButtons button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 0;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85em;
+  }
+
+  #controlsFooterContent #controlButtons #manualPlayerBtn {
+    background: #8b0000 !important;
+    color: #fff !important;
+    border: 1px solid #f55 !important;
+  }
+
+  #controlsFooterContent button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .controlsToggleBtn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: #444;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 0.85em;
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .controlsToggleBtn:hover {
+    background: #666;
+  }
+
   #appContainer {
     padding-bottom: 120px;
   }
@@ -229,7 +319,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 50;
+    z-index: 49;
     margin: 0;
     padding: 0.5em 1em 0.75em;
     background: rgba(0, 0, 0, 0.88);
