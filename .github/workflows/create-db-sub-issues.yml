@@ -1,0 +1,133 @@
+name: Sub-Issues für Issue #25 erstellen
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  create-sub-issues:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sub-Issues erstellen und verknüpfen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PARENT_ISSUE: 25
+        run: |
+          set -e
+
+          create_and_link() {
+            local title="$1"
+            local body="$2"
+
+            echo "Erstelle Issue: $title"
+
+            # Issue erstellen und Nummer extrahieren
+            issue_url=$(gh issue create \
+              --repo "$REPO" \
+              --title "$title" \
+              --body "$body" \
+              --label "enhancement")
+            issue_number=$(echo "$issue_url" | grep -oE '[0-9]+$')
+
+            echo "Issue #$issue_number erstellt: $issue_url"
+
+            # Numerische ID des erstellten Issues abrufen
+            issue_id=$(gh api "/repos/$REPO/issues/$issue_number" --jq '.id')
+            echo "Issue ID: $issue_id"
+
+            # Als Sub-Issue mit dem Eltern-Issue verknüpfen
+            # Endpoint: POST /repos/{owner}/{repo}/issues/{issue_number}/sub-issues
+            # Dokumentation: https://docs.github.com/en/rest/issues/sub-issues
+            echo "{\"sub_issue_id\": $issue_id}" | gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/$REPO/issues/$PARENT_ISSUE/sub-issues" \
+              --input -
+
+            echo "Issue #$issue_number erfolgreich mit Issue #$PARENT_ISSUE verknüpft."
+          }
+
+          # Sub-Issue 1: Datenbankanbindung einrichten
+          create_and_link \
+            "Datenbankanbindung an den lima-city Server einrichten" \
+            "## Aufgabe
+
+          Datenbankverbindung zum lima-city Hosting-Server konfigurieren und testen.
+
+          ## Akzeptanzkriterien
+          - [ ] Datenbank auf lima-city Server eingerichtet
+          - [ ] Verbindungsparameter (Host, Port, DB-Name) konfiguriert
+          - [ ] Lesen aus der Datenbank getestet
+          - [ ] Schreiben in die Datenbank getestet
+          - [ ] Fehlerbehandlung bei Verbindungsproblemen implementiert
+
+          Übergeordnetes Issue: #25"
+
+          # Sub-Issue 2: Benutzerverwaltung einrichten
+          create_and_link \
+            "Benutzerverwaltung für Datenbankzugriff einrichten" \
+            "## Aufgabe
+
+          Datenbankbenutzer mit minimal notwendigen Rechten anlegen und verwalten.
+
+          ## Akzeptanzkriterien
+          - [ ] Datenbankbenutzer mit eingeschränkten Rechten erstellt (Principle of Least Privilege)
+          - [ ] Benutzer hat nur Zugriff auf die benötigten Tabellen
+          - [ ] Anmeldedaten sicher in der Konfiguration hinterlegt (nicht im Code)
+          - [ ] Zugriff über Benutzer erfolgreich getestet
+
+          Übergeordnetes Issue: #25"
+
+          # Sub-Issue 3: API Token sicher speichern
+          create_and_link \
+            "API Token sicher speichern (kein Klartext)" \
+            "## Aufgabe
+
+          API-Tokens und Zugangsdaten sicher auf dem Server speichern, ohne Klartextübertragung.
+
+          ## Akzeptanzkriterien
+          - [ ] API-Token wird nicht im Quellcode gespeichert
+          - [ ] Token wird serverseitig in einer Konfigurationsdatei oder Umgebungsvariable gehalten
+          - [ ] Übertragung erfolgt ausschließlich über HTTPS/verschlüsselte Verbindung
+          - [ ] Keine sensiblen Daten in Git-History oder Logs
+          - [ ] .gitignore für Konfigurationsdateien mit Zugangsdaten aktualisiert
+
+          Übergeordnetes Issue: #25"
+
+          # Sub-Issue 4: Spiele in Datenbank speichern
+          create_and_link \
+            "Spiele in der Datenbank speichern" \
+            "## Aufgabe
+
+          Spielergebnisse persistent in der Datenbank ablegen.
+
+          ## Akzeptanzkriterien
+          - [ ] Datenbankschema für Spiele definiert und angelegt (Tabellen, Felder, Typen)
+          - [ ] Spielergebnisse werden nach Spielende automatisch gespeichert
+          - [ ] Bereits gespeicherte Spiele können abgerufen werden
+          - [ ] Fehlerbehandlung bei Datenbankfehlern implementiert
+          - [ ] Manuelle Tests für Speichern und Abrufen erfolgreich
+
+          Übergeordnetes Issue: #25"
+
+          # Sub-Issue 5: Statistiken Übersicht
+          create_and_link \
+            "Statistiken Übersicht implementieren" \
+            "## Aufgabe
+
+          Auswertungen und Statistiken aus den gespeicherten Spielen erstellen und anzeigen.
+
+          ## Akzeptanzkriterien
+          - [ ] Datenbankabfragen für Statistiken implementiert
+          - [ ] Übersichtsseite für Statistiken erstellt (Siege, Niederlagen, Durchschnittswerte etc.)
+          - [ ] Filtermöglichkeiten nach Spieler oder Zeitraum vorhanden
+          - [ ] Seite ist mobil-freundlich und ins Portal-Design integriert
+
+          Übergeordnetes Issue: #25"
+
+          echo "Alle Sub-Issues erfolgreich erstellt und verknüpft!"
