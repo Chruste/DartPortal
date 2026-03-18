@@ -150,6 +150,7 @@ class Player {
     this.currentIndex++;
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
+    updateOverviewTable();
     if (this.currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     }
@@ -184,6 +185,7 @@ class Player {
       this.sumCell.textContent = this.totalScore;
       this.highlightRow(this.currentIndex);
       this.updateTripleButton();
+      updateOverviewTable();
       if (this.currentIndex === 0) {
         document.getElementById('undoButton').style.display = 'none';
       }
@@ -245,6 +247,7 @@ class Player {
     this.currentIndex = newIndex;
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
+    updateOverviewTable();
     if (this.currentIndex > 0) {
       document.getElementById('undoButton').style.display = 'inline';
     } else {
@@ -260,6 +263,71 @@ let editingPlayerIndex = null;
 let nextPlayerId = 0;
 let autoPlayerSwitch = false;
 const tablesContainer = document.getElementById('tablesContainer');
+let overviewTableBody = null;
+
+function ensureOverviewTable() {
+  if (overviewTableBody) return;
+
+  const appContainer = document.getElementById('appContainer');
+  if (!appContainer || !tablesContainer) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.id = 'playerOverviewWrapper';
+
+  const title = document.createElement('h3');
+  title.id = 'playerOverviewTitle';
+  title.textContent = 'Spielerliste';
+
+  const table = document.createElement('table');
+  table.id = 'playerOverviewTable';
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Name', 'Punkte'].forEach(text => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+
+  overviewTableBody = document.createElement('tbody');
+
+  table.appendChild(thead);
+  table.appendChild(overviewTableBody);
+  wrapper.appendChild(title);
+  wrapper.appendChild(table);
+
+  tablesContainer.insertAdjacentElement('afterend', wrapper);
+}
+
+function updateOverviewTable() {
+  ensureOverviewTable();
+  if (!overviewTableBody) return;
+
+  const totalsByName = new Map();
+
+  getPlayerIds().forEach(id => {
+    const player = players[id];
+    if (!player) return;
+    const key = player.name.trim() || 'Spieler';
+    const currentTotal = totalsByName.get(key) || 0;
+    totalsByName.set(key, currentTotal + player.totalScore);
+  });
+
+  overviewTableBody.innerHTML = '';
+  totalsByName.forEach((points, name) => {
+    const row = document.createElement('tr');
+    const nameCell = document.createElement('td');
+    const pointsCell = document.createElement('td');
+
+    nameCell.textContent = name;
+    pointsCell.textContent = points;
+
+    row.appendChild(nameCell);
+    row.appendChild(pointsCell);
+    overviewTableBody.appendChild(row);
+  });
+}
 
 function getPlayerIds() {
   return Object.keys(players).map(Number).sort((first, second) => first - second);
@@ -286,6 +354,7 @@ function initApp() {
 
   // Ersten Spieler hinzufügen
   addPlayer();
+  updateOverviewTable();
 
   // 3) Event-Listener
   document.getElementById('addPlayerButton').onclick = addPlayer;
@@ -347,6 +416,7 @@ function addPlayer() {
   }
   updateAllActivateBtns();
   updateAutoPlayerSwitchBtn();
+  updateOverviewTable();
 }
 
 function deletePlayer(index) {
@@ -372,6 +442,7 @@ function deletePlayer(index) {
   activePlayerIndex = remainingIds[0];
   updateAllActivateBtns();
   updateAutoPlayerSwitchBtn();
+  updateOverviewTable();
   const activePlayer = getActivePlayer();
   if (activePlayer) activePlayer.updateTripleButton();
   const undoBtn = document.getElementById('undoButton');
