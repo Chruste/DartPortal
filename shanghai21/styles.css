@@ -207,6 +207,9 @@ body {
   #autoPlayerBtn,
   #manualPlayerBtn {
     width: 150px;
+    height: auto;
+    padding: 6px 8px;
+    white-space: nowrap;
   }
   #controlButtons #manualPlayerBtn {
     background: #8b0000 !important;
