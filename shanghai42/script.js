@@ -609,7 +609,9 @@ function initApp() {
 
 function addPlayer() {
   const playerIndex = nextPlayerId++;
-  const player = new Player(`Spieler ${playerIndex + 1}`, playerIndex);
+  const activePlayer = getActivePlayer();
+  const playerName = activePlayer ? activePlayer.name : `Spieler ${playerIndex + 1}`;
+  const player = new Player(playerName, playerIndex);
   players[playerIndex] = player;
   tablesContainer.appendChild(player.container);
   if (getPlayerIds().length === 1) {

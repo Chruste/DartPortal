@@ -37,7 +37,7 @@ include __DIR__ . '/../header.php';
       <div class="left-buttons">
         <button id="autoPlayerBtn" title="Automatischen Spielerwechsel aktivieren" disabled>Manueller Wechsel</button>
         <button id="manualPlayerBtn" title="Manuellen Spielerwechsel aktivieren" style="display:none;">Automat. Wechsel</button>
-        <button id="addPlayerButton">Spieler hinzufügen</button>
+        <button id="addPlayerButton">Spieler kopieren</button>
       </div>
       <div class="center-buttons">
         <button id="editButton">Bearbeiten</button>
