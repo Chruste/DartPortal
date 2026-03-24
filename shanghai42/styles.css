@@ -171,7 +171,9 @@ body {
     font-size: 3em;
     font-weight: bold;
     height: 56px;
-    line-height: 1;
+    line-height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   /* Bull- und Total-Zeile: keine so große Schrift beim Hervorheben */
@@ -190,7 +192,9 @@ body {
     font-size: 2em;
     font-weight: bold;
     height: 56px;
-    line-height: 1;
+    line-height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
   }
   
   /* Summenzeile immer Gold und hervorgehoben */
