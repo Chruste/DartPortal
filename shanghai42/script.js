@@ -116,7 +116,9 @@ class Player {
   updateTripleButton() {
     const btn = document.getElementById('btnTriple');
     if (!btn) return;
-    btn.style.display = this.sequence[this.currentIndex] === 'Bull' ? 'none' : 'inline';
+    const hideTriple = this.sequence[this.currentIndex] === 'Bull';
+    btn.style.visibility = hideTriple ? 'hidden' : 'visible';
+    btn.style.pointerEvents = hideTriple ? 'none' : 'auto';
   }
 
   parseHit(sector, type = null) {
