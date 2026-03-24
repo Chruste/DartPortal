@@ -193,9 +193,9 @@ body {
   /* Feste Spaltenbreite für Ziel-Spalte */
   table th:first-child,
   table td:first-child {
-    width: 85px;
-    min-width: 85px;
-    max-width: 85px;
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -206,9 +206,9 @@ body {
   table td:nth-child(2),
   table th:nth-child(3),
   table td:nth-child(3) {
-    width: 80px;
-    min-width: 80px;
-    max-width: 80px;
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
