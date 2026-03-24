@@ -179,6 +179,13 @@ body {
   tbody tr:last-child.current-row td:first-child {
     font-size: 2em;
   }
+
+  /* Hoehe der Bull-Zeile an andere hervorgehobene Zeilen angleichen */
+  table tbody tr:last-child.current-row td,
+  table.highlight-complete tbody tr:last-child td {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
   
   /* Summenzeile immer Gold und hervorgehoben */
   table tfoot tr {

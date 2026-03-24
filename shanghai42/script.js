@@ -106,6 +106,7 @@ class Player {
 
   highlightRow(i) {
     this.table.querySelectorAll('tr').forEach(r => r.classList.remove('current-row'));
+    this.table.classList.toggle('highlight-complete', i >= this.sequence.length);
     if (i < this.sequence.length) {
       const rows = Array.from(this.tbody.children);
       if (rows[i]) rows[i].classList.add('current-row');
