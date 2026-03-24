@@ -452,6 +452,13 @@ function getPlayerIds() {
   return Object.keys(players).map(Number).sort((first, second) => first - second);
 }
 
+function getOpenPlayerIds() {
+  return getPlayerIds().filter(id => {
+    const player = players[id];
+    return player && player.currentIndex < player.sequence.length;
+  });
+}
+
 function getActivePlayer() {
   return players[activePlayerIndex] || null;
 }
@@ -678,18 +685,32 @@ function updateAllActivateBtns() {
 }
 
 function switchToNextPlayer() {
-  const ids = getPlayerIds();
-  if (ids.length <= 1) return;
-  const currentPos = ids.indexOf(activePlayerIndex);
-  const nextPos = (currentPos + 1) % ids.length;
-  setActivePlayer(ids[nextPos]);
+  const openIds = getOpenPlayerIds();
+
+  if (openIds.length === 0) {
+    autoPlayerSwitch = false;
+    updateAutoPlayerSwitchBtn();
+    return;
+  }
+
+  if (openIds.length === 1) {
+    if (openIds[0] !== activePlayerIndex) {
+      setActivePlayer(openIds[0]);
+    }
+    return;
+  }
+
+  const currentPos = openIds.indexOf(activePlayerIndex);
+  const startPos = currentPos === -1 ? 0 : (currentPos + 1) % openIds.length;
+  setActivePlayer(openIds[startPos]);
 }
 
 function updateAutoPlayerSwitchBtn() {
   const count = getPlayerIds().length;
+  const openCount = getOpenPlayerIds().length;
   const autoBtn = document.getElementById('autoPlayerBtn');
   const manualBtn = document.getElementById('manualPlayerBtn');
-  if (count <= 1) {
+  if (openCount === 0 || count <= 1) {
     autoPlayerSwitch = false;
     autoBtn.style.display = 'inline';
     autoBtn.disabled = true;
