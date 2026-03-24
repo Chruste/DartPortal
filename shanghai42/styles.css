@@ -273,16 +273,20 @@ body {
   }
 
   #controlsFooterContent #controlButtons {
-    display: flex;
-    width: auto;
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
     justify-content: center;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.3em;
   }
 
   #controlsFooterContent #controlButtons .left-buttons,
   #controlsFooterContent #controlButtons .center-buttons,
   #controlsFooterContent #controlButtons .right-buttons {
+    display: flex;
+    flex: 0 0 auto;
     justify-content: center;
     flex-wrap: wrap;
   }
