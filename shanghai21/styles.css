@@ -167,11 +167,13 @@ body {
   tfoot tr.current-row td {
     font-size: 3em;
     font-weight: bold;
+    height: 56px;
+    line-height: 1;
   }
 
   /* Bull- und Total-Zeile: keine so große Schrift beim Hervorheben */
-  #resultsTable tbody tr:last-child.current-row td,
-  #resultsTable tfoot tr.current-row td {
+  table tbody tr:last-child.current-row td,
+  table tfoot tr.current-row td {
     font-size: 2em;
   }
 
@@ -180,11 +182,12 @@ body {
     font-size: 2em;
   }
 
-  /* Hoehe der Bull-Zeile an andere hervorgehobene Zeilen angleichen */
-  table tbody tr:last-child.current-row td,
+  /* Bei Spielende bleibt die letzte Zielzeile gleich hoch wie ein Highlight */
   table.highlight-complete tbody tr:last-child td {
-    padding-top: 14px;
-    padding-bottom: 14px;
+    font-size: 2em;
+    font-weight: bold;
+    height: 56px;
+    line-height: 1;
   }
   
   /* Summenzeile immer Gold und hervorgehoben */
