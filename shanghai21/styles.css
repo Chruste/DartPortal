@@ -74,7 +74,8 @@ body {
 
   /* Spieler-Container nebeneinander */
   #tablesContainer > div {
-    width: 360px;
+    width: fit-content;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -84,6 +85,16 @@ body {
   #tablesContainer > div > div {
     width: 100%;
     text-align: center;
+  }
+
+  #tablesContainer .tableArea {
+    display: flex;
+    justify-content: center;
+  }
+
+  #tablesContainer table {
+    display: table;
+    margin: 1em auto;
   }
 
   /* Inaktive Spieler: nur Tabelle halbtransparent */
