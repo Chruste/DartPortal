@@ -64,11 +64,18 @@ body {
     display: block;
   }
 
+  #tablesContainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.65em;
+  }
+
   /* Spieler-Container nebeneinander */
   #tablesContainer > div {
-    display: inline-block;
-    vertical-align: top;
-    margin: 0 1em 1em 0;
+    display: block;
+    margin: 0 0 0.65em;
   }
 
   /* Inaktive Spieler: nur Tabelle halbtransparent */
