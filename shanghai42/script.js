@@ -177,7 +177,9 @@ class Player {
     this.updateTripleButton();
     updateOverviewTable();
     if (this.currentIndex > 0) {
-      document.getElementById('undoButton').style.display = 'inline';
+      const _ub = document.getElementById('undoButton');
+      _ub.style.visibility = 'visible';
+      _ub.style.pointerEvents = 'auto';
     }
   }
 
@@ -209,7 +211,9 @@ class Player {
       this.updateTripleButton();
       updateOverviewTable();
       if (this.currentIndex === 0) {
-        document.getElementById('undoButton').style.display = 'none';
+        const _ub = document.getElementById('undoButton');
+        _ub.style.visibility = 'hidden';
+        _ub.style.pointerEvents = 'none';
       }
     }
   }
@@ -271,11 +275,9 @@ class Player {
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
     updateOverviewTable();
-    if (this.currentIndex > 0) {
-      document.getElementById('undoButton').style.display = 'inline';
-    } else {
-      document.getElementById('undoButton').style.display = 'none';
-    }
+    const _ub = document.getElementById('undoButton');
+    _ub.style.visibility = this.currentIndex > 0 ? 'visible' : 'hidden';
+    _ub.style.pointerEvents = this.currentIndex > 0 ? 'auto' : 'none';
   }
 }
 
@@ -643,7 +645,9 @@ function deletePlayer(index) {
   const activePlayer = getActivePlayer();
   if (activePlayer) activePlayer.updateTripleButton();
   const undoBtn = document.getElementById('undoButton');
-  undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
+  const _ubShow1 = activePlayer && activePlayer.currentIndex > 0;
+  undoBtn.style.visibility = _ubShow1 ? 'visible' : 'hidden';
+  undoBtn.style.pointerEvents = _ubShow1 ? 'auto' : 'none';
 }
 
 function setActivePlayer(index) {
@@ -660,7 +664,9 @@ function setActivePlayer(index) {
   }
   // Update Undo Button basierend auf neuem aktiven Spieler
   const undoBtn = document.getElementById('undoButton');
-  undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
+  const _ubShow2 = activePlayer && activePlayer.currentIndex > 0;
+  undoBtn.style.visibility = _ubShow2 ? 'visible' : 'hidden';
+  undoBtn.style.pointerEvents = _ubShow2 ? 'auto' : 'none';
 }
 
 function updateAllActivateBtns() {
