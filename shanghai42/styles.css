@@ -173,12 +173,27 @@ body {
     white-space: nowrap;
   }
 
+  /* Punkte- und Treffer-Spalte konstant halten */
+  table th:nth-child(2),
+  table td:nth-child(2),
+  table th:nth-child(3),
+  table td:nth-child(3) {
+    width: 140px;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Input-Felder im Bearbeitungsmodus */
   .hit-input {
-    background: transparent;
+    background: #222;
     color: #fff;
     border: 0;
+    box-shadow: inset 0 0 0 1px #555;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
