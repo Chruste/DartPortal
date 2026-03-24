@@ -172,12 +172,16 @@ body {
 
   /* Input-Felder im Bearbeitungsmodus */
   .hit-input {
-    background: #222;
+    background: transparent;
     color: #fff;
-    border: 1px solid #555;
+    border: 0;
     width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font: inherit;
+    line-height: inherit;
     text-align: center;
-    padding: 2px;
   }
 
   /* Edit-Controls */
