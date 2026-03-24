@@ -106,6 +106,7 @@ class Player {
 
   highlightRow(i) {
     this.table.querySelectorAll('tr').forEach(r => r.classList.remove('current-row'));
+    this.table.classList.toggle('highlight-complete', i >= this.sequence.length);
     if (i < this.sequence.length) {
       const rows = Array.from(this.tbody.children);
       if (rows[i]) rows[i].classList.add('current-row');
@@ -115,7 +116,9 @@ class Player {
   updateTripleButton() {
     const btn = document.getElementById('btnTriple');
     if (!btn) return;
-    btn.style.display = this.sequence[this.currentIndex] === 'Bull' ? 'none' : 'inline';
+    const hideTriple = this.sequence[this.currentIndex] === 'Bull';
+    btn.style.visibility = hideTriple ? 'hidden' : 'visible';
+    btn.style.pointerEvents = hideTriple ? 'none' : 'auto';
   }
 
   parseHit(sector, type = null) {
@@ -174,16 +177,20 @@ class Player {
     this.updateTripleButton();
     updateOverviewTable();
     if (this.currentIndex > 0) {
-      document.getElementById('undoButton').style.display = 'inline';
+      const _ub = document.getElementById('undoButton');
+      _ub.style.visibility = 'visible';
+      _ub.style.pointerEvents = 'auto';
     }
   }
 
   calculatePoints(hit, target) {
     if (hit === '0' || hit === '') return 0;
     const isBull = target === 'Bull';
-    const hitBase = hit.replace(/^D |^T /, '');
-    const hitMult = hit.startsWith('D ') ? 2 : hit.startsWith('T ') ? 3 : 1;
-    if ((isBull && hitBase === 'Bull' && hitMult === 2) || (!isBull && hitBase === target && hitMult === 2)) {
+    const normalizedHit = hit.trim().toUpperCase();
+    const hitBase = normalizedHit.replace(/^D\s+|^T\s+/, '');
+    const hitMult = normalizedHit.startsWith('D ') ? 2 : normalizedHit.startsWith('T ') ? 3 : 1;
+    const isBullDouble = hitBase === '50' || (hitBase === 'BULL' && hitMult === 2);
+    if ((isBull && isBullDouble) || (!isBull && hitBase === target.toUpperCase() && hitMult === 2)) {
       return isBull ? 50 : 2 * parseInt(target, 10);
     }
     return -1;
@@ -206,7 +213,9 @@ class Player {
       this.updateTripleButton();
       updateOverviewTable();
       if (this.currentIndex === 0) {
-        document.getElementById('undoButton').style.display = 'none';
+        const _ub = document.getElementById('undoButton');
+        _ub.style.visibility = 'hidden';
+        _ub.style.pointerEvents = 'none';
       }
     }
   }
@@ -268,11 +277,9 @@ class Player {
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
     updateOverviewTable();
-    if (this.currentIndex > 0) {
-      document.getElementById('undoButton').style.display = 'inline';
-    } else {
-      document.getElementById('undoButton').style.display = 'none';
-    }
+    const _ub = document.getElementById('undoButton');
+    _ub.style.visibility = this.currentIndex > 0 ? 'visible' : 'hidden';
+    _ub.style.pointerEvents = this.currentIndex > 0 ? 'auto' : 'none';
   }
 }
 
@@ -640,7 +647,9 @@ function deletePlayer(index) {
   const activePlayer = getActivePlayer();
   if (activePlayer) activePlayer.updateTripleButton();
   const undoBtn = document.getElementById('undoButton');
-  undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
+  const _ubShow1 = activePlayer && activePlayer.currentIndex > 0;
+  undoBtn.style.visibility = _ubShow1 ? 'visible' : 'hidden';
+  undoBtn.style.pointerEvents = _ubShow1 ? 'auto' : 'none';
 }
 
 function setActivePlayer(index) {
@@ -657,7 +666,9 @@ function setActivePlayer(index) {
   }
   // Update Undo Button basierend auf neuem aktiven Spieler
   const undoBtn = document.getElementById('undoButton');
-  undoBtn.style.display = activePlayer && activePlayer.currentIndex > 0 ? 'inline' : 'none';
+  const _ubShow2 = activePlayer && activePlayer.currentIndex > 0;
+  undoBtn.style.visibility = _ubShow2 ? 'visible' : 'hidden';
+  undoBtn.style.pointerEvents = _ubShow2 ? 'auto' : 'none';
 }
 
 function updateAllActivateBtns() {

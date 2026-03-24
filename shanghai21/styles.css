@@ -46,7 +46,7 @@ body {
   /* Tabelle */
   table {
     border-collapse: collapse;
-    width: 360px;
+    width: auto;
     margin: 1em auto;
     table-layout: fixed;
     display: inline-block;
@@ -64,11 +64,37 @@ body {
     display: block;
   }
 
+  #tablesContainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1.2em;
+  }
+
   /* Spieler-Container nebeneinander */
   #tablesContainer > div {
-    display: inline-block;
-    vertical-align: top;
-    margin: 0 1em 1em 0;
+    width: fit-content;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 0 0.65em;
+  }
+
+  #tablesContainer > div > div {
+    width: 100%;
+    text-align: center;
+  }
+
+  #tablesContainer .tableArea {
+    display: flex;
+    justify-content: center;
+  }
+
+  #tablesContainer table {
+    display: table;
+    margin: 1em auto;
   }
 
   /* Inaktive Spieler: nur Tabelle halbtransparent */
@@ -119,6 +145,7 @@ body {
     border: 1px solid #fff;
     padding: 4px 8px;
     text-align: center;
+    box-sizing: border-box;
   }
   tfoot td {
     font-weight: bold;
@@ -140,17 +167,31 @@ body {
   tfoot tr.current-row td {
     font-size: 3em;
     font-weight: bold;
+    height: 56px;
+    line-height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   /* Bull- und Total-Zeile: keine so große Schrift beim Hervorheben */
-  #resultsTable tbody tr:last-child.current-row td,
-  #resultsTable tfoot tr.current-row td {
+  table tbody tr:last-child.current-row td,
+  table tfoot tr.current-row td {
     font-size: 2em;
   }
 
   /* Ziel-Spalte der hervorgehobenen Bull-Zeile kleiner als Punkte/Treffer */
   tbody tr:last-child.current-row td:first-child {
     font-size: 2em;
+  }
+
+  /* Bei Spielende bleibt die letzte Zielzeile gleich hoch wie ein Highlight */
+  table.highlight-complete tbody tr:last-child td {
+    font-size: 2em;
+    font-weight: bold;
+    height: 56px;
+    line-height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
   }
   
   /* Summenzeile immer Gold und hervorgehoben */
@@ -163,8 +204,22 @@ body {
   /* Feste Spaltenbreite für Ziel-Spalte */
   table th:first-child,
   table td:first-child {
-    width: 80px;
-    max-width: 80px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Punkte- und Treffer-Spalte konstant halten */
+  table th:nth-child(2),
+  table td:nth-child(2),
+  table th:nth-child(3),
+  table td:nth-child(3) {
+    width: 75px;
+    min-width: 75px;
+    max-width: 75px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -174,10 +229,17 @@ body {
   .hit-input {
     background: #222;
     color: #fff;
-    border: 1px solid #555;
+    border: 0;
+    box-shadow: inset 0 0 0 1px #555;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font: inherit;
+    line-height: inherit;
     text-align: center;
-    padding: 2px;
   }
 
   /* Edit-Controls */
@@ -270,16 +332,20 @@ body {
   }
 
   #controlsFooterContent #controlButtons {
-    display: flex;
-    width: auto;
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
     justify-content: center;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.3em;
   }
 
   #controlsFooterContent #controlButtons .left-buttons,
   #controlsFooterContent #controlButtons .center-buttons,
   #controlsFooterContent #controlButtons .right-buttons {
+    display: flex;
+    flex: 0 0 auto;
     justify-content: center;
     flex-wrap: wrap;
   }

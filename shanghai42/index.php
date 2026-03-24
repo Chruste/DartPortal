@@ -44,7 +44,7 @@ include __DIR__ . '/../header.php';
         <button id="saveButton" style="display:none;">Speichern</button>
       </div>
       <div class="right-buttons">
-        <button id="undoButton" style="display:none;">Rückgängig</button>
+        <button id="undoButton" style="visibility:hidden; pointer-events:none;">Rückgängig</button>
       </div>
     </div>
     
