@@ -46,7 +46,7 @@ body {
   /* Tabelle */
   table {
     border-collapse: collapse;
-    width: 360px;
+    width: auto;
     margin: 1em auto;
     table-layout: fixed;
     display: inline-block;
@@ -69,7 +69,7 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     align-items: flex-start;
-    gap: 0.65em;
+    gap: 1.2em;
   }
 
   /* Spieler-Container nebeneinander */
@@ -145,6 +145,7 @@ body {
     border: 1px solid #fff;
     padding: 4px 8px;
     text-align: center;
+    box-sizing: border-box;
   }
   tfoot td {
     font-weight: bold;
@@ -190,6 +191,7 @@ body {
   table th:first-child,
   table td:first-child {
     width: 80px;
+    min-width: 80px;
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -202,6 +204,7 @@ body {
   table th:nth-child(3),
   table td:nth-child(3) {
     width: 80px;
+    min-width: 80px;
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
