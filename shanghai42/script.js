@@ -186,9 +186,11 @@ class Player {
   calculatePoints(hit, target) {
     if (hit === '0' || hit === '') return 0;
     const isBull = target === 'Bull';
-    const hitBase = hit.replace(/^D |^T /, '');
-    const hitMult = hit.startsWith('D ') ? 2 : hit.startsWith('T ') ? 3 : 1;
-    if ((isBull && hitBase === 'Bull' && hitMult === 2) || (!isBull && hitBase === target && hitMult === 2)) {
+    const normalizedHit = hit.trim().toUpperCase();
+    const hitBase = normalizedHit.replace(/^D\s+|^T\s+/, '');
+    const hitMult = normalizedHit.startsWith('D ') ? 2 : normalizedHit.startsWith('T ') ? 3 : 1;
+    const isBullDouble = hitBase === '50' || (hitBase === 'BULL' && hitMult === 2);
+    if ((isBull && isBullDouble) || (!isBull && hitBase === target.toUpperCase() && hitMult === 2)) {
       return isBull ? 50 : 2 * parseInt(target, 10);
     }
     return -1;
