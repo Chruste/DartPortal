@@ -1,5 +1,5 @@
 <?php
-session_start();
+require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Dartball';
 $username  = $_SESSION['username'] ?? null;
 $extraHead = '<link rel="stylesheet" href="/dartball/styles.css">';

@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+function load_auth_secrets(): array
+{
+    static $secrets = null;
+    if ($secrets !== null) {
+        return $secrets;
+    }
+
+    $secretFile = dirname($_SERVER['DOCUMENT_ROOT'] ?? __DIR__) . '/secrets/dartportal_auth.php';
+    if (is_file($secretFile)) {
+        $secrets = require $secretFile;
+    } else {
+        $secrets = [];
+    }
+
+    return $secrets;
+}
+
+function oauth_env(string $key, string $default = ''): string
+{
+    $value = getenv($key);
+    if ($value !== false && $value !== null && $value !== '') {
+        return $value;
+    }
+
+    $map = [
+        'GOOGLE_CLIENT_ID'     => 'google_client_id',
+        'GOOGLE_CLIENT_SECRET' => 'google_client_secret',
+        'APP_BASE_URL'         => 'app_base_url',
+        'DB_HOST'              => 'db_host',
+        'DB_NAME'              => 'db_name',
+        'DB_USER'              => 'db_user',
+        'DB_PASS'              => 'db_pass',
+    ];
+
+    if (isset($map[$key])) {
+        $secrets = load_auth_secrets();
+        $fileValue = $secrets[$map[$key]] ?? '';
+        if ($fileValue !== '') {
+            return (string) $fileValue;
+        }
+    }
+
+    return $default;
+}
+
+function oauth_google_config(): array
+{
+    return [
+        'client_id' => oauth_env('GOOGLE_CLIENT_ID'),
+        'client_secret' => oauth_env('GOOGLE_CLIENT_SECRET'),
+        'base_url' => rtrim(oauth_env('APP_BASE_URL', 'https://chruste.de.cool'), '/'),
+    ];
+}
+
+function oauth_redirect_uri(array $config): string
+{
+    return $config['base_url'] . '/google-callback.php';
+}
+
+function oauth_require_config(array $config): void
+{
+    if ($config['client_id'] === '' || $config['client_secret'] === '') {
+        http_response_code(500);
+        echo 'Google OAuth ist nicht konfiguriert. Bitte GOOGLE_CLIENT_ID und GOOGLE_CLIENT_SECRET setzen.';
+        exit;
+    }
+}

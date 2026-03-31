@@ -1,5 +1,5 @@
 <?php
-session_start();
+require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Shanghai 21';
 $username  = $_SESSION['username'] ?? null;
 $extraHead = '<link rel="stylesheet" href="/shanghai21/styles.css">';

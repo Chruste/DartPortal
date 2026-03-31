@@ -1,9 +1,9 @@
-const cacheName = 'cdp-cache-v2';
+const cacheName = 'cdp-cache-v3';
 const assets = [
   '/',
   '/index.php',
   '/login.php',
-  '/login-api.php',
+  '/google-login.php',
   '/portal.css',
   '/portal.js',
   '/script-login.js',
@@ -67,10 +67,22 @@ function isDocumentRequest(request) {
     || acceptHeader.includes('text/html');
 }
 
+function isAuthDynamicRoute(requestUrl) {
+  return requestUrl.pathname === '/google-callback.php'
+    || requestUrl.pathname === '/google-login.php'
+    || requestUrl.pathname === '/logout.php'
+    || requestUrl.pathname === '/auth-status.php';
+}
+
 self.addEventListener('fetch', event => {
   const { request } = event;
+  const requestUrl = new URL(request.url);
 
   if (request.method !== 'GET') {
+    return;
+  }
+
+  if (isAuthDynamicRoute(requestUrl)) {
     return;
   }
 
