@@ -21,6 +21,30 @@ Der Login laeuft jetzt ueber Google OAuth 2.0 und serverseitige PHP-Sessions.
 - `DB_USER` (Pflicht)
 - `DB_PASS` (Pflicht)
 
+Wenn dein Hosting keine echten Umgebungsvariablen anbietet, kannst du stattdessen eine Secret-Datei `dartportal_auth.php` verwenden.
+
+Unterstuetzte Pfade (in Reihenfolge):
+
+1. Pfad aus `DARTPORTAL_AUTH_SECRETS_FILE`
+2. `../secrets/dartportal_auth.php` relativ zum `DOCUMENT_ROOT`
+3. `../secrets/dartportal_auth.php` relativ zum Projektverzeichnis
+4. `private_config/dartportal_auth.php` im Projekt (nur mit HTTP-Sperre per `.htaccess`)
+
+Dateiformat:
+
+```php
+<?php
+return [
+	'google_client_id' => '...',
+	'google_client_secret' => '...',
+	'app_base_url' => 'https://chruste.de.cool',
+	'db_host' => 'localhost',
+	'db_name' => 'db_447002_1',
+	'db_user' => '...',
+	'db_pass' => '...',
+];
+```
+
 ### 3. Datenbank
 
 Die Tabelle `oauth_users` muss vorab in MySQL existieren.

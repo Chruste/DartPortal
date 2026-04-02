@@ -1,14 +1,16 @@
 <?php
 declare(strict_types=1);
 
-// Server-side DB config via environment variables.
-$host = getenv('DB_HOST') ?: 'localhost';
-$db = getenv('DB_NAME') ?: 'db_447002_1';
-$user = getenv('DB_USER') ?: '';
-$pw = getenv('DB_PASS') ?: '';
+require_once __DIR__ . '/oauth_config.php';
+
+// DB config from env vars, then secret file fallback.
+$host = oauth_env('DB_HOST', 'localhost');
+$db = oauth_env('DB_NAME', 'db_447002_1');
+$user = oauth_env('DB_USER');
+$pw = oauth_env('DB_PASS');
 
 if ($user === '' || $pw === '') {
-    throw new RuntimeException('DB_USER und DB_PASS muessen als Umgebungsvariablen gesetzt sein.');
+    throw new RuntimeException('DB_USER und DB_PASS fehlen (weder Umgebungsvariable noch Secret-Datei).');
 }
 
 $mysqli = new mysqli($host, $user, $pw, $db);

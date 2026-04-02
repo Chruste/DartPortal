@@ -9,13 +9,35 @@ function load_auth_secrets(): array
         return $secrets;
     }
 
-    $secretFile = dirname($_SERVER['DOCUMENT_ROOT'] ?? __DIR__) . '/secrets/dartportal_auth.php';
-    if (is_file($secretFile)) {
-        $secrets = require $secretFile;
-    } else {
-        $secrets = [];
+    $paths = [];
+
+    $envPath = getenv('DARTPORTAL_AUTH_SECRETS_FILE');
+    if (is_string($envPath) && $envPath !== '') {
+        $paths[] = $envPath;
     }
 
+    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+    if (is_string($documentRoot) && $documentRoot !== '') {
+        $paths[] = dirname($documentRoot) . '/secrets/dartportal_auth.php';
+    }
+
+    // Fallback for shared hosting when external paths are restricted.
+    $paths[] = dirname(__DIR__) . '/secrets/dartportal_auth.php';
+    $paths[] = __DIR__ . '/private_config/dartportal_auth.php';
+
+    foreach ($paths as $secretFile) {
+        if (!is_string($secretFile) || $secretFile === '' || !is_file($secretFile) || !is_readable($secretFile)) {
+            continue;
+        }
+
+        $loaded = require $secretFile;
+        if (is_array($loaded)) {
+            $secrets = $loaded;
+            return $secrets;
+        }
+    }
+
+    $secrets = [];
     return $secrets;
 }
 
