@@ -6,6 +6,7 @@ require __DIR__ . '/session_bootstrap.php';
 
 require __DIR__ . '/oauth_config.php';
 require __DIR__ . '/db.php';
+require __DIR__ . '/db_user.php';
 
 function oauth_http_post_form(string $url, array $data): array
 {
@@ -103,6 +104,23 @@ function upsert_oauth_user(mysqli $mysqli, string $googleId, string $email, stri
     return $newId;
 }
 
+function upsert_portal_user(mysqli $mysqli, int $userId, string $displayName): void
+{
+    $sql = '
+        INSERT INTO portal_users (id, display_name, created_at, last_login)
+        VALUES (?, ?, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), last_login = NOW()
+    ';
+    $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Portal-User DB Prepare fehlgeschlagen.');
+    }
+
+    $stmt->bind_param('is', $userId, $displayName);
+    $stmt->execute();
+    $stmt->close();
+}
+
 try {
     $config = oauth_google_config();
     oauth_require_config($config);
@@ -158,6 +176,7 @@ try {
     }
 
     $userId = upsert_oauth_user($mysqli, $googleId, $email, $displayName);
+    upsert_portal_user($mysqli_user, $userId, $displayName);
 
     session_regenerate_id(true);
     $_SESSION['user_id'] = $userId;

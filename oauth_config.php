@@ -69,6 +69,69 @@ function oauth_env(string $key, string $default = ''): string
     return $default;
 }
 
+function load_user_db_secrets(): array
+{
+    static $secrets = null;
+    if ($secrets !== null) {
+        return $secrets;
+    }
+
+    $paths = [];
+
+    $envPath = getenv('DARTPORTAL_USER_SECRETS_FILE');
+    if (is_string($envPath) && $envPath !== '') {
+        $paths[] = $envPath;
+    }
+
+    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+    if (is_string($documentRoot) && $documentRoot !== '') {
+        $paths[] = dirname($documentRoot) . '/secrets/dartportal_user.php';
+    }
+
+    $paths[] = dirname(__DIR__) . '/secrets/dartportal_user.php';
+    $paths[] = __DIR__ . '/private_config/dartportal_user.php';
+
+    foreach ($paths as $secretFile) {
+        if (!is_string($secretFile) || $secretFile === '' || !is_file($secretFile) || !is_readable($secretFile)) {
+            continue;
+        }
+
+        $loaded = require $secretFile;
+        if (is_array($loaded)) {
+            $secrets = $loaded;
+            return $secrets;
+        }
+    }
+
+    $secrets = [];
+    return $secrets;
+}
+
+function user_env(string $key, string $default = ''): string
+{
+    $value = getenv($key);
+    if ($value !== false && $value !== null && $value !== '') {
+        return $value;
+    }
+
+    $map = [
+        'USER_DB_HOST' => 'db_host',
+        'USER_DB_NAME' => 'db_name',
+        'USER_DB_USER' => 'db_user',
+        'USER_DB_PASS' => 'db_pass',
+    ];
+
+    if (isset($map[$key])) {
+        $secrets = load_user_db_secrets();
+        $fileValue = $secrets[$map[$key]] ?? '';
+        if ($fileValue !== '') {
+            return (string) $fileValue;
+        }
+    }
+
+    return $default;
+}
+
 function oauth_google_config(): array
 {
     return [
