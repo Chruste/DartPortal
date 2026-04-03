@@ -1,5 +1,5 @@
 <?php
-session_start();
+require __DIR__ . '/session_bootstrap.php';
 $pageTitle = 'Home';
 $username  = $_SESSION['username'] ?? null;
 include __DIR__ . '/header.php';

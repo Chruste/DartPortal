@@ -112,6 +112,33 @@ body, html {
   color: #fff;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logout-form {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.logout-link {
+  color: #ffb3b3;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.logout-link:hover {
+  text-decoration: underline;
+}
+
 /* Content area */
 .content {
   padding: 70px 1em 1em;
@@ -119,4 +146,52 @@ body, html {
 }
 @media (min-width: 600px) {
   .content { margin-left: 240px; }
+}
+
+#loginForm {
+  max-width: 420px;
+  margin: 24px auto;
+  padding: 20px;
+  background: #121212;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+}
+
+.login-note {
+  color: #c2c2c2;
+  line-height: 1.45;
+}
+
+.login-message {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
+.login-message.success {
+  background: #12301b;
+  border: 1px solid #275739;
+  color: #9de6b3;
+}
+
+.login-message.error {
+  background: #3a1414;
+  border: 1px solid #6f2222;
+  color: #ffb1b1;
+}
+
+.oauth-button {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #4285f4;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.oauth-button:hover {
+  background: #2f70d9;
 }

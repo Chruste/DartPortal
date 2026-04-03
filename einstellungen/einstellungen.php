@@ -1,4 +1,8 @@
-<?php include '../header.php'; ?>
+<?php
+require __DIR__ . '/../session_bootstrap.php';
+$pageTitle = 'Einstellungen';
+include '../header.php';
+?>
 
 <div class="container">
   <h2>Einstellungen</h2>
@@ -13,26 +17,7 @@
     <input type="text" id="scoliaToken" required>
     <br>
     <br>
-    <label for="mysqlHost">MySQL Host:</label>
-    <br>
-    <input type="text" id="mysqlHost" required>
-    <br>
-    <br>
-    <label for="mysqlDb">MySQL Datenbank:</label>
-    <br>
-    <input type="text" id="mysqlDb" required>
-    <br>
-    <br>
-    <label for="mysqlUser">MySQL Benutzername:</label>
-    <br>
-    <input type="text" id="mysqlUser" required>
-    <br>
-    <br>
-    <label for="mysqlPass">MySQL Passwort:</label>
-    <br>
-    <input type="password" id="mysqlPass" required>
-    <br>
-    <br>
+    <p>Der Login erfolgt jetzt ueber Google OAuth. Datenbankzugang wird serverseitig konfiguriert.</p>
     <button type="submit">Speichern</button>
   </form>
 </div>

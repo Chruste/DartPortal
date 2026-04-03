@@ -1,13 +1,10 @@
 <?php
-session_start();
+declare(strict_types=1);
+
+require __DIR__ . '/session_bootstrap.php';
 header('Content-Type: application/json');
-
-$data = json_decode(file_get_contents('php://input'), true);
-$username = $data['username'] ?? null;
-
-if($username){
-    $_SESSION['username'] = $username;
-    echo json_encode(['success' => true, 'message' => 'Username gesetzt.']);
-} else {
-    echo json_encode(['success' => false, 'message' => 'Kein Username erhalten.']);
-}
+http_response_code(410);
+echo json_encode([
+    'success' => false,
+    'message' => 'Dieser Endpunkt ist veraltet und wurde deaktiviert.',
+]);

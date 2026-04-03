@@ -1,5 +1,9 @@
 <?php
 // header.php
+require_once __DIR__ . '/session_bootstrap.php';
+
+$isAuthenticated = isset($_SESSION['user_id']);
+$displayName = $_SESSION['username'] ?? 'Login';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -23,7 +27,7 @@
         <li><a href="/dartball/index.php" data-title="Dartball">Dartball</a></li>
         <li><a href="/turnierplaner/turnierplaner.php" data-title="Turnierplaner">Turnierplaner</a></li>
         <li><a href="/einstellungen/einstellungen.php" data-title="Einstellungen">Einstellungen</a></li>
-        <li><a href="/login.php" data-title="DB-Login">DB-Login</a></li>
+        <li><a href="/login.php" data-title="Anmeldung">Anmeldung</a></li>
       </ul>
     </nav>
   </div>
@@ -32,8 +36,18 @@
     <header class="topbar">
       <button id="mobileMenuButton" class="mobile-menu-button" aria-label="Menü">☰</button>
       <h1 id="pageTitle"><?= $pageTitle ?? 'Home'; ?></h1>
-      <a href="./einstellungen/einstellungen.php"  id="userInfo" class="username">
-        <?php echo $_SESSION['username'] ?? 'Login'; ?> <!-- dein Username aus Session oder anderem Speicher -->
-      </a>
+      <div class="topbar-actions">
+        <?php if ($isAuthenticated): ?>
+          <a href="/einstellungen/einstellungen.php" id="userInfo" class="username">
+            <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>
+          </a>
+          <form method="post" action="/logout.php" class="logout-form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+            <button type="submit" class="logout-link" aria-label="Abmelden">Logout</button>
+          </form>
+        <?php else: ?>
+          <a href="/login.php" id="userInfo" class="username">Login</a>
+        <?php endif; ?>
+      </div>
     </header>
     <section class="content">
