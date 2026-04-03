@@ -17,7 +17,7 @@ Der Login laeuft jetzt ueber Google OAuth 2.0 und serverseitige PHP-Sessions.
 - `GOOGLE_CLIENT_SECRET`
 - `APP_BASE_URL` (z. B. `https://chruste.de.cool`)
 - `DB_HOST` (optional, default: `localhost`)
-- `DB_NAME` (optional, default: `db_447002_2`)
+- `DB_NAME` (optional, default: `db_447002_1`)
 - `DB_USER` (Pflicht)
 - `DB_PASS` (Pflicht)
 
@@ -47,15 +47,18 @@ return [
 
 ### 3. Datenbank
 
-Die Tabelle `oauth_users` muss vorab in MySQL existieren.
+Die Tabelle `oauth_users` auf DB "..._1" und die Tabelle `portal_users` auf DB "..._2" müssen vorab in MySQL existieren, da `google-callback.php`  
+Benutzer dort anlegt oder aktualisiert.
 Migration:
 
 `migrations/20260328_oauth_users.sql`
+
+`migrations/20260402_portal_users.sql` 
 
 ### 4. Login-Fluss
 
 1. Nutzer klickt auf `Mit Google anmelden` in `/login.php`
 2. Redirect zu Google OAuth Consent
 3. Callback nach `/google-callback.php`
-4. User wird in `oauth_users` angelegt oder aktualisiert
+4. User wird in `oauth_users` und `portal_users` angelegt oder aktualisiert
 5. Session wird gesetzt und Nutzer zu `/index.php` weitergeleitet
