@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/session_bootstrap.php';
 
+header('Cache-Control: no-store');
+header('Pragma: no-cache');
 header('Content-Type: application/json');
 
 echo json_encode([
