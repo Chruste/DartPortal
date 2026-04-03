@@ -34,13 +34,17 @@ function oauth_http_post_form(string $url, array $data): array
     return $json;
 }
 
-function oauth_http_get_json(string $url): array
+function oauth_http_get_json(string $url, string $bearerToken = ''): array
 {
     $ch = curl_init($url);
-    curl_setopt_array($ch, [
+    $curlOptions = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
-    ]);
+    ];
+    if ($bearerToken !== '') {
+        $curlOptions[CURLOPT_HTTPHEADER] = ['Authorization: Bearer ' . $bearerToken];
+    }
+    curl_setopt_array($ch, $curlOptions);
 
     $response = curl_exec($ch);
     $error = curl_error($ch);
@@ -158,7 +162,7 @@ try {
         exit;
     }
 
-    $userInfo = oauth_http_get_json('https://www.googleapis.com/oauth2/v3/userinfo?access_token=' . urlencode($accessToken));
+    $userInfo = oauth_http_get_json('https://www.googleapis.com/oauth2/v3/userinfo', $accessToken);
 
     $googleId = isset($userInfo['sub']) && is_string($userInfo['sub']) ? trim($userInfo['sub']) : '';
     $email = isset($userInfo['email']) && is_string($userInfo['email']) ? trim($userInfo['email']) : '';
