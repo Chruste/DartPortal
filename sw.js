@@ -1,4 +1,4 @@
-const cacheName = 'cdp-cache-v3';
+const cacheName = 'cdp-cache-v4';
 const assets = [
   '/',
   '/index.php',
@@ -70,7 +70,9 @@ function isAuthDynamicRoute(requestUrl) {
   return requestUrl.pathname === '/google-callback.php'
     || requestUrl.pathname === '/google-login.php'
     || requestUrl.pathname === '/logout.php'
-    || requestUrl.pathname === '/auth-status.php';
+    || requestUrl.pathname === '/auth-status.php'
+    || requestUrl.pathname === '/scolia-config.php'
+    || requestUrl.pathname === '/save-scolia-config.php';
 }
 
 self.addEventListener('fetch', event => {
