@@ -3,7 +3,6 @@ const assets = [
   '/',
   '/index.php',
   '/login.php',
-  '/google-login.php',
   '/portal.css',
   '/portal.js',
   '/script-login.js',
