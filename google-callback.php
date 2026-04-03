@@ -124,6 +124,9 @@ function upsert_portal_user(mysqli $mysqli, int $userId, string $displayName): v
 }
 
 try {
+    require __DIR__ . '/db.php';
+    require __DIR__ . '/db_user.php';
+
     $config = oauth_google_config();
     oauth_require_config($config);
 
