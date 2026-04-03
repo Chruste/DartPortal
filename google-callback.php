@@ -5,8 +5,6 @@ declare(strict_types=1);
 require __DIR__ . '/session_bootstrap.php';
 
 require __DIR__ . '/oauth_config.php';
-require __DIR__ . '/db.php';
-require __DIR__ . '/db_user.php';
 
 function oauth_http_post_form(string $url, array $data): array
 {
