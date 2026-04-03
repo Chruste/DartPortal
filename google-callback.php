@@ -167,8 +167,9 @@ try {
     $googleId = isset($userInfo['sub']) && is_string($userInfo['sub']) ? trim($userInfo['sub']) : '';
     $email = isset($userInfo['email']) && is_string($userInfo['email']) ? trim($userInfo['email']) : '';
     $displayName = isset($userInfo['name']) && is_string($userInfo['name']) ? trim($userInfo['name']) : '';
+    $emailVerified = ($userInfo['email_verified'] ?? false) === true || ($userInfo['email_verified'] ?? '') === 'true';
 
-    if ($googleId === '' || $email === '') {
+    if ($googleId === '' || $email === '' || $emailVerified !== true) {
         header('Location: /login.php?error=oauth_userinfo_unvollstaendig');
         exit;
     }
