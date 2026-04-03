@@ -5,16 +5,8 @@ $username  = $_SESSION['username'] ?? null;
 $extraHead = '<link rel="stylesheet" href="/dartball/styles.css">';
 include __DIR__ . '/../header.php';
 ?>
-  <!-- Login-Maske -->
-  <div id="loginContainer">
-    <h2>Anmelden</h2>
-    <input id="loginSerial" placeholder="Serial Number" />
-    <input id="loginToken" placeholder="Access Token" />
-    <button id="loginButton">Login</button>
-  </div>
-
-  <!-- Haupt-App (versteckt bis Login) -->
-  <div id="appContainer" style="display:none;">
+  <!-- Haupt-App -->
+  <div id="appContainer">
     <header>
       <img src="img/headline.png" alt="Dartball">
     </header>
@@ -47,24 +39,10 @@ include __DIR__ . '/../header.php';
       fetch('/scolia-config.php')
         .then(r => r.json())
         .then(data => {
-          if (data.success) {
-            window.SCOLIA_CONFIG = { serialNumber: data.serialNumber, accessToken: data.accessToken };
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-            initApp();
-          }
+          window.SCOLIA_CONFIG = { serialNumber: data.serialNumber || '', accessToken: data.accessToken || '' };
+          initApp();
         })
-        .catch(() => {});
-
-      document.getElementById('loginButton').addEventListener('click', () => {
-        const s = document.getElementById('loginSerial').value.trim();
-        const t = document.getElementById('loginToken').value.trim();
-        if (!s || !t) return alert('Bitte Serial Number und Access Token eingeben');
-        window.SCOLIA_CONFIG = { serialNumber: s, accessToken: t };
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        initApp();
-      });
+        .catch(() => { initApp(); });
     });
   </script>
 
