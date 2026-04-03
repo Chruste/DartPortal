@@ -41,7 +41,10 @@ $displayName = $_SESSION['username'] ?? 'Login';
           <a href="/einstellungen/einstellungen.php" id="userInfo" class="username">
             <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>
           </a>
-          <a href="/logout.php" class="logout-link">Logout</a>
+          <form method="post" action="/logout.php" class="logout-form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+            <button type="submit" class="logout-link" aria-label="Abmelden">Logout</button>
+          </form>
         <?php else: ?>
           <a href="/login.php" id="userInfo" class="username">Login</a>
         <?php endif; ?>
