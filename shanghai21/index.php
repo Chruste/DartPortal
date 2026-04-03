@@ -53,7 +53,7 @@ include __DIR__ . '/../header.php';
           window.SCOLIA_CONFIG = { serialNumber: data.serialNumber || '', accessToken: data.accessToken || '' };
           initApp();
         })
-        .catch(() => { initApp(); });
+        .catch(() => { window.SCOLIA_CONFIG = { serialNumber: '', accessToken: '' }; initApp(); });
     });
   </script>
 

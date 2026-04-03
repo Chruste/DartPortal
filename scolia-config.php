@@ -3,11 +3,17 @@
 declare(strict_types=1);
 
 require __DIR__ . '/session_bootstrap.php';
-require __DIR__ . '/db.php';
 
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['success' => true, 'serialNumber' => '', 'accessToken' => '']);
+    exit;
+}
+
+try {
+    require __DIR__ . '/db.php';
+} catch (Throwable $e) {
     echo json_encode(['success' => true, 'serialNumber' => '', 'accessToken' => '']);
     exit;
 }
@@ -18,8 +24,7 @@ $stmt = $mysqli->prepare(
     'SELECT serial_number, api_token FROM scolia_config WHERE user_id = ? LIMIT 1'
 );
 if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'DB-Fehler.']);
+    echo json_encode(['success' => true, 'serialNumber' => '', 'accessToken' => '']);
     exit;
 }
 
