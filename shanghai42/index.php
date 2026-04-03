@@ -53,32 +53,29 @@ include __DIR__ . '/../header.php';
 
   <!-- Login-Handler -->
   <script src="script.js"></script>
-  <!-- Auto-Login bei vorhandenen Credentials -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const saved = localStorage.getItem('scoliaConfig');
-      if (saved) {
-        try {
-          window.SCOLIA_CONFIG = JSON.parse(saved);
-          document.getElementById('loginContainer').style.display = 'none';
-          document.getElementById('appContainer').style.display = 'block';
-          initApp();
-        } catch (e) {
-          localStorage.removeItem('scoliaConfig');
-        }
-      }
-    });
-  </script>
-  <script>
-    document.getElementById('loginButton').addEventListener('click', () => {
-      const s = document.getElementById('loginSerial').value.trim();
-      const t = document.getElementById('loginToken').value.trim();
-      if (!s || !t) return alert('Bitte Serial Number und Access Token eingeben');
-      window.SCOLIA_CONFIG = { serialNumber: s, accessToken: t };
-      localStorage.setItem('scoliaConfig', JSON.stringify(window.SCOLIA_CONFIG));
-      document.getElementById('loginContainer').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'block';
-      initApp();
+      fetch('/scolia-config.php')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            window.SCOLIA_CONFIG = { serialNumber: data.serialNumber, accessToken: data.accessToken };
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            initApp();
+          }
+        })
+        .catch(() => {});
+
+      document.getElementById('loginButton').addEventListener('click', () => {
+        const s = document.getElementById('loginSerial').value.trim();
+        const t = document.getElementById('loginToken').value.trim();
+        if (!s || !t) return alert('Bitte Serial Number und Access Token eingeben');
+        window.SCOLIA_CONFIG = { serialNumber: s, accessToken: t };
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        initApp();
+      });
     });
   </script>
 

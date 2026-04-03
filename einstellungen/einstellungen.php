@@ -9,15 +9,15 @@ include '../header.php';
   <form id="settings-form">
     <label for="scoliaSerial">Scolia Seriennummer:</label>
     <br>
-    <input type="text" id="scoliaSerial" required>
+    <input type="text" id="scoliaSerial" autocomplete="off">
     <br>
     <br>
     <label for="scoliaToken">Scolia Access Token:</label>
     <br>
-    <input type="text" id="scoliaToken" required>
+    <input type="text" id="scoliaToken" autocomplete="off">
     <br>
     <br>
-    <p>Der Login erfolgt jetzt ueber Google OAuth. Datenbankzugang wird serverseitig konfiguriert.</p>
+    <p id="scolia-status"></p>
     <button type="submit">Speichern</button>
   </form>
 </div>
