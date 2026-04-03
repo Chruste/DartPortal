@@ -15,7 +15,11 @@ if ($userDbUser === '' || $userDbPass === '') {
 
 $mysqli_user = new mysqli($userDbHost, $userDbUser, $userDbPass, $userDbName);
 if ($mysqli_user->connect_error) {
-    throw new RuntimeException('Portal-DB-Verbindung fehlgeschlagen: ' . $mysqli_user->connect_error);
+    error_log('Portal-DB-Verbindung fehlgeschlagen: ' . $mysqli_user->connect_error);
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+    exit('Interner Serverfehler.');
 }
 
 $mysqli_user->set_charset('utf8mb4');
