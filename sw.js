@@ -1,4 +1,4 @@
-const cacheName = 'cdp-cache-v5';
+const cacheName = 'cdp-cache-v6';
 const assets = [
   '/',
   '/index.php',
@@ -6,6 +6,9 @@ const assets = [
   '/portal.css',
   '/portal.js',
   '/script-login.js',
+  '/profil/profil.php',
+  '/profil/profil.css',
+  '/profil/profil.js',
   '/manifest.json',
   '/img/icon-192.png',
   '/img/icon-512.png',
@@ -72,7 +75,11 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/logout.php'
     || requestUrl.pathname === '/auth-status.php'
     || requestUrl.pathname === '/scolia-config.php'
-    || requestUrl.pathname === '/save-scolia-config.php';
+    || requestUrl.pathname === '/save-scolia-config.php'
+    || requestUrl.pathname === '/profile-data.php'
+    || requestUrl.pathname === '/save-profile.php'
+    || requestUrl.pathname === '/friend-search.php'
+    || requestUrl.pathname === '/friend-action.php';
 }
 
 self.addEventListener('fetch', event => {
