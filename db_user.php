@@ -10,7 +10,7 @@ $userDbUser = user_env('USER_DB_USER');
 $userDbPass = user_env('USER_DB_PASS');
 
 if ($userDbUser === '' || $userDbPass === '') {
-    throw new RuntimeException('USER_DB_USER und USER_DB_PASS fehlen (weder Umgebungsvariable noch Secret-Datei dartportal_user.php).');
+    throw new RuntimeException('USER_DB_USER und USER_DB_PASS fehlen (weder Umgebungsvariable noch Secret-Datei konfiguriert).');
 }
 
 $mysqli_user = new mysqli($userDbHost, $userDbUser, $userDbPass, $userDbName);

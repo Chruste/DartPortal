@@ -4,6 +4,7 @@ require_once __DIR__ . '/session_bootstrap.php';
 
 $isAuthenticated = isset($_SESSION['user_id']);
 $displayName = $_SESSION['username'] ?? 'Login';
+$navAuthLabel = $isAuthenticated ? 'Ausloggen' : 'Anmeldung';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -29,8 +30,17 @@ $displayName = $_SESSION['username'] ?? 'Login';
         <li><a href="/shanghai42/index.php" data-title="Shanghai 42">Shanghai 42</a></li>
         <li><a href="/dartball/index.php" data-title="Dartball">Dartball</a></li>
         <li><a href="/turnierplaner/turnierplaner.php" data-title="Turnierplaner">Turnierplaner</a></li>
-        <li><a href="/einstellungen/einstellungen.php" data-title="Einstellungen">Einstellungen</a></li>
-        <li><a href="/login.php" data-title="Anmeldung">Anmeldung</a></li>
+        <li><a href="/profil/profil.php" data-title="Profil und Freunde">Profil und Freunde</a></li>
+        <li>
+          <?php if ($isAuthenticated): ?>
+            <form method="post" action="/logout.php" class="sidebar-nav-form">
+              <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+              <button type="submit" class="sidebar-nav-button" data-title="<?= $navAuthLabel; ?>"><?= $navAuthLabel; ?></button>
+            </form>
+          <?php else: ?>
+            <a href="/login.php" data-title="<?= $navAuthLabel; ?>"><?= $navAuthLabel; ?></a>
+          <?php endif; ?>
+        </li>
       </ul>
     </nav>
   </div>
@@ -41,7 +51,7 @@ $displayName = $_SESSION['username'] ?? 'Login';
       <h1 id="pageTitle"><?= $pageTitle ?? 'Home'; ?></h1>
       <div class="topbar-actions">
         <?php if ($isAuthenticated): ?>
-          <a href="/einstellungen/einstellungen.php" id="userInfo" class="username">
+          <a href="/profil/profil.php" id="userInfo" class="username">
             <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>
           </a>
           <form method="post" action="/logout.php" class="logout-form">

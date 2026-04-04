@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Profil und Freunde';
-$extraHead = '<link rel="stylesheet" href="/einstellungen/einstellungen.css">';
+$extraHead = '<link rel="stylesheet" href="/profil/profil.css">';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: /login.php');
@@ -119,6 +119,6 @@ include '../header.php';
   </section>
 </div>
 
-<script src="/einstellungen/einstellungen.js"></script>
+<script src="/profil/profil.js"></script>
 
 <?php include '../footer.php'; ?>

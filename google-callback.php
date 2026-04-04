@@ -108,19 +108,65 @@ function upsert_oauth_user(mysqli $mysqli, string $googleId, string $email, stri
 
 function upsert_portal_user(mysqli $mysqli, int $userId, string $displayName): void
 {
-    $sql = '
-        INSERT INTO portal_users (id, display_name, created_at, last_login)
-        VALUES (?, ?, NOW(), NOW())
-        ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), last_login = NOW()
-    ';
-    $stmt = $mysqli->prepare($sql);
-    if (!$stmt) {
-        throw new RuntimeException('Portal-User DB Prepare fehlgeschlagen.');
+    $select = $mysqli->prepare('SELECT display_name FROM portal_users WHERE id = ? LIMIT 1');
+    if (!$select) {
+        throw new RuntimeException('Portal-User Select Prepare fehlgeschlagen.');
     }
 
-    $stmt->bind_param('is', $userId, $displayName);
+    $select->bind_param('i', $userId);
+    $select->execute();
+    $result = $select->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $select->close();
+
+    if (is_array($row)) {
+        $currentDisplayName = isset($row['display_name']) && is_string($row['display_name'])
+            ? trim($row['display_name'])
+            : '';
+        $finalDisplayName = $currentDisplayName !== '' ? $currentDisplayName : $displayName;
+
+        $update = $mysqli->prepare('UPDATE portal_users SET display_name = ?, last_login = NOW() WHERE id = ?');
+        if (!$update) {
+            throw new RuntimeException('Portal-User Update Prepare fehlgeschlagen.');
+        }
+
+        $update->bind_param('si', $finalDisplayName, $userId);
+        $update->execute();
+        $update->close();
+        return;
+    }
+
+    $insert = $mysqli->prepare(
+        'INSERT INTO portal_users (id, display_name, created_at, last_login) VALUES (?, ?, NOW(), NOW())'
+    );
+    if (!$insert) {
+        throw new RuntimeException('Portal-User Insert Prepare fehlgeschlagen.');
+    }
+
+    $insert->bind_param('is', $userId, $displayName);
+    $insert->execute();
+    $insert->close();
+}
+
+function get_portal_display_name(mysqli $mysqli, int $userId, string $fallbackDisplayName): string
+{
+    $stmt = $mysqli->prepare('SELECT display_name FROM portal_users WHERE id = ? LIMIT 1');
+    if (!$stmt) {
+        return $fallbackDisplayName;
+    }
+
+    $stmt->bind_param('i', $userId);
     $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
     $stmt->close();
+
+    if (!is_array($row) || !isset($row['display_name']) || !is_string($row['display_name'])) {
+        return $fallbackDisplayName;
+    }
+
+    $portalDisplayName = trim($row['display_name']);
+    return $portalDisplayName !== '' ? $portalDisplayName : $fallbackDisplayName;
 }
 
 try {
@@ -183,10 +229,11 @@ try {
 
     $userId = upsert_oauth_user($mysqli, $googleId, $email, $displayName);
     upsert_portal_user($mysqli_user, $userId, $displayName);
+    $portalDisplayName = get_portal_display_name($mysqli_user, $userId, $displayName);
 
     session_regenerate_id(true);
     $_SESSION['user_id'] = $userId;
-    $_SESSION['username'] = $displayName;
+    $_SESSION['username'] = $portalDisplayName;
     $_SESSION['user_email'] = $email;
     $_SESSION['auth_method'] = 'google';
 

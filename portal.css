@@ -24,6 +24,40 @@ body, html {
   transform: translateX(-240px);
 }
 
+.sidebar nav ul {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.sidebar nav li {
+  margin: 0;
+}
+
+.sidebar nav a,
+.sidebar-nav-button {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 18px;
+  color: #fff;
+  text-decoration: none;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sidebar nav a:hover,
+.sidebar-nav-button:hover {
+  background: #1d1d1d;
+}
+
+.sidebar-nav-form {
+  margin: 0;
+}
+
 /* Desktop toggle button */
 #toggleSidebar {
   background: none;

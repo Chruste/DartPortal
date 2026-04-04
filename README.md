@@ -20,6 +20,10 @@ Der Login laeuft jetzt ueber Google OAuth 2.0 und serverseitige PHP-Sessions.
 - `DB_NAME` (optional, default: `db_447002_1`)
 - `DB_USER` (Pflicht)
 - `DB_PASS` (Pflicht)
+- `USER_DB_HOST` (optional, default: `localhost`)
+- `USER_DB_NAME` (optional, default: `db_447002_2`)
+- `USER_DB_USER` (Pflicht fuer Portal-DB)
+- `USER_DB_PASS` (Pflicht fuer Portal-DB)
 
 Wenn dein Hosting keine echten Umgebungsvariablen anbietet, kannst du stattdessen eine Secret-Datei `dartportal_auth.php` verwenden.
 
@@ -42,18 +46,24 @@ return [
 	'db_name' => 'db_447002_1',
 	'db_user' => '...',
 	'db_pass' => '...',
+	'user_db_host' => 'localhost',
+	'user_db_name' => 'db_447002_2',
+	'user_db_user' => 'USER447002_user',
+	'user_db_pass' => '...',
 ];
 ```
 
 ### 3. Datenbank
 
-Die Tabelle `oauth_users` auf DB "..._1" und die Tabelle `portal_users` auf DB "..._2" müssen vorab in MySQL existieren, da `google-callback.php`  
-Benutzer dort anlegt oder aktualisiert.
+Die Tabelle `oauth_users` auf DB "..._1" sowie die Tabellen `portal_users` und `friendships` auf DB "..._2" muessen vorab in MySQL existieren, da `google-callback.php`  
+Benutzer dort anlegt oder aktualisiert und das Freunde-System die Portal-DB nutzt.
 Migration:
 
 `migrations/20260328_oauth_users.sql`
 
 `migrations/20260402_portal_users.sql` 
+
+`migrations/20260404_friendships.sql`
 
 ### 4. Login-Fluss
 

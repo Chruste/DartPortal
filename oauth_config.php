@@ -103,6 +103,11 @@ function load_user_db_secrets(): array
         }
     }
 
+    $secrets = load_auth_secrets();
+    if (is_array($secrets) && $secrets !== []) {
+        return $secrets;
+    }
+
     $secrets = [];
     return $secrets;
 }
@@ -123,7 +128,7 @@ function user_env(string $key, string $default = ''): string
 
     if (isset($map[$key])) {
         $secrets = load_user_db_secrets();
-        $fileValue = $secrets[$map[$key]] ?? '';
+        $fileValue = $secrets['user_' . $map[$key]] ?? ($secrets[$map[$key]] ?? '');
         if ($fileValue !== '') {
             return (string) $fileValue;
         }
