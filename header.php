@@ -11,6 +11,9 @@ $displayName = $_SESSION['username'] ?? 'Login';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= $pageTitle ?? 'Portal'; ?></title>
+  <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+  <link rel="shortcut icon" href="/img/favicon.ico">
+  <link rel="apple-touch-icon" href="/img/favicon.ico">
   <link rel="stylesheet" href="/portal.css">
   <link rel="manifest" href="/manifest.json">
   <?= $extraHead ?? '' ?>
