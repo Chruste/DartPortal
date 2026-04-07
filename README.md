@@ -16,6 +16,7 @@ Der Login laeuft jetzt ueber Google OAuth 2.0 und serverseitige PHP-Sessions.
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `APP_BASE_URL` (z. B. `https://chruste.de.cool`)
+- `APP_ENFORCE_HTTPS` (optional, default: `1`; auf `0` setzen, um HTTPS-Weiterleitung z. B. lokal zu deaktivieren)
 - `DB_HOST` (optional, default: `localhost`)
 - `DB_NAME` (optional, default: `db_447002_1`)
 - `DB_USER` (Pflicht)
