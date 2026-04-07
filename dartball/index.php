@@ -2,6 +2,7 @@
 require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Dartball';
 $username  = $_SESSION['username'] ?? null;
+$isAuthenticated = isset($_SESSION['user_id']);
 $extraHead = '<link rel="stylesheet" href="/dartball/styles.css">';
 include __DIR__ . '/../header.php';
 ?>
@@ -10,7 +11,9 @@ include __DIR__ . '/../header.php';
     <header>
       <img src="img/headline.png" alt="Dartball">
     </header>
-    <div id="status">Board-Status: –</div>
+    <?php if ($isAuthenticated): ?>
+      <div id="status">Board-Status: –</div>
+    <?php endif; ?>
     <div id="manualInput">
       <input id="manualSector" placeholder="z.B. D20 oder Bull eingeben">
       <button id="manualSubmit">Manuellen Wurf hinzufügen</button>

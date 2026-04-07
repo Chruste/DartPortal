@@ -2,6 +2,7 @@
 require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Shanghai 21';
 $username  = $_SESSION['username'] ?? null;
+$isAuthenticated = isset($_SESSION['user_id']);
 $extraHead = '<link rel="stylesheet" href="/shanghai21/styles.css">';
 include __DIR__ . '/../header.php';
 ?>
@@ -10,7 +11,9 @@ include __DIR__ . '/../header.php';
     <header>
       <img src="img/headline.png" alt="Shanghai 21">
     </header>
-    <div id="status">Board-Status: –</div>
+    <?php if ($isAuthenticated): ?>
+      <div id="status">Board-Status: –</div>
+    <?php endif; ?>
     
     <!-- Manuelle Eingabe -->
     <div id="manualInput">

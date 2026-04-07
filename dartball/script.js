@@ -7,13 +7,15 @@ function initApp() {
 
   // 2) WebSocket-Verbindung initialisieren
   const statusEl = document.getElementById('status');
-  let ws = new WebSocket(
-    `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
-  );
-  ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
-  ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
-  ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
-  ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  if (statusEl && serialNumber && accessToken) {
+    let ws = new WebSocket(
+      `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
+    );
+    ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
+    ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
+    ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
+    ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  }
 
   // 3) Spiel-Logik
   const sequence = Array.from({ length: 20 }, (_, i) => (i + 1).toString()).concat('Bull');

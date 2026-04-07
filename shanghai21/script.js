@@ -580,13 +580,15 @@ function initApp() {
 
   // 2) WebSocket-Verbindung initialisieren
   const statusEl = document.getElementById('status');
-  let ws = new WebSocket(
-    `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
-  );
-  ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
-  ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
-  ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
-  ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  if (statusEl && serialNumber && accessToken) {
+    let ws = new WebSocket(
+      `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
+    );
+    ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
+    ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
+    ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
+    ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  }
 
   // Erstelle Controls Footer
   ensureControlsFooter();
