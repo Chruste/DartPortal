@@ -1317,12 +1317,22 @@ function recordStateChange(event = {}) {
 }
 
 function startNewGame() {
-  if (!confirmDiscardResults()) {
+  const hadActiveSave = Boolean(storageEnabled && activeSaveId);
+
+  if (!hadActiveSave && !confirmDiscardResults()) {
     return;
   }
 
+  if (hadActiveSave) {
+    storageEnabled = false;
+    activeSaveId = null;
+    activeSaveLabel = '';
+    updateStorageToggleButton();
+    renderSavedGames();
+  }
+
   loadGameState({ players: [] });
-  setStorageInfo('Neues Spiel gestartet.');
+  setStorageInfo(hadActiveSave ? 'Speicherstand geschlossen. Neues Spiel gestartet.' : 'Neues Spiel gestartet.');
   recordStateChange({
     eventType: 'new_game',
     source: 'ui',
