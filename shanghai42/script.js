@@ -1230,7 +1230,8 @@ async function loadSavedGame(saveId) {
   const numericSaveId = Number(saveId);
   if (!numericSaveId) return;
 
-  if (!confirmDiscardResults()) {
+  const hasSavedCurrentGame = Boolean(storageEnabled && activeSaveId);
+  if (!hasSavedCurrentGame && !confirmDiscardResults()) {
     return;
   }
 
