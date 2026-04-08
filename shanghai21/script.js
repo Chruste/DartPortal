@@ -374,10 +374,10 @@ function setStorageInfo(message = '', isError = false) {
   if (!statusEl) return;
 
   const fallbackMessage = archivedMode && activeSaveId
-    ? `Archivierter Speicherstand geladen${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+    ? `Cloud Spiel archiviert${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
     : (storageEnabled && activeSaveId
-      ? `Automatisches Speichern aktiv${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
-      : 'Speichern ist aktuell deaktiviert.');
+      ? `Cloud Spiel aktiv${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+      : 'Lokales Spiel aktiv. Noch nicht in der Cloud gespeichert.');
 
   statusEl.textContent = message || fallbackMessage;
   statusEl.classList.toggle('error', Boolean(isError));
@@ -394,7 +394,14 @@ function updateStorageToggleButton() {
   const toggleBtn = document.getElementById('toggleStorageBtn');
   if (!toggleBtn) return;
 
-  toggleBtn.textContent = storageEnabled && activeSaveId ? 'Speichern deaktivieren' : 'Speichern aktivieren';
+  const isCloudMode = Boolean(storageEnabled && activeSaveId);
+  toggleBtn.textContent = isCloudMode ? 'Cloud Spiel' : 'Lokales Spiel';
+  toggleBtn.title = isCloudMode
+    ? 'Wechselt zum lokalen Spiel. Der aktuelle Spielstand bleibt in der Cloud bestehen.'
+    : 'Neuen Cloud Spielstand mit den aktuellen Ergebnissen anlegen.';
+  toggleBtn.setAttribute('aria-label', toggleBtn.title);
+  toggleBtn.classList.toggle('storage-local-mode', !isCloudMode);
+  toggleBtn.classList.toggle('storage-cloud-mode', isCloudMode);
 }
 
 function updateGameInteractionState() {
@@ -409,10 +416,6 @@ function updateGameInteractionState() {
     if (control) {
       control.disabled = isLocked;
     }
-  });
-
-  document.querySelectorAll('.playerActivateBtn, .playerDeleteBtn, .playerConfirmDeleteBtn').forEach(button => {
-    button.disabled = isLocked;
   });
 }
 
@@ -998,7 +1001,10 @@ function renderSavedGames() {
     const loadBtn = document.createElement('button');
     loadBtn.type = 'button';
     loadBtn.className = 'saved-games-load-btn';
-    loadBtn.textContent = 'Laden';
+    loadBtn.textContent = '📂';
+    loadBtn.title = 'Cloud-Spielstand laden';
+    loadBtn.setAttribute('aria-label', loadBtn.title);
+    bindSavedGamesTooltip(loadBtn, () => loadBtn.title);
     loadBtn.onclick = () => {
       void loadSavedGame(save.id);
     };
@@ -1007,7 +1013,10 @@ function renderSavedGames() {
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
     copyBtn.className = 'saved-games-copy-btn';
-    copyBtn.textContent = 'Kopieren';
+    copyBtn.textContent = '📄';
+    copyBtn.title = 'Kopie als neuen Cloud-Spielstand anlegen und direkt öffnen';
+    copyBtn.setAttribute('aria-label', copyBtn.title);
+    bindSavedGamesTooltip(copyBtn, () => copyBtn.title);
     copyBtn.onclick = () => {
       void copySavedGame(save.id);
     };
@@ -1016,11 +1025,13 @@ function renderSavedGames() {
     const archiveBtn = document.createElement('button');
     archiveBtn.type = 'button';
     archiveBtn.className = 'saved-games-archive-btn';
-    archiveBtn.textContent = save.isArchived ? 'Reaktivieren' : 'Archivieren';
+    archiveBtn.textContent = save.isArchived ? '♻️' : '🗄️';
     archiveBtn.disabled = !save.isOwner;
     archiveBtn.title = save.isOwner
-      ? (save.isArchived ? 'Schreibschutz aufheben' : 'Speicherstand schreibschützen')
+      ? (save.isArchived ? 'Schreibschutz aufheben und Speicherstand reaktivieren' : 'Speicherstand archivieren und schreibschützen')
       : 'Nur der Besitzer kann diesen Speicherstand archivieren';
+    archiveBtn.setAttribute('aria-label', archiveBtn.title);
+    bindSavedGamesTooltip(archiveBtn, () => archiveBtn.title);
     archiveBtn.onclick = () => {
       void toggleSaveArchive(save.id, !save.isArchived);
     };
@@ -1029,9 +1040,11 @@ function renderSavedGames() {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'saved-games-delete-btn';
-    deleteBtn.textContent = 'Löschen';
+    deleteBtn.textContent = '🗑️';
     deleteBtn.disabled = !save.isOwner;
     deleteBtn.title = save.isOwner ? 'Speicherstand löschen' : 'Nur der Besitzer kann diesen Speicherstand löschen';
+    deleteBtn.setAttribute('aria-label', deleteBtn.title);
+    bindSavedGamesTooltip(deleteBtn, () => deleteBtn.title);
     deleteBtn.onclick = () => {
       void deleteSavedGame(save.id);
     };

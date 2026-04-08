@@ -43,6 +43,21 @@ body {
     cursor: pointer;
   }
 
+  #toggleStorageBtn {
+    width: 150px;
+    min-width: 150px;
+  }
+
+  #toggleStorageBtn.storage-local-mode {
+    background: #8b0000;
+    border-color: #f55;
+  }
+
+  #toggleStorageBtn.storage-cloud-mode {
+    background: #146c2e;
+    border-color: #69d88d;
+  }
+
   .save-state-info {
     width: 100%;
     color: #ddd;
@@ -70,11 +85,23 @@ body {
     white-space: normal;
   }
 
+  .saved-games-table th:nth-child(2),
+  .saved-games-table td:nth-child(2) {
+    width: 29%;
+    min-width: 220px;
+  }
+
+  .saved-games-table th:nth-child(3),
+  .saved-games-table td:nth-child(3) {
+    width: 36%;
+    min-width: 260px;
+  }
+
   .saved-games-table td:last-child,
   .saved-games-table th:last-child {
-    width: 340px;
-    min-width: 340px;
-    max-width: 340px;
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
   }
 
   .saved-games-filter-row input {
@@ -112,7 +139,15 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35em;
-    justify-content: flex-start;
+    justify-content: center;
+  }
+
+  .saved-games-action-group button {
+    width: 36px;
+    min-width: 36px;
+    padding: 6px 0;
+    font-size: 1rem;
+    line-height: 1;
   }
 
   .saved-games-delete-btn {
