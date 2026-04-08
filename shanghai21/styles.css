@@ -124,6 +124,22 @@ body {
     font-size: 0.95em;
   }
 
+  .saved-games-tooltip {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    max-width: min(480px, calc(100vw - 24px));
+    padding: 8px 10px;
+    border: 1px solid #666;
+    border-radius: 8px;
+    background: rgba(18, 18, 18, 0.96);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .saved-games-table tr.active-save-row td {
     background: rgba(255, 215, 0, 0.14);
   }

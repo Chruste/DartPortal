@@ -338,6 +338,7 @@ let savedGamesCache = [];
 let savedGamesCurrentPage = 1;
 let savedGamesTotalCount = 0;
 let savedGamesFilterTimer = null;
+let savedGamesTooltipEl = null;
 const SAVED_GAMES_PAGE_SIZE = 10;
 let savedGamesFilters = {
   updatedAt: '',
@@ -762,6 +763,74 @@ function getSavedGamesPanel() {
   return document.getElementById('savedGamesPanel');
 }
 
+function ensureSavedGamesTooltip() {
+  if (savedGamesTooltipEl && document.body.contains(savedGamesTooltipEl)) {
+    return savedGamesTooltipEl;
+  }
+
+  const tooltip = document.createElement('div');
+  tooltip.id = 'savedGamesTooltip';
+  tooltip.className = 'saved-games-tooltip';
+  tooltip.hidden = true;
+  document.body.appendChild(tooltip);
+  savedGamesTooltipEl = tooltip;
+  return tooltip;
+}
+
+function resolveSavedGamesTooltipText(textOrFactory) {
+  const rawValue = typeof textOrFactory === 'function' ? textOrFactory() : textOrFactory;
+  return (rawValue ?? '').toString().trim();
+}
+
+function positionSavedGamesTooltip(event) {
+  const tooltip = ensureSavedGamesTooltip();
+  if (tooltip.hidden) return;
+
+  const offset = 14;
+  tooltip.style.left = `${event.clientX + offset}px`;
+  tooltip.style.top = `${event.clientY + offset}px`;
+
+  const rect = tooltip.getBoundingClientRect();
+  let nextLeft = event.clientX + offset;
+  let nextTop = event.clientY + offset;
+
+  if (rect.right > window.innerWidth - 10) {
+    nextLeft = Math.max(10, event.clientX - rect.width - offset);
+  }
+  if (rect.bottom > window.innerHeight - 10) {
+    nextTop = Math.max(10, event.clientY - rect.height - offset);
+  }
+
+  tooltip.style.left = `${nextLeft}px`;
+  tooltip.style.top = `${nextTop}px`;
+}
+
+function showSavedGamesTooltip(textOrFactory, event) {
+  const text = resolveSavedGamesTooltipText(textOrFactory);
+  if (!text) return;
+
+  const tooltip = ensureSavedGamesTooltip();
+  tooltip.textContent = text;
+  tooltip.hidden = false;
+  positionSavedGamesTooltip(event);
+}
+
+function hideSavedGamesTooltip() {
+  if (!savedGamesTooltipEl) return;
+  savedGamesTooltipEl.hidden = true;
+}
+
+function bindSavedGamesTooltip(target, textOrFactory) {
+  if (!target) return;
+
+  target.addEventListener('mouseenter', event => {
+    showSavedGamesTooltip(textOrFactory, event);
+  });
+  target.addEventListener('mousemove', positionSavedGamesTooltip);
+  target.addEventListener('mouseleave', hideSavedGamesTooltip);
+  target.addEventListener('blur', hideSavedGamesTooltip);
+}
+
 function upsertSaveCacheEntry(save) {
   if (!save || !save.id) return;
 
@@ -848,6 +917,7 @@ function renderSavedGames() {
 
     const updatedAtCell = document.createElement('td');
     updatedAtCell.textContent = save.updatedAt || '';
+    bindSavedGamesTooltip(updatedAtCell, () => save.updatedAt || '');
 
     const saveNameCell = document.createElement('td');
     const saveNameInput = document.createElement('input');
@@ -870,10 +940,12 @@ function renderSavedGames() {
       }
       void renameSavedGame(save.id, nextName);
     });
+    bindSavedGamesTooltip(saveNameInput, () => saveNameInput.value || getDefaultSaveName());
     saveNameCell.appendChild(saveNameInput);
 
     const summaryCell = document.createElement('td');
     summaryCell.textContent = save.participantSummary || '';
+    bindSavedGamesTooltip(summaryCell, () => save.participantSummary || '');
 
     const actionCell = document.createElement('td');
     const loadBtn = document.createElement('button');
