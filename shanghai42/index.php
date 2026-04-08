@@ -26,7 +26,7 @@ include __DIR__ . '/../header.php';
               <th>Letzte Änderung</th>
               <th>Speicherstand</th>
               <th>Teilnehmende</th>
-              <th>Laden</th>
+              <th>Aktionen</th>
             </tr>
             <tr class="saved-games-filter-row">
               <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Filtern..." /></th>

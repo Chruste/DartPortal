@@ -95,8 +95,11 @@ class Player {
   updateActivateBtn() {
     const isActive = activePlayerIndex === this.index;
     this.activateBtn.style.display = isActive ? 'none' : 'block';
+    this.activateBtn.disabled = archivedMode;
     this.deleteBtn.style.display = isActive ? 'block' : 'none';
+    this.deleteBtn.disabled = archivedMode || this.deleteBtn.disabled;
     this.confirmDeleteBtn.style.display = 'none';
+    this.confirmDeleteBtn.disabled = archivedMode;
     if (isActive) {
       this.tableArea.classList.remove('inactive');
     } else {
@@ -122,7 +125,7 @@ class Player {
   }
 
   processThrow(sec, type = null, eventMeta = null) {
-    if (this.currentIndex >= this.sequence.length) return;
+    if (archivedMode || this.currentIndex >= this.sequence.length) return;
     const sector = sec.toString().toUpperCase();
     const targetLabel = this.sequence[this.currentIndex] || '';
     let mult = type === 'miss' ? 0
@@ -190,6 +193,8 @@ class Player {
   }
 
   undoLastThrow() {
+    if (archivedMode) return;
+
     if (this.currentIndex > 0) {
       this.currentIndex--;
       const row = this.tbody.children[this.currentIndex];
@@ -223,6 +228,8 @@ class Player {
   }
 
   enterEditMode() {
+    if (archivedMode) return;
+
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
     editingPlayerIndex = this.index;
@@ -316,6 +323,7 @@ let controlsFooterInitialized = false;
 let storageEnabled = false;
 let activeSaveId = null;
 let activeSaveLabel = '';
+let archivedMode = false;
 let savedGamesCache = [];
 let savedGamesCurrentPage = 1;
 let savedGamesTotalCount = 0;
@@ -351,9 +359,10 @@ function updateUndoButtonVisibility() {
   if (!undoBtn) return;
 
   const activePlayer = getActivePlayer();
-  const canUndo = Boolean(activePlayer && activePlayer.currentIndex > 0 && editingPlayerIndex === null);
+  const canUndo = Boolean(!archivedMode && activePlayer && activePlayer.currentIndex > 0 && editingPlayerIndex === null);
   undoBtn.style.visibility = canUndo ? 'visible' : 'hidden';
   undoBtn.style.pointerEvents = canUndo ? 'auto' : 'none';
+  undoBtn.disabled = !canUndo;
 }
 
 function getStorageStatusElement() {
@@ -364,9 +373,11 @@ function setStorageInfo(message = '', isError = false) {
   const statusEl = getStorageStatusElement();
   if (!statusEl) return;
 
-  const fallbackMessage = storageEnabled && activeSaveId
-    ? `Automatisches Speichern aktiv${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
-    : 'Speichern ist aktuell deaktiviert.';
+  const fallbackMessage = archivedMode && activeSaveId
+    ? `Archivierter Speicherstand geladen${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+    : (storageEnabled && activeSaveId
+      ? `Automatisches Speichern aktiv${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+      : 'Speichern ist aktuell deaktiviert.');
 
   statusEl.textContent = message || fallbackMessage;
   statusEl.classList.toggle('error', Boolean(isError));
@@ -384,6 +395,39 @@ function updateStorageToggleButton() {
   if (!toggleBtn) return;
 
   toggleBtn.textContent = storageEnabled && activeSaveId ? 'Speichern deaktivieren' : 'Speichern aktivieren';
+}
+
+function updateGameInteractionState() {
+  const isLocked = Boolean(archivedMode && activeSaveId);
+  const manualSectorInput = document.getElementById('manualSector');
+  if (manualSectorInput) {
+    manualSectorInput.disabled = isLocked;
+  }
+
+  ['manualSubmit', 'btnMiss', 'btnSingle', 'btnDouble', 'btnTriple', 'addPlayerButton', 'editButton', 'saveButton'].forEach(id => {
+    const control = document.getElementById(id);
+    if (control) {
+      control.disabled = isLocked;
+    }
+  });
+
+  document.querySelectorAll('.playerActivateBtn, .playerDeleteBtn, .playerConfirmDeleteBtn').forEach(button => {
+    button.disabled = isLocked;
+  });
+}
+
+function setArchiveMode(nextArchived) {
+  const shouldLock = Boolean(nextArchived && activeSaveId);
+
+  if (shouldLock && editingPlayerIndex !== null && players[editingPlayerIndex]) {
+    players[editingPlayerIndex].exitEditMode();
+  }
+
+  archivedMode = shouldLock;
+  updateAllActivateBtns();
+  updateAutoPlayerSwitchBtn();
+  updateUndoButtonVisibility();
+  updateGameInteractionState();
 }
 
 function updateFooterLayout() {
@@ -699,6 +743,7 @@ function loadGameState(state = {}) {
 
   updateUndoButtonVisibility();
   updateFooterLayout();
+  updateGameInteractionState();
 }
 
 function hasGameProgress() {
@@ -833,6 +878,8 @@ function upsertSaveCacheEntry(save) {
     saveName: (save.saveName || getDefaultSaveName()).toString(),
     updatedAt: save.updatedAt || formatLocalDateTime(new Date()),
     participantSummary: (save.participantSummary || '').toString(),
+    isArchived: Boolean(save.isArchived),
+    isOwner: save.isOwner !== false,
   };
 
   const existingIndex = savedGamesCache.findIndex(item => Number(item.id) === entry.id);
@@ -919,7 +966,10 @@ function renderSavedGames() {
     saveNameInput.className = 'saved-games-name-input';
     saveNameInput.maxLength = 160;
     saveNameInput.value = save.saveName || getDefaultSaveName();
-    saveNameInput.title = 'Speicherstandsname ändern';
+    saveNameInput.disabled = Boolean(save.isArchived || !save.isOwner);
+    saveNameInput.title = !save.isOwner
+      ? 'Nur der Besitzer kann den Speicherstand umbenennen'
+      : (save.isArchived ? 'Archivierte Speicherstände sind schreibgeschützt' : 'Speicherstandsname ändern');
     saveNameInput.addEventListener('keydown', event => {
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -942,6 +992,9 @@ function renderSavedGames() {
     bindSavedGamesTooltip(summaryCell, () => save.participantSummary || '');
 
     const actionCell = document.createElement('td');
+    const actionGroup = document.createElement('div');
+    actionGroup.className = 'saved-games-action-group';
+
     const loadBtn = document.createElement('button');
     loadBtn.type = 'button';
     loadBtn.className = 'saved-games-load-btn';
@@ -949,7 +1002,42 @@ function renderSavedGames() {
     loadBtn.onclick = () => {
       void loadSavedGame(save.id);
     };
-    actionCell.appendChild(loadBtn);
+    actionGroup.appendChild(loadBtn);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'saved-games-copy-btn';
+    copyBtn.textContent = 'Kopieren';
+    copyBtn.onclick = () => {
+      void copySavedGame(save.id);
+    };
+    actionGroup.appendChild(copyBtn);
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.type = 'button';
+    archiveBtn.className = 'saved-games-archive-btn';
+    archiveBtn.textContent = save.isArchived ? 'Reaktivieren' : 'Archivieren';
+    archiveBtn.disabled = !save.isOwner;
+    archiveBtn.title = save.isOwner
+      ? (save.isArchived ? 'Schreibschutz aufheben' : 'Speicherstand schreibschützen')
+      : 'Nur der Besitzer kann diesen Speicherstand archivieren';
+    archiveBtn.onclick = () => {
+      void toggleSaveArchive(save.id, !save.isArchived);
+    };
+    actionGroup.appendChild(archiveBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'saved-games-delete-btn';
+    deleteBtn.textContent = 'Löschen';
+    deleteBtn.disabled = !save.isOwner;
+    deleteBtn.title = save.isOwner ? 'Speicherstand löschen' : 'Nur der Besitzer kann diesen Speicherstand löschen';
+    deleteBtn.onclick = () => {
+      void deleteSavedGame(save.id);
+    };
+    actionGroup.appendChild(deleteBtn);
+
+    actionCell.appendChild(actionGroup);
 
     row.appendChild(updatedAtCell);
     row.appendChild(saveNameCell);
@@ -1144,6 +1232,7 @@ async function enableStorage() {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
     await refreshSavedGamesAfterMutation();
@@ -1155,20 +1244,15 @@ async function enableStorage() {
   }
 }
 
-async function deleteActiveSave() {
-  if (!activeSaveId) {
-    storageEnabled = false;
-    activeSaveLabel = '';
-    updateStorageToggleButton();
-    setStorageInfo();
-    return;
-  }
+async function deleteSavedGame(saveId) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
 
   if (!window.confirm('Diesen Speicherstand wirklich löschen?')) {
     return;
   }
 
-  const saveIdToDelete = activeSaveId;
+  const wasActiveSave = Number(activeSaveId) === numericSaveId;
   setSaveControlsBusy(true);
 
   try {
@@ -1181,17 +1265,22 @@ async function deleteActiveSave() {
         action: 'delete',
         csrfToken: shanghaiAppConfig.csrfToken || '',
         gameType: shanghaiAppConfig.gameType || '',
-        saveId: saveIdToDelete,
+        saveId: numericSaveId,
       }),
     });
 
-    storageEnabled = false;
-    activeSaveId = null;
-    activeSaveLabel = '';
-    updateStorageToggleButton();
-    removeSaveCacheEntry(saveIdToDelete);
+    if (wasActiveSave) {
+      storageEnabled = false;
+      activeSaveId = null;
+      activeSaveLabel = '';
+      setArchiveMode(false);
+      updateStorageToggleButton();
+    }
+
+    removeSaveCacheEntry(numericSaveId);
     await refreshSavedGamesAfterMutation();
-    setStorageInfo('Speicherstand gelöscht.');
+    renderSavedGames();
+    setStorageInfo(wasActiveSave ? 'Speicherstand gelöscht. Aktuelles Spiel bleibt lokal geöffnet.' : 'Speicherstand gelöscht.');
   } catch (error) {
     setStorageInfo(error.message || 'Speicherstand konnte nicht gelöscht werden.', true);
   } finally {
@@ -1199,10 +1288,24 @@ async function deleteActiveSave() {
   }
 }
 
+async function deleteActiveSave() {
+  if (!activeSaveId) {
+    storageEnabled = false;
+    activeSaveLabel = '';
+    setArchiveMode(false);
+    updateStorageToggleButton();
+    setStorageInfo();
+    return;
+  }
+
+  await deleteSavedGame(activeSaveId);
+}
+
 function disableStorage() {
   storageEnabled = false;
   activeSaveId = null;
   activeSaveLabel = '';
+  setArchiveMode(false);
   updateStorageToggleButton();
   renderSavedGames();
   setStorageInfo('Speichern deaktiviert. Änderungen bleiben lokal, bis du erneut speicherst.');
@@ -1233,14 +1336,19 @@ async function loadSavedGame(saveId) {
       `${storageApiUrl}?action=load&gameType=${encodeURIComponent(shanghaiAppConfig.gameType || '')}&saveId=${encodeURIComponent(numericSaveId)}`
     );
 
-    loadGameState(data.save?.state || {});
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    loadGameState(data.save?.state || {});
+    setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
     renderSavedGames();
-    setStorageInfo(`Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
+    setStorageInfo(
+      archivedMode
+        ? `Archivierter Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}. Änderungen sind gesperrt.`
+        : `Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`
+    );
   } catch (error) {
     setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
   } finally {
@@ -1248,8 +1356,106 @@ async function loadSavedGame(saveId) {
   }
 }
 
+async function copySavedGame(saveId) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const hasSavedCurrentGame = Boolean(storageEnabled && activeSaveId);
+  if (!hasSavedCurrentGame && !confirmDiscardResults()) {
+    return;
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'copy',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+      }),
+    });
+
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || 0) || null;
+    activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    loadGameState(data.save?.state || {});
+    setArchiveMode(Boolean(data.save?.isArchived));
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    await refreshSavedGamesAfterMutation();
+    renderSavedGames();
+    setStorageInfo(`Speicherstand kopiert und geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht kopiert werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function toggleSaveArchive(saveId, shouldArchive) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const activeEntry = savedGamesCache.find(item => Number(item.id) === numericSaveId);
+  const isActiveTarget = Number(activeSaveId) === numericSaveId;
+
+  if (shouldArchive && isActiveTarget && editingPlayerIndex !== null && players[editingPlayerIndex]) {
+    players[editingPlayerIndex].exitEditMode();
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: shouldArchive ? 'archive' : 'reactivate',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+      }),
+    });
+
+    upsertSaveCacheEntry({
+      id: numericSaveId,
+      saveName: data.save?.saveName || activeEntry?.saveName || getDefaultSaveName(),
+      updatedAt: data.save?.updatedAt || formatLocalDateTime(new Date()),
+      participantSummary: data.save?.participantSummary || activeEntry?.participantSummary || '',
+      isArchived: Boolean(data.save?.isArchived),
+      isOwner: data.save?.isOwner !== false,
+    });
+
+    if (isActiveTarget) {
+      activeSaveLabel = data.save?.saveName || activeSaveLabel;
+      setArchiveMode(Boolean(data.save?.isArchived));
+      updateStorageToggleButton();
+      renderSavedGames();
+    }
+
+    await refreshSavedGamesAfterMutation();
+    setStorageInfo(
+      data.message
+      || (shouldArchive ? 'Speicherstand archiviert.' : 'Speicherstand reaktiviert.')
+    );
+  } catch (error) {
+    setStorageInfo(error.message || 'Archivstatus konnte nicht geändert werden.', true);
+    renderSavedGames();
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
 function recordStateChange(event = {}) {
-  if (isRestoringState || !isAuthenticatedUser || !storageEnabled || !activeSaveId) {
+  if (isRestoringState || archivedMode || !isAuthenticatedUser || !storageEnabled || !activeSaveId) {
     return;
   }
 
@@ -1274,7 +1480,7 @@ function recordStateChange(event = {}) {
   storageSaveChain = storageSaveChain
     .catch(() => undefined)
     .then(async () => {
-      if (!storageEnabled || Number(activeSaveId) !== saveId) {
+      if (!storageEnabled || archivedMode || Number(activeSaveId) !== saveId) {
         return;
       }
 
@@ -1319,6 +1525,7 @@ function startNewGame() {
     storageEnabled = false;
     activeSaveId = null;
     activeSaveLabel = '';
+    setArchiveMode(false);
     updateStorageToggleButton();
     renderSavedGames();
   }
@@ -1552,6 +1759,8 @@ function initApp() {
 }
 
 function addPlayer() {
+  if (archivedMode) return;
+
   const playerIndex = nextPlayerId++;
   const activePlayer = getActivePlayer();
   const currentUserId = Number.parseInt(String(shanghaiAppConfig.userId ?? ''), 10);
@@ -1590,6 +1799,8 @@ function addPlayer() {
 }
 
 function deletePlayer(index) {
+  if (archivedMode) return;
+
   const player = players[index];
   if (!player) return;
 
@@ -1638,7 +1849,7 @@ function deletePlayer(index) {
 }
 
 function setActivePlayer(index) {
-  if (!players[index]) return;
+  if (archivedMode || !players[index]) return;
   if (editingPlayerIndex !== null && editingPlayerIndex !== index && players[editingPlayerIndex]) {
     players[editingPlayerIndex].exitEditMode();
   }
@@ -1665,6 +1876,8 @@ function updateAllActivateBtns() {
 }
 
 function switchToNextPlayer() {
+  if (archivedMode) return;
+
   const openIds = getOpenPlayerIds();
 
   if (openIds.length === 0) {
@@ -1690,6 +1903,8 @@ function updateAutoPlayerSwitchBtn() {
   const openCount = getOpenPlayerIds().length;
   const autoBtn = document.getElementById('autoPlayerBtn');
   const manualBtn = document.getElementById('manualPlayerBtn');
+  if (!autoBtn || !manualBtn) return;
+
   if (openCount === 0 || count <= 1) {
     autoPlayerSwitch = false;
     autoBtn.style.display = 'inline';
@@ -1698,15 +1913,25 @@ function updateAutoPlayerSwitchBtn() {
   } else if (autoPlayerSwitch) {
     autoBtn.style.display = 'none';
     manualBtn.style.display = 'inline';
+    manualBtn.disabled = archivedMode;
   } else {
     autoBtn.style.display = 'inline';
-    autoBtn.disabled = false;
+    autoBtn.disabled = archivedMode ? true : false;
     manualBtn.style.display = 'none';
+  }
+
+  if (archivedMode) {
+    autoBtn.disabled = true;
+    manualBtn.disabled = true;
   }
 }
 
 function handleMessage(msg) {
   console.debug('WS message:', msg);
+  if (archivedMode) {
+    return;
+  }
+
   if (msg.type === 'THROW_DETECTED') {
     const payload = msg && typeof msg.payload === 'object' && msg.payload ? msg.payload : {};
     const sector = (payload.sector || '').toString().toLowerCase();

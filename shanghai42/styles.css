@@ -72,9 +72,9 @@ body {
 
   .saved-games-table td:last-child,
   .saved-games-table th:last-child {
-    width: 120px;
-    min-width: 120px;
-    max-width: 120px;
+    width: 340px;
+    min-width: 340px;
+    max-width: 340px;
   }
 
   .saved-games-filter-row input {
@@ -96,6 +96,9 @@ body {
   }
 
   .saved-games-load-btn,
+  .saved-games-copy-btn,
+  .saved-games-archive-btn,
+  .saved-games-delete-btn,
   #clearSavedGamesFiltersBtn,
   .saved-games-pagination button {
     background: #333;
@@ -103,6 +106,23 @@ body {
     border: 1px solid #555;
     padding: 6px 10px;
     cursor: pointer;
+  }
+
+  .saved-games-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    justify-content: flex-start;
+  }
+
+  .saved-games-delete-btn {
+    border-color: #8d3b3b;
+  }
+
+  .saved-games-action-group button:disabled,
+  .saved-games-name-input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 
   .saved-games-pagination {

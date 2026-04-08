@@ -404,7 +404,8 @@ function portal_shanghai_fetch_session_for_user(mysqli $db, array $config, int $
                 s.state_json,
                 s.event_count,
                 s.last_event_at,
-                s.participant_count
+                s.participant_count,
+                s.is_archived
             FROM {$config['sessions']} s
             WHERE s.id = ?
               AND s.is_deleted = 0
@@ -498,7 +499,7 @@ try {
             $totalCount = is_array($countRow) ? (int) ($countRow['total_count'] ?? 0) : 0;
 
             $stmt = $mysqli_user->prepare(
-                "SELECT s.id, s.save_name, s.participant_summary, s.updated_at
+                "SELECT s.id, s.owner_user_id, s.save_name, s.participant_summary, s.updated_at, s.is_archived
                  FROM {$config['sessions']} s
                  WHERE s.is_deleted = 0
                    AND (
@@ -545,6 +546,8 @@ try {
                     'saveName' => (string) ($row['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
                     'updatedAt' => portal_format_datetime((string) ($row['updated_at'] ?? '')),
                     'participantSummary' => (string) ($row['participant_summary'] ?? ''),
+                    'isArchived' => !empty($row['is_archived']),
+                    'isOwner' => (int) ($row['owner_user_id'] ?? 0) === $userId,
                 ];
             }
 
@@ -583,6 +586,8 @@ try {
                     'participantSummary' => (string) ($row['participant_summary'] ?? ''),
                     'eventCount' => (int) ($row['event_count'] ?? 0),
                     'participantCount' => (int) ($row['participant_count'] ?? 0),
+                    'isArchived' => !empty($row['is_archived']),
+                    'isOwner' => (int) ($row['owner_user_id'] ?? 0) === $userId,
                     'state' => $state,
                 ],
             ]);
@@ -644,6 +649,198 @@ try {
                 'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
                 'participantSummary' => $meta['participantSummary'],
                 'participantCount' => $meta['participantCount'],
+                'isArchived' => false,
+                'isOwner' => true,
+                'state' => $state,
+            ],
+        ]);
+    }
+
+    if ($action === 'copy') {
+        $sourceSaveId = isset($input['saveId']) && is_numeric($input['saveId']) ? (int) $input['saveId'] : 0;
+        if ($sourceSaveId <= 0) {
+            throw new InvalidArgumentException('Ungueltiger Speicherstand.');
+        }
+
+        $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $sourceSaveId, $userId);
+        if ($sessionRow === null) {
+            portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+        }
+
+        $copiedState = json_decode((string) ($sessionRow['state_json'] ?? '{}'), true);
+        if (!is_array($copiedState)) {
+            $copiedState = [];
+        }
+
+        if (isset($copiedState['players'][0]) && is_array($copiedState['players'][0])) {
+            $copiedState['players'][0]['portalUserId'] = $userId;
+            $copiedState['players'][0]['participantRole'] = 'owner';
+            $copiedState['players'][0]['invitationStatus'] = 'accepted';
+            $copiedState['players'][0]['invitedByUserId'] = null;
+        }
+
+        $saveName = portal_shanghai_normalize_save_name(
+            $input['saveName'] ?? ((string) ($sessionRow['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])) . ' (Kopie)'),
+            $config['gameType']
+        );
+        $stateJson = portal_shanghai_state_json($copiedState);
+        $meta = portal_shanghai_state_meta($copiedState, $userId);
+        $sourceEventCount = (int) ($sessionRow['event_count'] ?? 0);
+        $sourceLastEventAt = !empty($sessionRow['last_event_at']) ? (string) $sessionRow['last_event_at'] : null;
+
+        $mysqli_user->begin_transaction();
+
+        try {
+            $insertSessionStmt = $mysqli_user->prepare(
+                "INSERT INTO {$config['sessions']} (
+                    owner_user_id,
+                    save_name,
+                    participant_summary,
+                    participants_json,
+                    state_json,
+                    participant_count,
+                    event_count,
+                    last_event_at,
+                    is_archived
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)"
+            );
+            if (!$insertSessionStmt) {
+                throw new RuntimeException('Speicherstand konnte nicht kopiert werden.');
+            }
+
+            $insertSessionStmt->bind_param(
+                'issssiis',
+                $userId,
+                $saveName,
+                $meta['participantSummary'],
+                $meta['participantsJson'],
+                $stateJson,
+                $meta['participantCount'],
+                $sourceEventCount,
+                $sourceLastEventAt
+            );
+            $insertSessionStmt->execute();
+            $saveId = (int) $insertSessionStmt->insert_id;
+            $insertSessionStmt->close();
+
+            $participantLookup = portal_shanghai_sync_participants($mysqli_user, $config['participants'], $saveId, $meta['participants']);
+
+            if ($sourceEventCount > 0) {
+                $eventSelectStmt = $mysqli_user->prepare(
+                    "SELECT
+                        e.player_user_id,
+                        e.recorded_by_user_id,
+                        e.event_no,
+                        e.event_type,
+                        e.event_source,
+                        e.player_index,
+                        e.player_name,
+                        e.target_label,
+                        e.sector_result,
+                        e.score_delta,
+                        e.score_after,
+                        e.detected_at,
+                        e.payload_json,
+                        p.seat_no
+                     FROM {$config['events']} e
+                     LEFT JOIN {$config['participants']} p ON p.id = e.participant_id
+                     WHERE e.session_id = ?
+                     ORDER BY e.event_no ASC"
+                );
+                if (!$eventSelectStmt) {
+                    throw new RuntimeException('Ereignisse konnten nicht kopiert werden.');
+                }
+
+                $eventSelectStmt->bind_param('i', $sourceSaveId);
+                $eventSelectStmt->execute();
+                $eventResult = $eventSelectStmt->get_result();
+
+                $eventInsertStmt = $mysqli_user->prepare(
+                    "INSERT INTO {$config['events']} (
+                        session_id,
+                        participant_id,
+                        player_user_id,
+                        recorded_by_user_id,
+                        event_no,
+                        event_type,
+                        event_source,
+                        player_index,
+                        player_name,
+                        target_label,
+                        sector_result,
+                        score_delta,
+                        score_after,
+                        detected_at,
+                        payload_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+                if (!$eventInsertStmt) {
+                    throw new RuntimeException('Ereignisse konnten nicht kopiert werden.');
+                }
+
+                while ($eventResult && ($eventRow = $eventResult->fetch_assoc())) {
+                    $seatNo = isset($eventRow['seat_no']) ? (int) $eventRow['seat_no'] : null;
+                    $participantId = $seatNo !== null && isset($participantLookup[$seatNo])
+                        ? (int) $participantLookup[$seatNo]['participantId']
+                        : null;
+                    $playerUserId = isset($eventRow['player_user_id']) ? (int) $eventRow['player_user_id'] : null;
+                    $recordedByUserId = isset($eventRow['recorded_by_user_id']) ? (int) $eventRow['recorded_by_user_id'] : null;
+                    $eventNo = (int) ($eventRow['event_no'] ?? 0);
+                    $playerIndex = isset($eventRow['player_index']) ? (int) $eventRow['player_index'] : null;
+                    $scoreDelta = (int) ($eventRow['score_delta'] ?? 0);
+                    $scoreAfter = (int) ($eventRow['score_after'] ?? 0);
+                    $detectedAt = $eventRow['detected_at'] ?? null;
+                    $payloadJson = (string) ($eventRow['payload_json'] ?? '{}');
+                    $eventType = (string) ($eventRow['event_type'] ?? 'state_update');
+                    $eventSource = (string) ($eventRow['event_source'] ?? '');
+                    $playerName = (string) ($eventRow['player_name'] ?? 'Spieler');
+                    $targetLabel = (string) ($eventRow['target_label'] ?? '');
+                    $sectorResult = (string) ($eventRow['sector_result'] ?? '');
+
+                    $eventInsertStmt->bind_param(
+                        'iiiiississsiiss',
+                        $saveId,
+                        $participantId,
+                        $playerUserId,
+                        $recordedByUserId,
+                        $eventNo,
+                        $eventType,
+                        $eventSource,
+                        $playerIndex,
+                        $playerName,
+                        $targetLabel,
+                        $sectorResult,
+                        $scoreDelta,
+                        $scoreAfter,
+                        $detectedAt,
+                        $payloadJson
+                    );
+                    $eventInsertStmt->execute();
+                }
+
+                $eventInsertStmt->close();
+                $eventSelectStmt->close();
+            }
+
+            $mysqli_user->commit();
+        } catch (Throwable $exception) {
+            $mysqli_user->rollback();
+            throw $exception;
+        }
+
+        portal_json_response([
+            'success' => true,
+            'message' => 'Speicherstand kopiert.',
+            'save' => [
+                'id' => $saveId,
+                'saveName' => $saveName,
+                'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
+                'participantSummary' => $meta['participantSummary'],
+                'participantCount' => $meta['participantCount'],
+                'eventCount' => $sourceEventCount,
+                'isArchived' => false,
+                'isOwner' => true,
+                'state' => $copiedState,
             ],
         ]);
     }
@@ -664,6 +861,9 @@ try {
             $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId, true);
             if ($sessionRow === null) {
                 throw new RuntimeException('Speicherstand nicht gefunden.');
+            }
+            if (!empty($sessionRow['is_archived'])) {
+                throw new InvalidArgumentException('Archivierte Speicherstaende koennen nicht geaendert werden.');
             }
 
             $ownerUserId = (int) ($sessionRow['owner_user_id'] ?? 0);
@@ -776,6 +976,8 @@ try {
                 'participantSummary' => $meta['participantSummary'],
                 'participantCount' => $meta['participantCount'],
                 'eventCount' => $eventCount,
+                'isArchived' => false,
+                'isOwner' => (int) ($ownerUserId ?? 0) === $userId,
             ],
         ]);
     }
@@ -789,6 +991,13 @@ try {
         $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId);
         if ($sessionRow === null) {
             portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+        }
+
+        if (!empty($sessionRow['is_archived'])) {
+            throw new InvalidArgumentException('Archivierte Speicherstaende koennen nicht umbenannt werden.');
+        }
+        if ((int) ($sessionRow['owner_user_id'] ?? 0) !== $userId) {
+            portal_json_response(['success' => false, 'message' => 'Nur der Besitzer kann diesen Speicherstand umbenennen.'], 403);
         }
 
         $saveName = portal_shanghai_normalize_save_name($input['saveName'] ?? '', $config['gameType']);
@@ -814,6 +1023,52 @@ try {
                 'saveName' => $saveName,
                 'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
                 'participantSummary' => (string) ($sessionRow['participant_summary'] ?? ''),
+                'isArchived' => !empty($sessionRow['is_archived']),
+                'isOwner' => true,
+            ],
+        ]);
+    }
+
+    if ($action === 'archive' || $action === 'reactivate') {
+        $saveId = isset($input['saveId']) && is_numeric($input['saveId']) ? (int) $input['saveId'] : 0;
+        if ($saveId <= 0) {
+            throw new InvalidArgumentException('Ungueltiger Speicherstand.');
+        }
+
+        $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId);
+        if ($sessionRow === null) {
+            portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+        }
+        if ((int) ($sessionRow['owner_user_id'] ?? 0) !== $userId) {
+            portal_json_response(['success' => false, 'message' => 'Nur der Besitzer kann diesen Speicherstand archivieren.'], 403);
+        }
+
+        $shouldArchive = $action === 'archive';
+        $stmt = $mysqli_user->prepare(
+            "UPDATE {$config['sessions']}
+             SET is_archived = ?,
+                 archived_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP(3) ELSE NULL END
+             WHERE id = ? AND owner_user_id = ? AND is_deleted = 0"
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Archivstatus konnte nicht gespeichert werden.');
+        }
+
+        $archiveFlag = $shouldArchive ? 1 : 0;
+        $stmt->bind_param('iiii', $archiveFlag, $archiveFlag, $saveId, $userId);
+        $stmt->execute();
+        $stmt->close();
+
+        portal_json_response([
+            'success' => true,
+            'message' => $shouldArchive ? 'Speicherstand archiviert.' : 'Speicherstand reaktiviert.',
+            'save' => [
+                'id' => $saveId,
+                'saveName' => (string) ($sessionRow['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
+                'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
+                'participantSummary' => (string) ($sessionRow['participant_summary'] ?? ''),
+                'isArchived' => $shouldArchive,
+                'isOwner' => true,
             ],
         ]);
     }

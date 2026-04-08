@@ -1,0 +1,7 @@
+ALTER TABLE shanghai21_sessions
+    ADD COLUMN IF NOT EXISTS is_archived TINYINT(1) NOT NULL DEFAULT 0 AFTER last_event_at,
+    ADD COLUMN IF NOT EXISTS archived_at DATETIME(3) NULL DEFAULT NULL AFTER is_archived;
+
+ALTER TABLE shanghai42_sessions
+    ADD COLUMN IF NOT EXISTS is_archived TINYINT(1) NOT NULL DEFAULT 0 AFTER last_event_at,
+    ADD COLUMN IF NOT EXISTS archived_at DATETIME(3) NULL DEFAULT NULL AFTER is_archived;
