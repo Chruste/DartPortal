@@ -401,7 +401,7 @@ function updateStorageToggleButton() {
   const toggleBtn = document.getElementById('toggleStorageBtn');
   if (!toggleBtn) return;
 
-  toggleBtn.textContent = storageEnabled && activeSaveId ? 'Speicherstand löschen' : 'Speichern aktivieren';
+  toggleBtn.textContent = storageEnabled && activeSaveId ? 'Speichern deaktivieren' : 'Speichern aktivieren';
 }
 
 function updateFooterLayout() {
@@ -1217,9 +1217,18 @@ async function deleteActiveSave() {
   }
 }
 
+function disableStorage() {
+  storageEnabled = false;
+  activeSaveId = null;
+  activeSaveLabel = '';
+  updateStorageToggleButton();
+  renderSavedGames();
+  setStorageInfo('Speichern deaktiviert. Änderungen bleiben lokal, bis du erneut speicherst.');
+}
+
 async function toggleStorage() {
   if (storageEnabled && activeSaveId) {
-    await deleteActiveSave();
+    disableStorage();
     return;
   }
 
