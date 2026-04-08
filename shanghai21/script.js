@@ -1229,7 +1229,7 @@ async function loadSavedGame(saveId) {
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
-    await refreshSavedGamesAfterMutation();
+    renderSavedGames();
     setStorageInfo(`Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
   } catch (error) {
     setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
