@@ -763,6 +763,18 @@ function getSavedGamesPanel() {
   return document.getElementById('savedGamesPanel');
 }
 
+function isSavedGamesPanelOpen() {
+  const panel = getSavedGamesPanel();
+  return Boolean(panel && !panel.hidden);
+}
+
+async function refreshSavedGamesAfterMutation() {
+  savedGamesCurrentPage = 1;
+  if (isSavedGamesPanelOpen()) {
+    await refreshSavedGamesList(1);
+  }
+}
+
 function ensureSavedGamesTooltip() {
   if (savedGamesTooltipEl && document.body.contains(savedGamesTooltipEl)) {
     return savedGamesTooltipEl;
@@ -1041,6 +1053,7 @@ async function renameSavedGame(saveId, saveName) {
       updatedAt: data.save?.updatedAt || formatLocalDateTime(new Date()),
       participantSummary: data.save?.participantSummary || existingEntry?.participantSummary || '',
     });
+    await refreshSavedGamesAfterMutation();
     setStorageInfo(data.message || 'Speicherstandsname gespeichert.');
   } catch (error) {
     setStorageInfo(error.message || 'Speicherstandsname konnte nicht gespeichert werden.', true);
@@ -1151,6 +1164,7 @@ async function enableStorage() {
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
+    await refreshSavedGamesAfterMutation();
     setStorageInfo(data.message || 'Speichern aktiviert.');
   } catch (error) {
     setStorageInfo(error.message || 'Speichern konnte nicht aktiviert werden.', true);
@@ -1194,6 +1208,7 @@ async function deleteActiveSave() {
     activeSaveLabel = '';
     updateStorageToggleButton();
     removeSaveCacheEntry(saveIdToDelete);
+    await refreshSavedGamesAfterMutation();
     setStorageInfo('Speicherstand gelöscht.');
   } catch (error) {
     setStorageInfo(error.message || 'Speicherstand konnte nicht gelöscht werden.', true);
@@ -1232,6 +1247,7 @@ async function loadSavedGame(saveId) {
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
+    await refreshSavedGamesAfterMutation();
     setStorageInfo(`Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
   } catch (error) {
     setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
@@ -1292,6 +1308,7 @@ function recordStateChange(event = {}) {
         updatedAt: formatLocalDateTime(new Date()),
         participantSummary: data.save?.participantSummary || '',
       });
+      await refreshSavedGamesAfterMutation();
       setStorageInfo();
     })
     .catch(error => {
