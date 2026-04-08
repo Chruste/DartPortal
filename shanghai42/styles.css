@@ -24,6 +24,70 @@ body {
   #status {
     margin: 0.5em 0;
   }
+
+  .save-controls {
+    margin: 0.75em auto 1em;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5em;
+    max-width: 960px;
+  }
+
+  .save-controls button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    margin: 0;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+
+  .save-state-info {
+    width: 100%;
+    color: #ddd;
+    font-size: 0.95em;
+  }
+
+  .save-state-info.error {
+    color: #ff8d8d;
+  }
+
+  .saved-games-panel {
+    max-width: 960px;
+    margin: 0 auto 1em;
+    overflow-x: auto;
+  }
+
+  .saved-games-table {
+    width: 100%;
+    display: table;
+    margin: 0 auto 1em;
+  }
+
+  .saved-games-table th,
+  .saved-games-table td {
+    white-space: normal;
+  }
+
+  .saved-games-table td:last-child,
+  .saved-games-table th:last-child {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+  }
+
+  .saved-games-load-btn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .saved-games-table tr.active-save-row td {
+    background: rgba(255, 215, 0, 0.14);
+  }
   
   /* Manuelle Eingabe */
   #manualInput input {

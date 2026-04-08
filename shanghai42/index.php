@@ -13,6 +13,28 @@ include __DIR__ . '/../header.php';
     </header>
     <?php if ($isAuthenticated): ?>
       <div id="status">Board-Status: –</div>
+      <div id="saveControls" class="save-controls">
+        <button id="newGameBtn" type="button">Neues Spiel</button>
+        <button id="toggleStorageBtn" type="button">Speichern aktivieren</button>
+        <button id="loadGamesBtn" type="button">Laden...</button>
+        <div id="saveStateInfo" class="save-state-info">Speichern ist aktuell deaktiviert.</div>
+      </div>
+      <section id="savedGamesPanel" class="saved-games-panel" hidden>
+        <table id="savedGamesTable" class="saved-games-table">
+          <thead>
+            <tr>
+              <th>Letzte Änderung</th>
+              <th>Spielende</th>
+              <th>Laden</th>
+            </tr>
+          </thead>
+          <tbody id="savedGamesBody">
+            <tr>
+              <td colspan="3">Keine Speicherstände vorhanden.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     <?php endif; ?>
     
     <!-- Manuelle Eingabe -->
@@ -47,6 +69,16 @@ include __DIR__ . '/../header.php';
   </div>
 
   <!-- Login-Handler -->
+  <script>
+    window.SHANGHAI_APP = {
+      gameType: 'shanghai42',
+      isAuthenticated: <?= $isAuthenticated ? 'true' : 'false'; ?>,
+      userId: <?= isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 'null'; ?>,
+      username: <?= json_encode((string) ($username ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+      displayName: <?= json_encode((string) ($username ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+      csrfToken: <?= json_encode((string) ($_SESSION['csrf_token'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+    };
+  </script>
   <script src="script.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/oauth_config.php';
 
 // DB config from env vars, then secret file fallback.
-$host = oauth_env('DB_HOST', 'localhost');
-$db = oauth_env('DB_NAME', 'db_447002_1');
+$host = oauth_env('DB_HOST');
+$db = oauth_env('DB_NAME');
 $user = oauth_env('DB_USER');
 $pw = oauth_env('DB_PASS');
 

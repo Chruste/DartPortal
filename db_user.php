@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/oauth_config.php';
 
-$userDbHost = user_env('USER_DB_HOST', 'localhost');
-$userDbName = user_env('USER_DB_NAME', 'db_447002_2');
+$userDbHost = user_env('USER_DB_HOST');
+$userDbName = user_env('USER_DB_NAME');
 $userDbUser = user_env('USER_DB_USER');
 $userDbPass = user_env('USER_DB_PASS');
 

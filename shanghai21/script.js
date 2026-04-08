@@ -121,8 +121,10 @@ class Player {
     btn.style.pointerEvents = hideTriple ? 'none' : 'auto';
   }
 
-  processThrow(sec, type = null) {
+  processThrow(sec, type = null, eventMeta = null) {
+    if (this.currentIndex >= this.sequence.length) return;
     const sector = sec.toString().toUpperCase();
+    const targetLabel = this.sequence[this.currentIndex] || '';
     let mult = type === 'miss' ? 0
       : type === 'Double' ? 2
       : type === 'Triple' ? 3
@@ -140,25 +142,35 @@ class Player {
       : mult === 3 ? `T ${base}`
       : base;
     let pts = 0;
-    if ((hit === '25' || hit === '50') && this.sequence[this.currentIndex] === 'Bull'
-      || hit.replace(/^D |^T /, '') === this.sequence[this.currentIndex]) {
+    if ((hit === '25' || hit === '50') && targetLabel === 'Bull'
+      || hit.replace(/^D |^T /, '') === targetLabel) {
       pts = base === 'Bull' ? mult * 25 : mult * parseInt(base, 10);
     }
     this.totalScore += pts;
     const row = this.tbody.children[this.currentIndex];
     row.cells[1].textContent = pts;
     row.cells[2].textContent = hit;
-    if (pts > 0) row.classList.add('hit');
+    row.classList.toggle('hit', pts > 0);
+    row.classList.remove('miss');
     this.sumCell.textContent = this.totalScore;
     this.currentIndex++;
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
     updateOverviewTable();
-    if (this.currentIndex > 0) {
-      const _ub = document.getElementById('undoButton');
-      _ub.style.visibility = 'visible';
-      _ub.style.pointerEvents = 'auto';
-    }
+    updateUndoButtonVisibility();
+    recordStateChange({
+      eventType: eventMeta?.eventType || 'throw',
+      source: eventMeta?.source || 'unknown',
+      playerIndex: this.index,
+      playerUserId: this.portalUserId ?? null,
+      playerName: this.name,
+      targetLabel,
+      sectorResult: hit,
+      scoreDelta: pts,
+      scoreAfter: this.totalScore,
+      detectedAt: eventMeta?.detectedAt || new Date().toISOString(),
+      payload: eventMeta?.payload || { sector: sec, type },
+    });
   }
 
   calculatePoints(hit, target) {
@@ -193,11 +205,20 @@ class Player {
       this.highlightRow(this.currentIndex);
       this.updateTripleButton();
       updateOverviewTable();
-      if (this.currentIndex === 0) {
-        const _ub = document.getElementById('undoButton');
-        _ub.style.visibility = 'hidden';
-        _ub.style.pointerEvents = 'none';
-      }
+      updateUndoButtonVisibility();
+      recordStateChange({
+        eventType: 'undo',
+        source: 'ui',
+        playerIndex: this.index,
+        playerUserId: this.portalUserId ?? null,
+        playerName: this.name,
+        targetLabel: this.sequence[this.currentIndex] || '',
+        sectorResult: '',
+        scoreDelta: 0,
+        scoreAfter: this.totalScore,
+        detectedAt: new Date().toISOString(),
+        payload: { currentIndex: this.currentIndex },
+      });
     }
   }
 
@@ -257,9 +278,26 @@ class Player {
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
     updateOverviewTable();
-    const _ub = document.getElementById('undoButton');
-    _ub.style.visibility = this.currentIndex > 0 ? 'visible' : 'hidden';
-    _ub.style.pointerEvents = this.currentIndex > 0 ? 'auto' : 'none';
+    updateUndoButtonVisibility();
+    recordStateChange({
+      eventType: 'edit_save',
+      source: 'edit',
+      playerIndex: this.index,
+      playerUserId: this.portalUserId ?? null,
+      playerName: this.name,
+      targetLabel: this.sequence[Math.min(this.currentIndex, this.sequence.length - 1)] || '',
+      sectorResult: '',
+      scoreDelta: 0,
+      scoreAfter: this.totalScore,
+      detectedAt: new Date().toISOString(),
+      payload: {
+        rows: Array.from(rows).map((row, rowIndex) => ({
+          target: this.sequence[rowIndex],
+          points: row.cells[1].textContent,
+          hit: row.cells[2].textContent,
+        })),
+      },
+    });
   }
 }
 
@@ -275,6 +313,68 @@ let overviewResizeHandlerRegistered = false;
 let overviewFooterCollapsed = localStorage.getItem('overviewFooterCollapsed') === 'true';
 let controlsFooterCollapsed = localStorage.getItem('controlsFooterCollapsed') === 'true';
 let controlsFooterInitialized = false;
+let storageEnabled = false;
+let activeSaveId = null;
+let activeSaveLabel = '';
+let savedGamesCache = [];
+let storageSaveChain = Promise.resolve();
+let isRestoringState = false;
+const shanghaiAppConfig = window.SHANGHAI_APP || {};
+const isAuthenticatedUser = Boolean(shanghaiAppConfig.isAuthenticated);
+const storageApiUrl = '/shanghai-storage.php';
+
+function formatLocalDateTime(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function updateUndoButtonVisibility() {
+  const undoBtn = document.getElementById('undoButton');
+  if (!undoBtn) return;
+
+  const activePlayer = getActivePlayer();
+  const canUndo = Boolean(activePlayer && activePlayer.currentIndex > 0 && editingPlayerIndex === null);
+  undoBtn.style.visibility = canUndo ? 'visible' : 'hidden';
+  undoBtn.style.pointerEvents = canUndo ? 'auto' : 'none';
+}
+
+function getStorageStatusElement() {
+  return document.getElementById('saveStateInfo');
+}
+
+function setStorageInfo(message = '', isError = false) {
+  const statusEl = getStorageStatusElement();
+  if (!statusEl) return;
+
+  const fallbackMessage = storageEnabled && activeSaveId
+    ? `Automatisches Speichern aktiv${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+    : 'Speichern ist aktuell deaktiviert.';
+
+  statusEl.textContent = message || fallbackMessage;
+  statusEl.classList.toggle('error', Boolean(isError));
+}
+
+function setSaveControlsBusy(isBusy) {
+  ['newGameBtn', 'toggleStorageBtn', 'loadGamesBtn'].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.disabled = Boolean(isBusy);
+  });
+}
+
+function updateStorageToggleButton() {
+  const toggleBtn = document.getElementById('toggleStorageBtn');
+  if (!toggleBtn) return;
+
+  toggleBtn.textContent = storageEnabled && activeSaveId ? 'Speicherstand löschen' : 'Speichern aktivieren';
+}
 
 function updateFooterLayout() {
   syncOverviewFooterHeight();
@@ -443,6 +543,501 @@ function getActivePlayer() {
   return players[activePlayerIndex] || null;
 }
 
+function buildPlayerState(player) {
+  return {
+    index: player.index,
+    name: player.name,
+    portalUserId: Number.isFinite(Number(player.portalUserId)) ? Number(player.portalUserId) : null,
+    participantRole: player.participantRole
+      || (Number(player.portalUserId) === Number(shanghaiAppConfig.userId) ? 'owner' : (player.portalUserId ? 'friend' : 'guest')),
+    invitationStatus: player.invitationStatus || 'accepted',
+    invitedByUserId: Number.isFinite(Number(player.invitedByUserId)) ? Number(player.invitedByUserId) : null,
+    currentIndex: player.currentIndex,
+    totalScore: player.totalScore,
+    rows: Array.from(player.tbody.children).map((row, rowIndex) => ({
+      target: player.sequence[rowIndex],
+      points: row.cells[1].textContent,
+      hit: row.cells[2].textContent,
+    })),
+  };
+}
+
+function collectGameState() {
+  return {
+    gameType: shanghaiAppConfig.gameType || '',
+    activePlayerIndex,
+    nextPlayerId,
+    autoPlayerSwitch,
+    players: getPlayerIds().map(id => buildPlayerState(players[id])),
+  };
+}
+
+function resetLocalGameState() {
+  Object.values(players).forEach(player => player?.container?.remove());
+  players = {};
+  activePlayerIndex = 0;
+  editingPlayerIndex = null;
+  nextPlayerId = 0;
+  autoPlayerSwitch = false;
+
+  const editBtn = document.getElementById('editButton');
+  const saveBtn = document.getElementById('saveButton');
+  if (editBtn) editBtn.style.display = 'inline';
+  if (saveBtn) saveBtn.style.display = 'none';
+  if (overviewTableBody) overviewTableBody.innerHTML = '';
+}
+
+function applyLoadedPlayerState(savedPlayer, fallbackIndex) {
+  const parsedIndex = Number.parseInt(String(savedPlayer?.index ?? fallbackIndex), 10);
+  const playerIndex = Number.isFinite(parsedIndex) ? parsedIndex : fallbackIndex;
+  const playerName = (savedPlayer?.name || '').toString().trim() || `Spieler ${playerIndex + 1}`;
+  const player = new Player(playerName, playerIndex);
+  const restoredPortalUserId = Number.parseInt(String(savedPlayer?.portalUserId ?? savedPlayer?.userId ?? ''), 10);
+  const restoredInvitedByUserId = Number.parseInt(String(savedPlayer?.invitedByUserId ?? ''), 10);
+  player.portalUserId = Number.isFinite(restoredPortalUserId) ? restoredPortalUserId : null;
+  player.participantRole = (savedPlayer?.participantRole || '').toString().trim()
+    || (Number(player.portalUserId) === Number(shanghaiAppConfig.userId) ? 'owner' : (player.portalUserId ? 'friend' : 'guest'));
+  player.invitationStatus = (savedPlayer?.invitationStatus || 'accepted').toString().trim() || 'accepted';
+  player.invitedByUserId = Number.isFinite(restoredInvitedByUserId) ? restoredInvitedByUserId : null;
+  players[playerIndex] = player;
+  tablesContainer.appendChild(player.container);
+
+  const rows = Array.isArray(savedPlayer?.rows) ? savedPlayer.rows : [];
+  let totalScore = 0;
+
+  Array.from(player.tbody.children).forEach((tableRow, rowIndex) => {
+    const savedRow = rows[rowIndex] || {};
+    const hit = (savedRow.hit ?? '').toString().trim();
+    tableRow.cells[2].textContent = hit;
+
+    if (hit === '') {
+      tableRow.cells[1].textContent = '';
+      tableRow.classList.remove('hit', 'miss');
+      return;
+    }
+
+    const parsedPoints = Number.parseInt(String(savedRow.points ?? ''), 10);
+    const points = Number.isFinite(parsedPoints)
+      ? parsedPoints
+      : player.calculatePoints(hit, player.sequence[rowIndex]);
+
+    tableRow.cells[1].textContent = String(points);
+    tableRow.classList.toggle('hit', points > 0);
+    tableRow.classList.toggle('miss', points < 0);
+    totalScore += points;
+  });
+
+  player.totalScore = Number.isFinite(Number(savedPlayer?.totalScore))
+    ? Number(savedPlayer.totalScore)
+    : totalScore;
+  if (player.totalScore !== totalScore) {
+    player.totalScore = totalScore;
+  }
+  player.sumCell.textContent = String(player.totalScore);
+
+  const requestedIndex = Number.parseInt(String(savedPlayer?.currentIndex ?? ''), 10);
+  if (Number.isFinite(requestedIndex)) {
+    player.currentIndex = Math.min(Math.max(requestedIndex, 0), player.sequence.length);
+  } else {
+    const firstEmptyIndex = Array.from(player.tbody.children).findIndex(tableRow => tableRow.cells[2].textContent.trim() === '');
+    player.currentIndex = firstEmptyIndex === -1 ? player.sequence.length : firstEmptyIndex;
+  }
+
+  player.highlightRow(player.currentIndex);
+  player.updateTripleButton();
+}
+
+function loadGameState(state = {}) {
+  isRestoringState = true;
+
+  try {
+    resetLocalGameState();
+
+    const savedPlayers = Array.isArray(state.players) ? state.players : [];
+    if (savedPlayers.length === 0) {
+      addPlayer();
+      autoPlayerSwitch = false;
+    } else {
+      savedPlayers.forEach((savedPlayer, fallbackIndex) => applyLoadedPlayerState(savedPlayer, fallbackIndex));
+
+      const availableIds = getPlayerIds();
+      const requestedActivePlayer = Number.parseInt(String(state.activePlayerIndex ?? ''), 10);
+      activePlayerIndex = availableIds.includes(requestedActivePlayer)
+        ? requestedActivePlayer
+        : (availableIds[0] ?? 0);
+
+      const requestedNextPlayerId = Number.parseInt(String(state.nextPlayerId ?? ''), 10);
+      const minNextPlayerId = availableIds.reduce((maxValue, id) => Math.max(maxValue, id + 1), 0);
+      nextPlayerId = Number.isFinite(requestedNextPlayerId)
+        ? Math.max(requestedNextPlayerId, minNextPlayerId)
+        : minNextPlayerId;
+
+      autoPlayerSwitch = Boolean(state.autoPlayerSwitch);
+    }
+  } finally {
+    isRestoringState = false;
+  }
+
+  updateAllActivateBtns();
+  updateAutoPlayerSwitchBtn();
+  updateOverviewTable();
+
+  const activePlayer = getActivePlayer();
+  if (activePlayer) {
+    activePlayer.updateTripleButton();
+  }
+
+  updateUndoButtonVisibility();
+  updateFooterLayout();
+}
+
+function hasGameProgress() {
+  const playerIds = getPlayerIds();
+  if (playerIds.length > 1) return true;
+
+  return playerIds.some(id => {
+    const player = players[id];
+    if (!player) return false;
+
+    const defaultName = `Spieler ${player.index + 1}`;
+    const hasRowContent = Array.from(player.tbody.children).some(row => {
+      return row.cells[1].textContent !== '' || row.cells[2].textContent !== '';
+    });
+
+    return player.currentIndex > 0
+      || player.totalScore !== 0
+      || hasRowContent
+      || ((player.name || '').trim() !== '' && player.name !== defaultName);
+  });
+}
+
+function confirmDiscardResults() {
+  return !hasGameProgress() || window.confirm('Ungespeicherte Ergebnisse gehen verloren!');
+}
+
+function createManualEventMeta(source, payload = {}) {
+  return {
+    eventType: 'throw_detected',
+    source,
+    detectedAt: new Date().toISOString(),
+    payload: {
+      ...payload,
+      manual: true,
+    },
+  };
+}
+
+function upsertSaveCacheEntry(save) {
+  if (!save || !save.id) return;
+
+  const entry = {
+    id: Number(save.id),
+    updatedAt: save.updatedAt || formatLocalDateTime(new Date()),
+    participantSummary: (save.participantSummary || '').toString(),
+  };
+
+  const existingIndex = savedGamesCache.findIndex(item => Number(item.id) === entry.id);
+  if (existingIndex !== -1) {
+    savedGamesCache.splice(existingIndex, 1);
+  }
+
+  savedGamesCache.unshift(entry);
+  renderSavedGames();
+}
+
+function removeSaveCacheEntry(saveId) {
+  savedGamesCache = savedGamesCache.filter(item => Number(item.id) !== Number(saveId));
+  renderSavedGames();
+}
+
+function renderSavedGames() {
+  const tableBody = document.getElementById('savedGamesBody');
+  if (!tableBody) return;
+
+  tableBody.innerHTML = '';
+
+  if (!savedGamesCache.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 3;
+    cell.textContent = 'Keine Speicherstände vorhanden.';
+    row.appendChild(cell);
+    tableBody.appendChild(row);
+    return;
+  }
+
+  savedGamesCache.forEach(save => {
+    const row = document.createElement('tr');
+    row.classList.toggle('active-save-row', Number(save.id) === Number(activeSaveId));
+
+    const updatedAtCell = document.createElement('td');
+    updatedAtCell.textContent = save.updatedAt || '';
+
+    const summaryCell = document.createElement('td');
+    summaryCell.textContent = save.participantSummary || '';
+
+    const actionCell = document.createElement('td');
+    const loadBtn = document.createElement('button');
+    loadBtn.type = 'button';
+    loadBtn.className = 'saved-games-load-btn';
+    loadBtn.textContent = 'Laden';
+    loadBtn.onclick = () => {
+      void loadSavedGame(save.id);
+    };
+    actionCell.appendChild(loadBtn);
+
+    row.appendChild(updatedAtCell);
+    row.appendChild(summaryCell);
+    row.appendChild(actionCell);
+    tableBody.appendChild(row);
+  });
+}
+
+async function fetchStorageJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || 'Spielstand konnte nicht verarbeitet werden.');
+  }
+
+  return data;
+}
+
+async function refreshSavedGamesList() {
+  if (!isAuthenticatedUser) return;
+
+  const data = await fetchStorageJson(
+    `${storageApiUrl}?action=list&gameType=${encodeURIComponent(shanghaiAppConfig.gameType || '')}`
+  );
+
+  savedGamesCache = Array.isArray(data.saves) ? data.saves : [];
+  renderSavedGames();
+}
+
+function toggleSavedGamesPanel() {
+  const panel = document.getElementById('savedGamesPanel');
+  if (!panel) return;
+
+  const shouldOpen = panel.hidden;
+  panel.hidden = !shouldOpen;
+
+  if (shouldOpen) {
+    void refreshSavedGamesList().catch(error => {
+      setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+    });
+  }
+}
+
+async function enableStorage() {
+  if (!isAuthenticatedUser) return;
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'create',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        state: collectGameState(),
+      }),
+    });
+
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || 0) || null;
+    activeSaveLabel = data.save?.participantSummary || '';
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    setStorageInfo(data.message || 'Speichern aktiviert.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speichern konnte nicht aktiviert werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function deleteActiveSave() {
+  if (!activeSaveId) {
+    storageEnabled = false;
+    activeSaveLabel = '';
+    updateStorageToggleButton();
+    setStorageInfo();
+    return;
+  }
+
+  if (!window.confirm('Diesen Speicherstand wirklich löschen?')) {
+    return;
+  }
+
+  const saveIdToDelete = activeSaveId;
+  setSaveControlsBusy(true);
+
+  try {
+    await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'delete',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: saveIdToDelete,
+      }),
+    });
+
+    storageEnabled = false;
+    activeSaveId = null;
+    activeSaveLabel = '';
+    updateStorageToggleButton();
+    removeSaveCacheEntry(saveIdToDelete);
+    setStorageInfo('Speicherstand gelöscht.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht gelöscht werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function toggleStorage() {
+  if (storageEnabled && activeSaveId) {
+    await deleteActiveSave();
+    return;
+  }
+
+  await enableStorage();
+}
+
+async function loadSavedGame(saveId) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  if (!confirmDiscardResults()) {
+    return;
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(
+      `${storageApiUrl}?action=load&gameType=${encodeURIComponent(shanghaiAppConfig.gameType || '')}&saveId=${encodeURIComponent(numericSaveId)}`
+    );
+
+    loadGameState(data.save?.state || {});
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
+    activeSaveLabel = data.save?.participantSummary || '';
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    setStorageInfo(`Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+function recordStateChange(event = {}) {
+  if (isRestoringState || !isAuthenticatedUser || !storageEnabled || !activeSaveId) {
+    return;
+  }
+
+  const saveId = Number(activeSaveId);
+  if (!saveId) return;
+
+  const stateSnapshot = collectGameState();
+  const eventSnapshot = {
+    eventType: event.eventType || 'state_update',
+    source: event.source || 'ui',
+    playerIndex: Number.isFinite(Number(event.playerIndex)) ? Number(event.playerIndex) : null,
+    playerUserId: Number.isFinite(Number(event.playerUserId)) ? Number(event.playerUserId) : null,
+    playerName: event.playerName || '',
+    targetLabel: event.targetLabel || '',
+    sectorResult: event.sectorResult || '',
+    scoreDelta: Number.isFinite(Number(event.scoreDelta)) ? Number(event.scoreDelta) : 0,
+    scoreAfter: Number.isFinite(Number(event.scoreAfter)) ? Number(event.scoreAfter) : 0,
+    detectedAt: event.detectedAt || new Date().toISOString(),
+    payload: event.payload && typeof event.payload === 'object' ? event.payload : {},
+  };
+
+  storageSaveChain = storageSaveChain
+    .catch(() => undefined)
+    .then(async () => {
+      if (!storageEnabled || Number(activeSaveId) !== saveId) {
+        return;
+      }
+
+      const data = await fetchStorageJson(storageApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update',
+          csrfToken: shanghaiAppConfig.csrfToken || '',
+          gameType: shanghaiAppConfig.gameType || '',
+          saveId,
+          state: stateSnapshot,
+          event: eventSnapshot,
+        }),
+      });
+
+      activeSaveLabel = data.save?.participantSummary || activeSaveLabel;
+      upsertSaveCacheEntry({
+        id: saveId,
+        updatedAt: formatLocalDateTime(new Date()),
+        participantSummary: activeSaveLabel,
+      });
+      setStorageInfo();
+    })
+    .catch(error => {
+      setStorageInfo(error.message || 'Automatisches Speichern fehlgeschlagen.', true);
+    });
+}
+
+function startNewGame() {
+  if (!confirmDiscardResults()) {
+    return;
+  }
+
+  loadGameState({ players: [] });
+  setStorageInfo('Neues Spiel gestartet.');
+  recordStateChange({
+    eventType: 'new_game',
+    source: 'ui',
+    detectedAt: new Date().toISOString(),
+    payload: { action: 'new_game' },
+  });
+}
+
+function initStorageControls() {
+  if (!isAuthenticatedUser) return;
+
+  const newGameBtn = document.getElementById('newGameBtn');
+  const toggleStorageBtn = document.getElementById('toggleStorageBtn');
+  const loadGamesBtn = document.getElementById('loadGamesBtn');
+
+  if (newGameBtn) {
+    newGameBtn.onclick = startNewGame;
+  }
+  if (toggleStorageBtn) {
+    toggleStorageBtn.onclick = () => {
+      void toggleStorage();
+    };
+  }
+  if (loadGamesBtn) {
+    loadGamesBtn.onclick = toggleSavedGamesPanel;
+  }
+
+  updateStorageToggleButton();
+  setStorageInfo();
+}
+
 function ensureControlsFooter() {
   if (controlsFooterInitialized) return;
 
@@ -494,7 +1089,13 @@ function setupControlsFooterButtons(container) {
     manualSubmitBtn.onclick = () => {
       const val = manualSectorInput ? manualSectorInput.value.trim() : '';
       const player = getActivePlayer();
-      if (val && player) player.processThrow(val);
+      if (val && player) {
+        player.processThrow(val, null, createManualEventMeta('manual_input', {
+          sector: val,
+          rawInput: val,
+        }));
+        if (manualSectorInput) manualSectorInput.value = '';
+      }
     };
   }
   if (manualSectorInput && manualSubmitBtn) {
@@ -511,25 +1112,45 @@ function setupControlsFooterButtons(container) {
   if (btnMiss) {
     btnMiss.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow('None', 'miss');
+      if (player) {
+        player.processThrow('None', 'miss', createManualEventMeta('manual_button', {
+          sector: 'None',
+          type: 'miss',
+        }));
+      }
     };
   }
   if (btnSingle) {
     btnSingle.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow(player.sequence[player.currentIndex], 'Single');
+      if (player) {
+        player.processThrow(player.sequence[player.currentIndex], 'Single', createManualEventMeta('manual_button', {
+          sector: player.sequence[player.currentIndex],
+          type: 'Single',
+        }));
+      }
     };
   }
   if (btnDouble) {
     btnDouble.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow(player.sequence[player.currentIndex], 'Double');
+      if (player) {
+        player.processThrow(player.sequence[player.currentIndex], 'Double', createManualEventMeta('manual_button', {
+          sector: player.sequence[player.currentIndex],
+          type: 'Double',
+        }));
+      }
     };
   }
   if (btnTriple) {
     btnTriple.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow(player.sequence[player.currentIndex], 'Triple');
+      if (player) {
+        player.processThrow(player.sequence[player.currentIndex], 'Triple', createManualEventMeta('manual_button', {
+          sector: player.sequence[player.currentIndex],
+          type: 'Triple',
+        }));
+      }
     };
   }
   
@@ -563,12 +1184,24 @@ function setupControlsFooterButtons(container) {
     autoBtn.onclick = () => {
       autoPlayerSwitch = true;
       updateAutoPlayerSwitchBtn();
+      recordStateChange({
+        eventType: 'auto_switch_enabled',
+        source: 'ui',
+        detectedAt: new Date().toISOString(),
+        payload: { autoPlayerSwitch: true },
+      });
     };
   }
   if (manualBtn) {
     manualBtn.onclick = () => {
       autoPlayerSwitch = false;
       updateAutoPlayerSwitchBtn();
+      recordStateChange({
+        eventType: 'auto_switch_disabled',
+        source: 'ui',
+        detectedAt: new Date().toISOString(),
+        payload: { autoPlayerSwitch: false },
+      });
     };
   }
 }
@@ -594,13 +1227,28 @@ function initApp() {
   ensureControlsFooter();
   addPlayer();
   updateOverviewTable();
+  updateUndoButtonVisibility();
+  initStorageControls();
 }
 
 function addPlayer() {
   const playerIndex = nextPlayerId++;
   const activePlayer = getActivePlayer();
-  const playerName = activePlayer ? activePlayer.name : `Spieler ${playerIndex + 1}`;
+  const currentUserId = Number.parseInt(String(shanghaiAppConfig.userId ?? ''), 10);
+  const currentDisplayName = (shanghaiAppConfig.displayName || shanghaiAppConfig.username || '').toString().trim();
+  const playerName = activePlayer
+    ? activePlayer.name
+    : (currentDisplayName || `Spieler ${playerIndex + 1}`);
   const player = new Player(playerName, playerIndex);
+  player.portalUserId = activePlayer
+    ? (Number.isFinite(Number(activePlayer.portalUserId)) ? Number(activePlayer.portalUserId) : null)
+    : (Number.isFinite(currentUserId) ? currentUserId : null);
+  player.participantRole = activePlayer?.participantRole
+    || (player.portalUserId === currentUserId ? 'owner' : (player.portalUserId ? 'friend' : 'guest'));
+  player.invitationStatus = activePlayer?.invitationStatus || 'accepted';
+  player.invitedByUserId = activePlayer
+    ? (Number.isFinite(Number(activePlayer.invitedByUserId)) ? Number(activePlayer.invitedByUserId) : null)
+    : null;
   players[playerIndex] = player;
   tablesContainer.appendChild(player.container);
   if (getPlayerIds().length === 1) {
@@ -609,11 +1257,23 @@ function addPlayer() {
   updateAllActivateBtns();
   updateAutoPlayerSwitchBtn();
   updateOverviewTable();
+  updateUndoButtonVisibility();
+  recordStateChange({
+    eventType: 'player_add',
+    source: 'ui',
+    playerIndex,
+    playerName: player.name,
+    scoreAfter: player.totalScore,
+    detectedAt: new Date().toISOString(),
+    payload: { playerIndex, playerName: player.name },
+  });
 }
 
 function deletePlayer(index) {
   const player = players[index];
   if (!player) return;
+
+  const removedPlayerName = player.name;
 
   if (editingPlayerIndex === player.index) {
     editingPlayerIndex = null;
@@ -627,7 +1287,16 @@ function deletePlayer(index) {
 
   const remainingIds = getPlayerIds();
   if (remainingIds.length === 0) {
+    recordStateChange({
+      eventType: 'player_delete',
+      source: 'ui',
+      playerIndex: index,
+      playerName: removedPlayerName,
+      detectedAt: new Date().toISOString(),
+      payload: { playerIndex: index, playerName: removedPlayerName },
+    });
     addPlayer();
+    updateUndoButtonVisibility();
     return;
   }
 
@@ -637,10 +1306,15 @@ function deletePlayer(index) {
   updateOverviewTable();
   const activePlayer = getActivePlayer();
   if (activePlayer) activePlayer.updateTripleButton();
-  const undoBtn = document.getElementById('undoButton');
-  const _ubShow1 = activePlayer && activePlayer.currentIndex > 0;
-  undoBtn.style.visibility = _ubShow1 ? 'visible' : 'hidden';
-  undoBtn.style.pointerEvents = _ubShow1 ? 'auto' : 'none';
+  updateUndoButtonVisibility();
+  recordStateChange({
+    eventType: 'player_delete',
+    source: 'ui',
+    playerIndex: index,
+    playerName: removedPlayerName,
+    detectedAt: new Date().toISOString(),
+    payload: { playerIndex: index, playerName: removedPlayerName },
+  });
 }
 
 function setActivePlayer(index) {
@@ -650,16 +1324,20 @@ function setActivePlayer(index) {
   }
   activePlayerIndex = index;
   updateAllActivateBtns();
-  // Update Triple Button für aktiven Spieler
   const activePlayer = getActivePlayer();
   if (activePlayer) {
     activePlayer.updateTripleButton();
   }
-  // Update Undo Button basierend auf neuem aktiven Spieler
-  const undoBtn = document.getElementById('undoButton');
-  const _ubShow2 = activePlayer && activePlayer.currentIndex > 0;
-  undoBtn.style.visibility = _ubShow2 ? 'visible' : 'hidden';
-  undoBtn.style.pointerEvents = _ubShow2 ? 'auto' : 'none';
+  updateUndoButtonVisibility();
+  recordStateChange({
+    eventType: 'player_activate',
+    source: 'ui',
+    playerIndex: index,
+    playerName: activePlayer?.name || '',
+    scoreAfter: activePlayer?.totalScore || 0,
+    detectedAt: new Date().toISOString(),
+    payload: { playerIndex: index },
+  });
 }
 
 function updateAllActivateBtns() {
@@ -710,13 +1388,19 @@ function updateAutoPlayerSwitchBtn() {
 function handleMessage(msg) {
   console.debug('WS message:', msg);
   if (msg.type === 'THROW_DETECTED') {
-    const sector = (msg.payload.sector || '').toString().toLowerCase();
-    const bounceout = Boolean(msg.payload.bounceout);
+    const payload = msg && typeof msg.payload === 'object' && msg.payload ? msg.payload : {};
+    const sector = (payload.sector || '').toString().toLowerCase();
+    const bounceout = Boolean(payload.bounceout);
     const miss = bounceout || sector === 'none';
-    console.debug('THROW_DETECTED', { sector, bounceout, miss, payload: msg.payload });
+    console.debug('THROW_DETECTED', { sector, bounceout, miss, payload });
     const player = getActivePlayer();
     if (player) {
-      player.processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
+      player.processThrow(miss ? 'None' : payload.sector, miss ? 'miss' : null, {
+        eventType: 'throw_detected',
+        source: 'scolia_ws',
+        detectedAt: payload.detectionTime || new Date().toISOString(),
+        payload: { ...payload },
+      });
     }
   }
   if (msg.type === 'TAKEOUT_FINISHED' && autoPlayerSwitch) {

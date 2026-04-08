@@ -1,4 +1,4 @@
-const cacheName = 'cdp-cache-v8';
+const cacheName = 'cdp-cache-v9';
 const assets = [
   '/',
   '/index.php',
@@ -30,16 +30,12 @@ const assets = [
   '/shanghai42/img/icon-512.png',
   '/dartball/index.php',
   '/dartball/styles.css',
-  '/dartball/script.js',
   '/dartball/img/headline.png',
   '/dartball/img/background.png',
   '/dartball/img/icon-1024.png',
   '/dartball/img/icon-192.png',
   '/dartball/img/icon-512.png',
-  '/turnierplaner/turnierplaner.php',
-  '/turnierplaner/historie.php',
-  '/turnierplaner/neues_turnier.php',
-  '/turnierplaner/create_tournament.php'
+  '/turnierplaner/turnierplaner.php'
 ];
 
 self.addEventListener('install', event => {
