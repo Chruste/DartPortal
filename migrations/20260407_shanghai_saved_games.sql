@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS shanghai21_sessions (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     owner_user_id INT UNSIGNED NOT NULL,
+    save_name VARCHAR(160) NOT NULL DEFAULT 'Shanghai 21',
     participant_summary VARCHAR(1000) NOT NULL DEFAULT '',
     participants_json JSON NOT NULL,
     state_json JSON NOT NULL,
@@ -74,6 +75,7 @@ CREATE TABLE IF NOT EXISTS shanghai21_events (
 CREATE TABLE IF NOT EXISTS shanghai42_sessions (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     owner_user_id INT UNSIGNED NOT NULL,
+    save_name VARCHAR(160) NOT NULL DEFAULT 'Shanghai 42',
     participant_summary VARCHAR(1000) NOT NULL DEFAULT '',
     participants_json JSON NOT NULL,
     state_json JSON NOT NULL,

@@ -77,12 +77,51 @@ body {
     max-width: 120px;
   }
 
-  .saved-games-load-btn {
+  .saved-games-filter-row input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #1e1e1e;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 6px 8px;
+  }
+
+  .saved-games-name-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #1e1e1e;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 6px 8px;
+  }
+
+  .saved-games-load-btn,
+  #clearSavedGamesFiltersBtn,
+  .saved-games-pagination button {
     background: #333;
     color: #fff;
     border: 1px solid #555;
     padding: 6px 10px;
     cursor: pointer;
+  }
+
+  .saved-games-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75em;
+    margin: 0 0 1em;
+    flex-wrap: wrap;
+  }
+
+  .saved-games-pagination-buttons {
+    display: flex;
+    gap: 0.5em;
+  }
+
+  .saved-games-count-info {
+    color: #ddd;
+    font-size: 0.95em;
   }
 
   .saved-games-table tr.active-save-row td {

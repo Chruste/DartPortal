@@ -16,7 +16,7 @@ include __DIR__ . '/../header.php';
       <div id="saveControls" class="save-controls">
         <button id="newGameBtn" type="button">Neues Spiel</button>
         <button id="toggleStorageBtn" type="button">Speichern aktivieren</button>
-        <button id="loadGamesBtn" type="button">Laden...</button>
+        <button id="loadGamesBtn" type="button">Speicherstände...</button>
         <div id="saveStateInfo" class="save-state-info">Speichern ist aktuell deaktiviert.</div>
       </div>
       <section id="savedGamesPanel" class="saved-games-panel" hidden>
@@ -24,16 +24,30 @@ include __DIR__ . '/../header.php';
           <thead>
             <tr>
               <th>Letzte Änderung</th>
-              <th>Spielende</th>
+              <th>Speicherstand</th>
+              <th>Teilnehmende</th>
               <th>Laden</th>
+            </tr>
+            <tr class="saved-games-filter-row">
+              <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Filtern..." /></th>
+              <th><input id="savedGamesFilterSaveName" type="text" placeholder="Filtern..." /></th>
+              <th><input id="savedGamesFilterParticipants" type="text" placeholder="Filtern..." /></th>
+              <th><button id="clearSavedGamesFiltersBtn" type="button">Filter löschen</button></th>
             </tr>
           </thead>
           <tbody id="savedGamesBody">
             <tr>
-              <td colspan="3">Keine Speicherstände vorhanden.</td>
+              <td colspan="4">Keine Speicherstände vorhanden.</td>
             </tr>
           </tbody>
         </table>
+        <div class="saved-games-pagination">
+          <span id="savedGamesCountInfo" class="saved-games-count-info">0 Speicherstände</span>
+          <div class="saved-games-pagination-buttons">
+            <button id="savedGamesPrevBtn" type="button">Zurück</button>
+            <button id="savedGamesNextBtn" type="button">Weiter</button>
+          </div>
+        </div>
       </section>
     <?php endif; ?>
     

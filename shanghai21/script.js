@@ -317,6 +317,15 @@ let storageEnabled = false;
 let activeSaveId = null;
 let activeSaveLabel = '';
 let savedGamesCache = [];
+let savedGamesCurrentPage = 1;
+let savedGamesTotalCount = 0;
+let savedGamesFilterTimer = null;
+const SAVED_GAMES_PAGE_SIZE = 10;
+let savedGamesFilters = {
+  updatedAt: '',
+  saveName: '',
+  participants: '',
+};
 let storageSaveChain = Promise.resolve();
 let isRestoringState = false;
 const shanghaiAppConfig = window.SHANGHAI_APP || {};
@@ -727,27 +736,75 @@ function createManualEventMeta(source, payload = {}) {
   };
 }
 
+function getDefaultSaveName() {
+  return shanghaiAppConfig.gameType === 'shanghai42' ? 'Shanghai 42' : 'Shanghai 21';
+}
+
+function getSavedGamesPanel() {
+  return document.getElementById('savedGamesPanel');
+}
+
 function upsertSaveCacheEntry(save) {
   if (!save || !save.id) return;
 
   const entry = {
     id: Number(save.id),
+    saveName: (save.saveName || getDefaultSaveName()).toString(),
     updatedAt: save.updatedAt || formatLocalDateTime(new Date()),
     participantSummary: (save.participantSummary || '').toString(),
   };
 
   const existingIndex = savedGamesCache.findIndex(item => Number(item.id) === entry.id);
   if (existingIndex !== -1) {
-    savedGamesCache.splice(existingIndex, 1);
+    savedGamesCache.splice(existingIndex, 1, { ...savedGamesCache[existingIndex], ...entry });
+  } else {
+    savedGamesCache.unshift(entry);
+    savedGamesTotalCount += 1;
+    if (savedGamesCache.length > SAVED_GAMES_PAGE_SIZE) {
+      savedGamesCache = savedGamesCache.slice(0, SAVED_GAMES_PAGE_SIZE);
+    }
   }
 
-  savedGamesCache.unshift(entry);
   renderSavedGames();
 }
 
 function removeSaveCacheEntry(saveId) {
+  const beforeCount = savedGamesCache.length;
   savedGamesCache = savedGamesCache.filter(item => Number(item.id) !== Number(saveId));
+  if (savedGamesCache.length !== beforeCount) {
+    savedGamesTotalCount = Math.max(0, savedGamesTotalCount - 1);
+  }
   renderSavedGames();
+}
+
+function syncSavedGamesFilterInputs() {
+  const updatedAtInput = document.getElementById('savedGamesFilterUpdatedAt');
+  const saveNameInput = document.getElementById('savedGamesFilterSaveName');
+  const participantsInput = document.getElementById('savedGamesFilterParticipants');
+
+  if (updatedAtInput) updatedAtInput.value = savedGamesFilters.updatedAt;
+  if (saveNameInput) saveNameInput.value = savedGamesFilters.saveName;
+  if (participantsInput) participantsInput.value = savedGamesFilters.participants;
+}
+
+function updateSavedGamesPagination() {
+  const countInfo = document.getElementById('savedGamesCountInfo');
+  const prevBtn = document.getElementById('savedGamesPrevBtn');
+  const nextBtn = document.getElementById('savedGamesNextBtn');
+  const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+
+  if (countInfo) {
+    if (savedGamesTotalCount === 0) {
+      countInfo.textContent = '0 Speicherstände';
+    } else {
+      const start = ((savedGamesCurrentPage - 1) * SAVED_GAMES_PAGE_SIZE) + 1;
+      const end = Math.min(savedGamesTotalCount, start + Math.max(savedGamesCache.length - 1, 0));
+      countInfo.textContent = `${start}-${end} von ${savedGamesTotalCount} Speicherständen`;
+    }
+  }
+
+  if (prevBtn) prevBtn.disabled = savedGamesCurrentPage <= 1;
+  if (nextBtn) nextBtn.disabled = savedGamesCurrentPage >= totalPages || savedGamesTotalCount === 0;
 }
 
 function renderSavedGames() {
@@ -759,10 +816,11 @@ function renderSavedGames() {
   if (!savedGamesCache.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 3;
+    cell.colSpan = 4;
     cell.textContent = 'Keine Speicherstände vorhanden.';
     row.appendChild(cell);
     tableBody.appendChild(row);
+    updateSavedGamesPagination();
     return;
   }
 
@@ -772,6 +830,29 @@ function renderSavedGames() {
 
     const updatedAtCell = document.createElement('td');
     updatedAtCell.textContent = save.updatedAt || '';
+
+    const saveNameCell = document.createElement('td');
+    const saveNameInput = document.createElement('input');
+    saveNameInput.type = 'text';
+    saveNameInput.className = 'saved-games-name-input';
+    saveNameInput.maxLength = 160;
+    saveNameInput.value = save.saveName || getDefaultSaveName();
+    saveNameInput.title = 'Speicherstandsname ändern';
+    saveNameInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveNameInput.blur();
+      }
+    });
+    saveNameInput.addEventListener('change', () => {
+      const nextName = saveNameInput.value.trim() || getDefaultSaveName();
+      if (nextName === (save.saveName || getDefaultSaveName())) {
+        saveNameInput.value = nextName;
+        return;
+      }
+      void renameSavedGame(save.id, nextName);
+    });
+    saveNameCell.appendChild(saveNameInput);
 
     const summaryCell = document.createElement('td');
     summaryCell.textContent = save.participantSummary || '';
@@ -787,10 +868,13 @@ function renderSavedGames() {
     actionCell.appendChild(loadBtn);
 
     row.appendChild(updatedAtCell);
+    row.appendChild(saveNameCell);
     row.appendChild(summaryCell);
     row.appendChild(actionCell);
     tableBody.appendChild(row);
   });
+
+  updateSavedGamesPagination();
 }
 
 async function fetchStorageJson(url, options = {}) {
@@ -804,27 +888,150 @@ async function fetchStorageJson(url, options = {}) {
   return data;
 }
 
-async function refreshSavedGamesList() {
+async function refreshSavedGamesList(page = savedGamesCurrentPage) {
   if (!isAuthenticatedUser) return;
 
-  const data = await fetchStorageJson(
-    `${storageApiUrl}?action=list&gameType=${encodeURIComponent(shanghaiAppConfig.gameType || '')}`
-  );
+  const requestedPage = Math.max(1, Number(page) || 1);
+  const params = new URLSearchParams({
+    action: 'list',
+    gameType: shanghaiAppConfig.gameType || '',
+    page: String(requestedPage),
+    pageSize: String(SAVED_GAMES_PAGE_SIZE),
+    filterUpdatedAt: savedGamesFilters.updatedAt || '',
+    filterSaveName: savedGamesFilters.saveName || '',
+    filterParticipants: savedGamesFilters.participants || '',
+  });
 
+  const data = await fetchStorageJson(`${storageApiUrl}?${params.toString()}`);
   savedGamesCache = Array.isArray(data.saves) ? data.saves : [];
+  savedGamesTotalCount = Number(data.totalCount) || 0;
+  savedGamesCurrentPage = Number(data.page) || requestedPage;
+
+  const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+  if (savedGamesCurrentPage > totalPages) {
+    savedGamesCurrentPage = totalPages;
+    return refreshSavedGamesList(savedGamesCurrentPage);
+  }
+
   renderSavedGames();
 }
 
+async function renameSavedGame(saveId, saveName) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const normalizedName = (saveName || '').trim() || getDefaultSaveName();
+  const existingEntry = savedGamesCache.find(item => Number(item.id) === numericSaveId);
+  if (existingEntry && normalizedName === (existingEntry.saveName || getDefaultSaveName())) {
+    return;
+  }
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'rename',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+        saveName: normalizedName,
+      }),
+    });
+
+    if (Number(activeSaveId) === numericSaveId) {
+      activeSaveLabel = data.save?.saveName || normalizedName;
+    }
+
+    upsertSaveCacheEntry({
+      id: numericSaveId,
+      saveName: data.save?.saveName || normalizedName,
+      updatedAt: data.save?.updatedAt || formatLocalDateTime(new Date()),
+      participantSummary: data.save?.participantSummary || existingEntry?.participantSummary || '',
+    });
+    setStorageInfo(data.message || 'Speicherstandsname gespeichert.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstandsname konnte nicht gespeichert werden.', true);
+    renderSavedGames();
+  }
+}
+
 function toggleSavedGamesPanel() {
-  const panel = document.getElementById('savedGamesPanel');
+  const panel = getSavedGamesPanel();
   if (!panel) return;
 
   const shouldOpen = panel.hidden;
   panel.hidden = !shouldOpen;
 
   if (shouldOpen) {
-    void refreshSavedGamesList().catch(error => {
+    syncSavedGamesFilterInputs();
+    void refreshSavedGamesList(savedGamesCurrentPage).catch(error => {
       setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+    });
+  }
+}
+
+function bindSavedGamesControls() {
+  const panel = getSavedGamesPanel();
+  if (!panel || panel.dataset.bound === 'true') return;
+
+  panel.dataset.bound = 'true';
+
+  const scheduleRefresh = () => {
+    savedGamesFilters = {
+      updatedAt: (document.getElementById('savedGamesFilterUpdatedAt')?.value || '').trim(),
+      saveName: (document.getElementById('savedGamesFilterSaveName')?.value || '').trim(),
+      participants: (document.getElementById('savedGamesFilterParticipants')?.value || '').trim(),
+    };
+
+    window.clearTimeout(savedGamesFilterTimer);
+    savedGamesFilterTimer = window.setTimeout(() => {
+      void refreshSavedGamesList(1).catch(error => {
+        setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+      });
+    }, 200);
+  };
+
+  ['savedGamesFilterUpdatedAt', 'savedGamesFilterSaveName', 'savedGamesFilterParticipants'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('input', scheduleRefresh);
+    }
+  });
+
+  const clearBtn = document.getElementById('clearSavedGamesFiltersBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      savedGamesFilters = { updatedAt: '', saveName: '', participants: '' };
+      syncSavedGamesFilterInputs();
+      void refreshSavedGamesList(1).catch(error => {
+        setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+      });
+    });
+  }
+
+  const prevBtn = document.getElementById('savedGamesPrevBtn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (savedGamesCurrentPage > 1) {
+        void refreshSavedGamesList(savedGamesCurrentPage - 1).catch(error => {
+          setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+        });
+      }
+    });
+  }
+
+  const nextBtn = document.getElementById('savedGamesNextBtn');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+      if (savedGamesCurrentPage < totalPages) {
+        void refreshSavedGamesList(savedGamesCurrentPage + 1).catch(error => {
+          setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+        });
+      }
     });
   }
 }
@@ -844,13 +1051,14 @@ async function enableStorage() {
         action: 'create',
         csrfToken: shanghaiAppConfig.csrfToken || '',
         gameType: shanghaiAppConfig.gameType || '',
+        saveName: getDefaultSaveName(),
         state: collectGameState(),
       }),
     });
 
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
-    activeSaveLabel = data.save?.participantSummary || '';
+    activeSaveLabel = data.save?.saveName || getDefaultSaveName();
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
     setStorageInfo(data.message || 'Speichern aktiviert.');
@@ -931,7 +1139,7 @@ async function loadSavedGame(saveId) {
     loadGameState(data.save?.state || {});
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
-    activeSaveLabel = data.save?.participantSummary || '';
+    activeSaveLabel = data.save?.saveName || getDefaultSaveName();
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
     setStorageInfo(`Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
@@ -987,11 +1195,12 @@ function recordStateChange(event = {}) {
         }),
       });
 
-      activeSaveLabel = data.save?.participantSummary || activeSaveLabel;
+      activeSaveLabel = data.save?.saveName || activeSaveLabel;
       upsertSaveCacheEntry({
         id: saveId,
+        saveName: activeSaveLabel,
         updatedAt: formatLocalDateTime(new Date()),
-        participantSummary: activeSaveLabel,
+        participantSummary: data.save?.participantSummary || '',
       });
       setStorageInfo();
     })
@@ -1034,7 +1243,9 @@ function initStorageControls() {
     loadGamesBtn.onclick = toggleSavedGamesPanel;
   }
 
+  bindSavedGamesControls();
   updateStorageToggleButton();
+  updateSavedGamesPagination();
   setStorageInfo();
 }
 

@@ -37,6 +37,24 @@ function portal_shanghai_storage_config(string $gameType): array
     return ['gameType' => $normalized] + $map[$normalized];
 }
 
+function portal_shanghai_default_save_name(string $gameType): string
+{
+    return match (strtolower(trim($gameType))) {
+        'shanghai42' => 'Shanghai 42',
+        default => 'Shanghai 21',
+    };
+}
+
+function portal_shanghai_normalize_save_name(mixed $value, string $gameType): string
+{
+    $saveName = trim((string) ($value ?? ''));
+    if ($saveName === '') {
+        $saveName = portal_shanghai_default_save_name($gameType);
+    }
+
+    return substr($saveName, 0, 160);
+}
+
 function portal_shanghai_normalize_portal_user_id(mixed $value): ?int
 {
     if (!is_numeric($value)) {
@@ -132,38 +150,20 @@ function portal_shanghai_normalize_participants(array $state, int $ownerUserId):
 function portal_shanghai_state_meta(array $state, int $ownerUserId): array
 {
     $seatParticipants = portal_shanghai_normalize_participants($state, $ownerUserId);
-    $participantsByIdentity = [];
+    $participants = [];
+    $summaryParts = [];
 
     foreach ($seatParticipants as $participant) {
-        $displayName = $participant['displayName'];
-        $normalizedName = function_exists('mb_strtolower')
-            ? mb_strtolower($displayName, 'UTF-8')
-            : strtolower($displayName);
-        $key = $participant['portalUserId'] !== null
-            ? 'user:' . $participant['portalUserId']
-            : 'name:' . $normalizedName;
+        $participants[] = [
+            'seatNo' => $participant['seatNo'],
+            'portalUserId' => $participant['portalUserId'],
+            'name' => $participant['displayName'],
+            'totalScore' => $participant['currentTotalScore'],
+            'participantRole' => $participant['participantRole'],
+            'invitationStatus' => $participant['invitationStatus'],
+        ];
 
-        if (!isset($participantsByIdentity[$key])) {
-            $participantsByIdentity[$key] = [
-                'portalUserId' => $participant['portalUserId'],
-                'name' => $displayName,
-                'totalScore' => 0,
-                'participantRole' => $participant['participantRole'],
-                'invitationStatus' => $participant['invitationStatus'],
-            ];
-        }
-
-        $participantsByIdentity[$key]['totalScore'] += $participant['currentTotalScore'];
-
-        if ($participantsByIdentity[$key]['participantRole'] !== 'owner' && $participant['participantRole'] === 'owner') {
-            $participantsByIdentity[$key]['participantRole'] = 'owner';
-        }
-    }
-
-    $participants = array_values($participantsByIdentity);
-    $summaryParts = [];
-    foreach ($participants as $participant) {
-        $summaryParts[] = $participant['name'] . ' (' . $participant['totalScore'] . ')';
+        $summaryParts[] = $participant['displayName'] . ' (' . $participant['currentTotalScore'] . ')';
     }
 
     $participantsJson = json_encode($participants, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -398,6 +398,7 @@ function portal_shanghai_fetch_session_for_user(mysqli $db, array $config, int $
     $sql = "SELECT
                 s.id,
                 s.owner_user_id,
+                s.save_name,
                 s.participant_summary,
                 s.updated_at,
                 s.state_json,
@@ -444,8 +445,20 @@ try {
         $config = portal_shanghai_storage_config((string) ($_GET['gameType'] ?? ''));
 
         if ($action === 'list') {
-            $stmt = $mysqli_user->prepare(
-                "SELECT s.id, s.participant_summary, s.updated_at
+            $page = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+            $pageSizeInput = isset($_GET['pageSize']) && is_numeric($_GET['pageSize']) ? (int) $_GET['pageSize'] : 10;
+            $pageSize = max(1, min(10, $pageSizeInput));
+            $offset = ($page - 1) * $pageSize;
+
+            $filterUpdatedAt = trim((string) ($_GET['filterUpdatedAt'] ?? ''));
+            $filterSaveName = trim((string) ($_GET['filterSaveName'] ?? ''));
+            $filterParticipants = trim((string) ($_GET['filterParticipants'] ?? ''));
+            $filterUpdatedAtLike = '%' . $filterUpdatedAt . '%';
+            $filterSaveNameLike = '%' . $filterSaveName . '%';
+            $filterParticipantsLike = '%' . $filterParticipants . '%';
+
+            $countStmt = $mysqli_user->prepare(
+                "SELECT COUNT(*) AS total_count
                  FROM {$config['sessions']} s
                  WHERE s.is_deleted = 0
                    AND (
@@ -459,14 +472,69 @@ try {
                               AND p.invitation_status IN ('accepted', 'pending')
                         )
                    )
+                   AND (? = '' OR DATE_FORMAT(s.updated_at, '%d.%m.%Y %H:%i') LIKE ?)
+                   AND (? = '' OR s.save_name LIKE ?)
+                   AND (? = '' OR s.participant_summary LIKE ?)"
+            );
+            if (!$countStmt) {
+                throw new RuntimeException('Spielstaende konnten nicht geladen werden.');
+            }
+
+            $countStmt->bind_param(
+                'iissssss',
+                $userId,
+                $userId,
+                $filterUpdatedAt,
+                $filterUpdatedAtLike,
+                $filterSaveName,
+                $filterSaveNameLike,
+                $filterParticipants,
+                $filterParticipantsLike
+            );
+            $countStmt->execute();
+            $countResult = $countStmt->get_result();
+            $countRow = $countResult ? $countResult->fetch_assoc() : null;
+            $countStmt->close();
+            $totalCount = is_array($countRow) ? (int) ($countRow['total_count'] ?? 0) : 0;
+
+            $stmt = $mysqli_user->prepare(
+                "SELECT s.id, s.save_name, s.participant_summary, s.updated_at
+                 FROM {$config['sessions']} s
+                 WHERE s.is_deleted = 0
+                   AND (
+                        s.owner_user_id = ?
+                        OR EXISTS (
+                            SELECT 1
+                            FROM {$config['participants']} p
+                            WHERE p.session_id = s.id
+                              AND p.portal_user_id = ?
+                              AND p.is_active = 1
+                              AND p.invitation_status IN ('accepted', 'pending')
+                        )
+                   )
+                   AND (? = '' OR DATE_FORMAT(s.updated_at, '%d.%m.%Y %H:%i') LIKE ?)
+                   AND (? = '' OR s.save_name LIKE ?)
+                   AND (? = '' OR s.participant_summary LIKE ?)
                  ORDER BY s.updated_at DESC, s.id DESC
-                 LIMIT 100"
+                 LIMIT ? OFFSET ?"
             );
             if (!$stmt) {
                 throw new RuntimeException('Spielstaende konnten nicht geladen werden.');
             }
 
-            $stmt->bind_param('ii', $userId, $userId);
+            $stmt->bind_param(
+                'iissssssii',
+                $userId,
+                $userId,
+                $filterUpdatedAt,
+                $filterUpdatedAtLike,
+                $filterSaveName,
+                $filterSaveNameLike,
+                $filterParticipants,
+                $filterParticipantsLike,
+                $pageSize,
+                $offset
+            );
             $stmt->execute();
             $result = $stmt->get_result();
 
@@ -474,13 +542,20 @@ try {
             while ($result && ($row = $result->fetch_assoc())) {
                 $saves[] = [
                     'id' => (int) $row['id'],
+                    'saveName' => (string) ($row['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
                     'updatedAt' => portal_format_datetime((string) ($row['updated_at'] ?? '')),
                     'participantSummary' => (string) ($row['participant_summary'] ?? ''),
                 ];
             }
 
             $stmt->close();
-            portal_json_response(['success' => true, 'saves' => $saves]);
+            portal_json_response([
+                'success' => true,
+                'saves' => $saves,
+                'totalCount' => $totalCount,
+                'page' => $page,
+                'pageSize' => $pageSize,
+            ]);
         }
 
         if ($action === 'load') {
@@ -503,6 +578,7 @@ try {
                 'success' => true,
                 'save' => [
                     'id' => (int) $row['id'],
+                    'saveName' => (string) ($row['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
                     'updatedAt' => portal_format_datetime((string) ($row['updated_at'] ?? '')),
                     'participantSummary' => (string) ($row['participant_summary'] ?? ''),
                     'eventCount' => (int) ($row['event_count'] ?? 0),
@@ -527,6 +603,7 @@ try {
         $state = isset($input['state']) && is_array($input['state']) ? $input['state'] : [];
         $stateJson = portal_shanghai_state_json($state);
         $meta = portal_shanghai_state_meta($state, $userId);
+        $saveName = portal_shanghai_normalize_save_name($input['saveName'] ?? '', $config['gameType']);
 
         $mysqli_user->begin_transaction();
 
@@ -534,17 +611,18 @@ try {
             $stmt = $mysqli_user->prepare(
                 "INSERT INTO {$config['sessions']} (
                     owner_user_id,
+                    save_name,
                     participant_summary,
                     participants_json,
                     state_json,
                     participant_count
-                ) VALUES (?, ?, ?, ?, ?)"
+                ) VALUES (?, ?, ?, ?, ?, ?)"
             );
             if (!$stmt) {
                 throw new RuntimeException('Speicherstand konnte nicht angelegt werden.');
             }
 
-            $stmt->bind_param('isssi', $userId, $meta['participantSummary'], $meta['participantsJson'], $stateJson, $meta['participantCount']);
+            $stmt->bind_param('issssi', $userId, $saveName, $meta['participantSummary'], $meta['participantsJson'], $stateJson, $meta['participantCount']);
             $stmt->execute();
             $saveId = (int) $stmt->insert_id;
             $stmt->close();
@@ -562,6 +640,7 @@ try {
             'message' => 'Speichern aktiviert.',
             'save' => [
                 'id' => $saveId,
+                'saveName' => $saveName,
                 'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
                 'participantSummary' => $meta['participantSummary'],
                 'participantCount' => $meta['participantCount'],
@@ -588,6 +667,9 @@ try {
             }
 
             $ownerUserId = (int) ($sessionRow['owner_user_id'] ?? 0);
+            $saveName = array_key_exists('saveName', $input)
+                ? portal_shanghai_normalize_save_name($input['saveName'], $config['gameType'])
+                : portal_shanghai_normalize_save_name((string) ($sessionRow['save_name'] ?? ''), $config['gameType']);
             $meta = portal_shanghai_state_meta($state, $ownerUserId);
             $participantLookup = portal_shanghai_sync_participants($mysqli_user, $config['participants'], $saveId, $meta['participants']);
 
@@ -652,7 +734,8 @@ try {
 
             $updateStmt = $mysqli_user->prepare(
                 "UPDATE {$config['sessions']}
-                 SET participant_summary = ?,
+                 SET save_name = ?,
+                     participant_summary = ?,
                      participants_json = ?,
                      state_json = ?,
                      participant_count = ?,
@@ -665,7 +748,8 @@ try {
             }
 
             $updateStmt->bind_param(
-                'sssiisi',
+                'ssssiisi',
+                $saveName,
                 $meta['participantSummary'],
                 $meta['participantsJson'],
                 $stateJson,
@@ -688,9 +772,48 @@ try {
             'message' => 'Spielstand gespeichert.',
             'save' => [
                 'id' => $saveId,
+                'saveName' => $saveName,
                 'participantSummary' => $meta['participantSummary'],
                 'participantCount' => $meta['participantCount'],
                 'eventCount' => $eventCount,
+            ],
+        ]);
+    }
+
+    if ($action === 'rename') {
+        $saveId = isset($input['saveId']) && is_numeric($input['saveId']) ? (int) $input['saveId'] : 0;
+        if ($saveId <= 0) {
+            throw new InvalidArgumentException('Ungueltiger Speicherstand.');
+        }
+
+        $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId);
+        if ($sessionRow === null) {
+            portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+        }
+
+        $saveName = portal_shanghai_normalize_save_name($input['saveName'] ?? '', $config['gameType']);
+
+        $stmt = $mysqli_user->prepare(
+            "UPDATE {$config['sessions']}
+             SET save_name = ?
+             WHERE id = ? AND is_deleted = 0"
+        );
+        if (!$stmt) {
+            throw new RuntimeException('Speicherstand konnte nicht umbenannt werden.');
+        }
+
+        $stmt->bind_param('si', $saveName, $saveId);
+        $stmt->execute();
+        $stmt->close();
+
+        portal_json_response([
+            'success' => true,
+            'message' => 'Speicherstandsname gespeichert.',
+            'save' => [
+                'id' => $saveId,
+                'saveName' => $saveName,
+                'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
+                'participantSummary' => (string) ($sessionRow['participant_summary'] ?? ''),
             ],
         ]);
     }
