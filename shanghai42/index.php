@@ -29,9 +29,9 @@ include __DIR__ . '/../header.php';
               <th>Aktionen</th>
             </tr>
             <tr class="saved-games-filter-row">
-              <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Filtern..." /></th>
-              <th><input id="savedGamesFilterSaveName" type="text" placeholder="Filtern..." /></th>
-              <th><input id="savedGamesFilterParticipants" type="text" placeholder="Filtern..." /></th>
+              <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Letzte Änderung filtern" aria-label="Filter für letzte Änderung" /></th>
+              <th><input id="savedGamesFilterSaveName" type="text" placeholder="Speicherstand filtern" aria-label="Filter für Speicherstand" /></th>
+              <th><input id="savedGamesFilterParticipants" type="text" placeholder="Teilnehmende filtern" aria-label="Filter für Teilnehmende" /></th>
               <th><button id="clearSavedGamesFiltersBtn" type="button">Filter löschen</button></th>
             </tr>
           </thead>

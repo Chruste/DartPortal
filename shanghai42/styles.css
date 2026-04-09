@@ -85,6 +85,12 @@ body {
     white-space: normal;
   }
 
+  .saved-games-table th:first-child,
+  .saved-games-table td:first-child {
+    width: 22%;
+    min-width: 200px;
+  }
+
   .saved-games-table th:nth-child(2),
   .saved-games-table td:nth-child(2) {
     width: 29%;
@@ -93,8 +99,8 @@ body {
 
   .saved-games-table th:nth-child(3),
   .saved-games-table td:nth-child(3) {
-    width: 36%;
-    min-width: 260px;
+    width: 31%;
+    min-width: 240px;
   }
 
   .saved-games-table td:last-child,
@@ -248,6 +254,8 @@ body {
     }
 
     .saved-games-filter-row th,
+    .saved-games-table th:first-child,
+    .saved-games-table td:first-child,
     .saved-games-table td:last-child,
     .saved-games-table th:last-child,
     .saved-games-table th:nth-child(2),
@@ -262,6 +270,11 @@ body {
     .saved-games-filter-row th {
       padding: 0;
       border: none;
+    }
+
+    .saved-games-filter-row input::placeholder {
+      color: #b6b6b6;
+      opacity: 1;
     }
 
     #clearSavedGamesFiltersBtn,
@@ -292,9 +305,11 @@ body {
     }
 
     .saved-games-row td {
+      width: 100%;
       padding: 0;
       border: none;
       min-width: 0;
+      text-align: left;
     }
 
     .saved-games-row td::before {
@@ -330,15 +345,17 @@ body {
     }
 
     .saved-games-action-group {
-      justify-content: stretch;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 0.45em;
+      width: 100%;
     }
 
     .saved-games-action-group button {
-      flex: 1 1 calc(50% - 0.45em);
-      width: auto;
+      width: 100%;
       min-width: 0;
-      min-height: 42px;
+      min-height: 38px;
+      padding: 6px 0;
     }
 
     .saved-games-pagination {
