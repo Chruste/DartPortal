@@ -364,7 +364,7 @@ body {
     }
 
     .saved-games-row.active-save-row td {
-      background: rgba(255, 215, 0, 0.14);
+      background: transparent;
     }
 
     .saved-games-empty-row {
