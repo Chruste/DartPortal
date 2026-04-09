@@ -198,6 +198,152 @@ body {
   .saved-games-table tr.active-save-row td {
     background: rgba(255, 215, 0, 0.14);
   }
+
+  .saved-games-empty-cell {
+    text-align: center;
+    color: #ddd;
+    padding: 14px 12px;
+  }
+
+  @media (max-width: 680px) {
+    .saved-games-panel {
+      overflow: visible;
+    }
+
+    .saved-games-table {
+      margin-bottom: 0.75em;
+    }
+
+    .saved-games-table,
+    .saved-games-table thead,
+    .saved-games-table tbody,
+    .saved-games-table tr,
+    .saved-games-table th,
+    .saved-games-table td {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .saved-games-table thead > tr:first-child {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    .saved-games-filter-row {
+      display: grid;
+      gap: 0.55em;
+      margin-bottom: 0.9em;
+    }
+
+    .saved-games-filter-row th,
+    .saved-games-table td:last-child,
+    .saved-games-table th:last-child,
+    .saved-games-table th:nth-child(2),
+    .saved-games-table td:nth-child(2),
+    .saved-games-table th:nth-child(3),
+    .saved-games-table td:nth-child(3) {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+
+    .saved-games-filter-row th {
+      padding: 0;
+      border: none;
+    }
+
+    #clearSavedGamesFiltersBtn,
+    .saved-games-pagination button,
+    .saved-games-filter-row input,
+    .saved-games-name-input {
+      min-height: 42px;
+      font-size: 16px;
+    }
+
+    .saved-games-table tbody {
+      display: grid;
+      gap: 0.85em;
+    }
+
+    .saved-games-row {
+      display: grid;
+      gap: 0.7em;
+      padding: 0.85em;
+      border: 1px solid #444;
+      border-radius: 12px;
+      background: #141414;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .saved-games-row td {
+      padding: 0;
+      border: none;
+      min-width: 0;
+    }
+
+    .saved-games-row td::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.3em;
+      color: #b6b6b6;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .saved-games-row.active-save-row {
+      border-color: rgba(255, 215, 0, 0.6);
+      box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.24), 0 10px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .saved-games-row.active-save-row td {
+      background: transparent;
+    }
+
+    .saved-games-empty-row {
+      border: 1px dashed #444;
+      border-radius: 12px;
+      background: #141414;
+    }
+
+    .saved-games-empty-cell::before {
+      content: none;
+    }
+
+    .saved-games-action-group {
+      justify-content: stretch;
+      gap: 0.45em;
+    }
+
+    .saved-games-action-group button {
+      flex: 1 1 calc(50% - 0.45em);
+      width: auto;
+      min-width: 0;
+      min-height: 42px;
+    }
+
+    .saved-games-pagination {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .saved-games-pagination-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .saved-games-count-info {
+      text-align: center;
+    }
+  }
   
   /* Manuelle Eingabe */
   #manualInput input {
