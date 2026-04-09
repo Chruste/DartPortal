@@ -19,6 +19,18 @@ function portal_log_rotation_limit_bytes(): int
     return 5242880;
 }
 
+function portal_log_rotation_max_files(): int
+{
+    if (defined('PORTAL_LOG_ROTATION_MAX_FILES')) {
+        $configuredCount = (int) constant('PORTAL_LOG_ROTATION_MAX_FILES');
+        if ($configuredCount > 1) {
+            return $configuredCount;
+        }
+    }
+
+    return 10;
+}
+
 function portal_rotate_log_file_if_needed(string $logFile, int $maxBytes = 5242880): void
 {
     if (!is_file($logFile)) {
@@ -30,12 +42,23 @@ function portal_rotate_log_file_if_needed(string $logFile, int $maxBytes = 52428
         return;
     }
 
-    $rotatedFile = $logFile . '.1';
-    if (is_file($rotatedFile) && !@unlink($rotatedFile)) {
-        return;
+    $maxFiles = portal_log_rotation_max_files();
+    $oldestFile = $logFile . '.' . $maxFiles;
+    if (is_file($oldestFile)) {
+        @unlink($oldestFile);
     }
 
-    @rename($logFile, $rotatedFile);
+    for ($index = $maxFiles - 1; $index >= 1; $index--) {
+        $sourceFile = $logFile . '.' . $index;
+        if (!is_file($sourceFile)) {
+            continue;
+        }
+
+        $targetFile = $logFile . '.' . ($index + 1);
+        @rename($sourceFile, $targetFile);
+    }
+
+    @rename($logFile, $logFile . '.1');
 }
 
 function portal_log_error(string $message, ?Throwable $exception = null, array $context = []): void
