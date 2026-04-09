@@ -1,4 +1,4 @@
-const cacheName = 'cdp-cache-v23';
+const cacheName = 'cdp-cache-v24';
 const assets = [
   '/',
   '/index.php',
@@ -82,8 +82,7 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/save-profile.php'
     || requestUrl.pathname === '/friend-search.php'
     || requestUrl.pathname === '/friend-action.php'
-    || requestUrl.pathname === '/shanghai-storage.php'
-    || requestUrl.pathname === '/set_session_username.php';
+    || requestUrl.pathname === '/shanghai-storage.php';
 }
 
 function isVersionSensitiveAsset(request) {
