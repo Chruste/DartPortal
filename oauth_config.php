@@ -7,6 +7,18 @@ function portal_log_file_path(): string
     return __DIR__ . '/private_config/dartportal_error.log';
 }
 
+function portal_log_rotation_limit_bytes(): int
+{
+    if (defined('PORTAL_LOG_ROTATION_MAX_BYTES')) {
+        $configuredLimit = (int) constant('PORTAL_LOG_ROTATION_MAX_BYTES');
+        if ($configuredLimit > 0) {
+            return $configuredLimit;
+        }
+    }
+
+    return 5242880;
+}
+
 function portal_rotate_log_file_if_needed(string $logFile, int $maxBytes = 5242880): void
 {
     if (!is_file($logFile)) {
@@ -53,7 +65,7 @@ function portal_log_error(string $message, ?Throwable $exception = null, array $
     $directory = dirname($logFile);
 
     if (is_dir($directory) && is_writable($directory) && (!is_file($logFile) || is_writable($logFile))) {
-        portal_rotate_log_file_if_needed($logFile);
+        portal_rotate_log_file_if_needed($logFile, portal_log_rotation_limit_bytes());
 
         $written = @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
         if ($written !== false) {
