@@ -1081,7 +1081,12 @@ function renderSavedGames() {
 }
 
 async function fetchStorageJson(url, options = {}) {
-  const response = await fetch(url, options);
+  const requestOptions = {
+    cache: 'no-store',
+    ...options,
+  };
+
+  const response = await fetch(url, requestOptions);
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok || !data.success) {
