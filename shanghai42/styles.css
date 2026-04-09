@@ -306,16 +306,20 @@ body {
 
     .saved-games-row td {
       width: 100%;
-      padding: 0;
+      padding: 0 0 0.6em;
       border: none;
       min-width: 0;
       text-align: left;
     }
 
+    .saved-games-row td:last-child {
+      padding-bottom: 0;
+    }
+
     .saved-games-row td::before {
       content: attr(data-label);
       display: block;
-      margin-bottom: 0.3em;
+      margin-bottom: 0.18em;
       color: #b6b6b6;
       font-size: 0.74rem;
       font-weight: 700;
