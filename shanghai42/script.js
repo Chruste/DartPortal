@@ -1972,11 +1972,11 @@ function handleMessage(msg) {
     const payload = msg && typeof msg.payload === 'object' && msg.payload ? msg.payload : {};
     const sector = (payload.sector || '').toString().toLowerCase();
     const bounceout = Boolean(payload.bounceout);
-    const miss = bounceout || sector === 'none';
+    const miss = bounceout || sector === 'none' || !sector;
     console.debug('THROW_DETECTED', { sector, bounceout, miss, payload });
     const player = getActivePlayer();
     if (player) {
-      player.processThrow(miss ? 'None' : payload.sector, miss ? 'miss' : null, {
+      player.processThrow(miss ? 'None' : sector, miss ? 'miss' : null, {
         eventType: 'throw_detected',
         source: 'scolia_ws',
         detectedAt: payload.detectionTime || new Date().toISOString(),
