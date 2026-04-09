@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Profil und Freunde';
-$extraHead = '<link rel="stylesheet" href="/profil/profil.css">';
+$extraHead = '<link rel="stylesheet" href="' . htmlspecialchars(portal_asset_url('/profil/profil.css'), ENT_QUOTES, 'UTF-8') . '">';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: /login.php');
@@ -119,6 +119,6 @@ include '../header.php';
   </section>
 </div>
 
-<script src="/profil/profil.js"></script>
+<script src="<?= htmlspecialchars(portal_asset_url('/profil/profil.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 
 <?php include '../footer.php'; ?>

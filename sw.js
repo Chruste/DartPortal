@@ -1,4 +1,6 @@
-const cacheName = 'cdp-cache-v27';
+const swVersion = (new URL(self.location.href).searchParams.get('v') || 'dev')
+  .replace(/[^a-z0-9_-]+/gi, '-');
+const cacheName = `cdp-cache-${swVersion}`;
 const assets = [
   '/',
   '/index.php',

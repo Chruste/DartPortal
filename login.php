@@ -26,5 +26,5 @@ include __DIR__ . '/header.php';
 
   <button type="button" id="btnGoogleLogin" class="oauth-button">Mit Google anmelden</button>
 </form>
-<script src="/script-login.js"></script>
+<script src="<?= htmlspecialchars(portal_asset_url('/script-login.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 <?php include __DIR__ . '/footer.php'; ?>

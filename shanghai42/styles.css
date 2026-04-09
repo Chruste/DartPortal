@@ -293,7 +293,7 @@ body {
 
     .saved-games-row {
       display: grid;
-      gap: 0.7em;
+      gap: 0.95em;
       width: min(100%, 32rem);
       max-width: calc(100vw - 16px);
       padding: 0.85em;

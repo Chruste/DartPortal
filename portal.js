@@ -1,6 +1,8 @@
 // Service Worker registrieren
 if ('serviceWorker' in navigator) {
   let hasRefreshed = false;
+  const portalAssetVersion = window.PORTAL_ASSET_VERSION || 'dev';
+  const serviceWorkerUrl = `/sw.js?v=${encodeURIComponent(portalAssetVersion)}`;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (hasRefreshed) {
@@ -11,7 +13,7 @@ if ('serviceWorker' in navigator) {
     window.location.reload();
   });
 
-  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+  navigator.serviceWorker.register(serviceWorkerUrl, { updateViaCache: 'none' })
     .then(registration => {
       console.log('SW registriert');
 

@@ -5,6 +5,7 @@ require_once __DIR__ . '/session_bootstrap.php';
 $isAuthenticated = isset($_SESSION['user_id']);
 $displayName = $_SESSION['username'] ?? 'Login';
 $navAuthLabel = $isAuthenticated ? 'Ausloggen' : 'Anmeldung';
+$assetVersion = portal_asset_version();
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -15,8 +16,9 @@ $navAuthLabel = $isAuthenticated ? 'Ausloggen' : 'Anmeldung';
   <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
   <link rel="shortcut icon" href="/img/favicon.ico">
   <link rel="apple-touch-icon" href="/img/favicon.ico">
-  <link rel="stylesheet" href="/portal.css">
-  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="<?= htmlspecialchars(portal_asset_url('/portal.css'), ENT_QUOTES, 'UTF-8'); ?>">
+  <link rel="manifest" href="<?= htmlspecialchars(portal_asset_url('/manifest.json'), ENT_QUOTES, 'UTF-8'); ?>">
+  <script>window.PORTAL_ASSET_VERSION = <?= json_encode($assetVersion, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;</script>
   <?= $extraHead ?? '' ?>
 </head>
 <body>
