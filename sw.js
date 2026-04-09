@@ -1,4 +1,4 @@
-const cacheName = 'cdp-cache-v7';
+const cacheName = 'cdp-cache-v20';
 const assets = [
   '/',
   '/index.php',
@@ -30,17 +30,19 @@ const assets = [
   '/shanghai42/img/icon-512.png',
   '/dartball/index.php',
   '/dartball/styles.css',
-  '/dartball/script.js',
   '/dartball/img/headline.png',
   '/dartball/img/background.png',
   '/dartball/img/icon-1024.png',
   '/dartball/img/icon-192.png',
   '/dartball/img/icon-512.png',
-  '/turnierplaner/turnierplaner.php',
-  '/turnierplaner/historie.php',
-  '/turnierplaner/neues_turnier.php',
-  '/turnierplaner/create_tournament.php'
+  '/turnierplaner/turnierplaner.php'
 ];
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -79,7 +81,18 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/profile-data.php'
     || requestUrl.pathname === '/save-profile.php'
     || requestUrl.pathname === '/friend-search.php'
-    || requestUrl.pathname === '/friend-action.php';
+    || requestUrl.pathname === '/friend-action.php'
+    || requestUrl.pathname === '/shanghai-storage.php'
+    || requestUrl.pathname === '/login-api.php'
+    || requestUrl.pathname === '/set_session_username.php';
+}
+
+function isVersionSensitiveAsset(request) {
+  return request.destination === 'script'
+    || request.destination === 'style'
+    || request.destination === 'worker'
+    || request.url.endsWith('.js')
+    || request.url.endsWith('.css');
 }
 
 self.addEventListener('fetch', event => {
@@ -103,6 +116,26 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match(request).then(cached => cached || caches.match('/index.php')))
+    );
+    return;
+  }
+
+  if (isVersionSensitiveAsset(request)) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(cacheName).then(cache => cache.put(request, responseClone));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then(cached => cached || new Response('', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          }))
+        )
     );
     return;
   }

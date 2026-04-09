@@ -2,6 +2,7 @@
 require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Shanghai 21';
 $username  = $_SESSION['username'] ?? null;
+$isAuthenticated = isset($_SESSION['user_id']);
 $extraHead = '<link rel="stylesheet" href="/shanghai21/styles.css">';
 include __DIR__ . '/../header.php';
 ?>
@@ -10,7 +11,45 @@ include __DIR__ . '/../header.php';
     <header>
       <img src="img/headline.png" alt="Shanghai 21">
     </header>
-    <div id="status">Board-Status: –</div>
+    <?php if ($isAuthenticated): ?>
+      <div id="status">Board-Status: –</div>
+      <div id="saveControls" class="save-controls">
+        <button id="newGameBtn" type="button">Neues Spiel</button>
+        <button id="toggleStorageBtn" type="button">Speichern aktivieren</button>
+        <button id="loadGamesBtn" type="button">Speicherstände...</button>
+        <div id="saveStateInfo" class="save-state-info">Speichern ist aktuell deaktiviert.</div>
+      </div>
+      <section id="savedGamesPanel" class="saved-games-panel" hidden>
+        <table id="savedGamesTable" class="saved-games-table">
+          <thead>
+            <tr>
+              <th>Letzte Änderung</th>
+              <th>Speicherstand</th>
+              <th>Teilnehmende</th>
+              <th>Aktionen</th>
+            </tr>
+            <tr class="saved-games-filter-row">
+              <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Filtern..." /></th>
+              <th><input id="savedGamesFilterSaveName" type="text" placeholder="Filtern..." /></th>
+              <th><input id="savedGamesFilterParticipants" type="text" placeholder="Filtern..." /></th>
+              <th><button id="clearSavedGamesFiltersBtn" type="button">Filter löschen</button></th>
+            </tr>
+          </thead>
+          <tbody id="savedGamesBody">
+            <tr>
+              <td colspan="4">Keine Speicherstände vorhanden.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="saved-games-pagination">
+          <span id="savedGamesCountInfo" class="saved-games-count-info">0 Speicherstände</span>
+          <div class="saved-games-pagination-buttons">
+            <button id="savedGamesPrevBtn" type="button">Zurück</button>
+            <button id="savedGamesNextBtn" type="button">Weiter</button>
+          </div>
+        </div>
+      </section>
+    <?php endif; ?>
     
     <!-- Manuelle Eingabe -->
     <div id="manualInput">
@@ -44,6 +83,16 @@ include __DIR__ . '/../header.php';
   </div>
 
   <!-- Login-Handler -->
+  <script>
+    window.SHANGHAI_APP = {
+      gameType: 'shanghai21',
+      isAuthenticated: <?= $isAuthenticated ? 'true' : 'false'; ?>,
+      userId: <?= isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 'null'; ?>,
+      username: <?= json_encode((string) ($username ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+      displayName: <?= json_encode((string) ($username ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+      csrfToken: <?= json_encode((string) ($_SESSION['csrf_token'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+    };
+  </script>
   <script src="script.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {

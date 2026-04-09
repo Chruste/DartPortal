@@ -95,8 +95,11 @@ class Player {
   updateActivateBtn() {
     const isActive = activePlayerIndex === this.index;
     this.activateBtn.style.display = isActive ? 'none' : 'block';
+    this.activateBtn.disabled = archivedMode;
     this.deleteBtn.style.display = isActive ? 'block' : 'none';
+    this.deleteBtn.disabled = archivedMode || this.deleteBtn.disabled;
     this.confirmDeleteBtn.style.display = 'none';
+    this.confirmDeleteBtn.disabled = archivedMode;
     if (isActive) {
       this.tableArea.classList.remove('inactive');
     } else {
@@ -152,9 +155,10 @@ class Player {
     return { hit, value, base, mult };
   }
 
-  processThrow(sec, type = null) {
+  processThrow(sec, type = null, eventMeta = null) {
+    if (archivedMode || this.currentIndex >= this.sequence.length) return;
     const { hit, value } = this.parseHit(sec, type);
-    const target = this.sequence[this.currentIndex];
+    const target = this.sequence[this.currentIndex] || '';
 
     // Scoring rule: only doubles of the current target score give positive points.
     // Any other hit (including singles/triples of the target or any other number) gives -1.
@@ -176,11 +180,20 @@ class Player {
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
     updateOverviewTable();
-    if (this.currentIndex > 0) {
-      const _ub = document.getElementById('undoButton');
-      _ub.style.visibility = 'visible';
-      _ub.style.pointerEvents = 'auto';
-    }
+    updateUndoButtonVisibility();
+    recordStateChange({
+      eventType: eventMeta?.eventType || 'throw',
+      source: eventMeta?.source || 'unknown',
+      playerIndex: this.index,
+      playerUserId: this.portalUserId ?? null,
+      playerName: this.name,
+      targetLabel: target,
+      sectorResult: hit,
+      scoreDelta: pts,
+      scoreAfter: this.totalScore,
+      detectedAt: eventMeta?.detectedAt || new Date().toISOString(),
+      payload: eventMeta?.payload || { sector: sec, type },
+    });
   }
 
   calculatePoints(hit, target) {
@@ -197,6 +210,8 @@ class Player {
   }
 
   undoLastThrow() {
+    if (archivedMode) return;
+
     if (this.currentIndex > 0) {
       this.currentIndex--;
       const row = this.tbody.children[this.currentIndex];
@@ -212,15 +227,26 @@ class Player {
       this.highlightRow(this.currentIndex);
       this.updateTripleButton();
       updateOverviewTable();
-      if (this.currentIndex === 0) {
-        const _ub = document.getElementById('undoButton');
-        _ub.style.visibility = 'hidden';
-        _ub.style.pointerEvents = 'none';
-      }
+      updateUndoButtonVisibility();
+      recordStateChange({
+        eventType: 'undo',
+        source: 'ui',
+        playerIndex: this.index,
+        playerUserId: this.portalUserId ?? null,
+        playerName: this.name,
+        targetLabel: this.sequence[this.currentIndex] || '',
+        sectorResult: '',
+        scoreDelta: 0,
+        scoreAfter: this.totalScore,
+        detectedAt: new Date().toISOString(),
+        payload: { currentIndex: this.currentIndex },
+      });
     }
   }
 
   enterEditMode() {
+    if (archivedMode) return;
+
     document.getElementById('editButton').style.display = 'none';
     document.getElementById('saveButton').style.display = 'inline';
     editingPlayerIndex = this.index;
@@ -277,9 +303,26 @@ class Player {
     this.highlightRow(this.currentIndex);
     this.updateTripleButton();
     updateOverviewTable();
-    const _ub = document.getElementById('undoButton');
-    _ub.style.visibility = this.currentIndex > 0 ? 'visible' : 'hidden';
-    _ub.style.pointerEvents = this.currentIndex > 0 ? 'auto' : 'none';
+    updateUndoButtonVisibility();
+    recordStateChange({
+      eventType: 'edit_save',
+      source: 'edit',
+      playerIndex: this.index,
+      playerUserId: this.portalUserId ?? null,
+      playerName: this.name,
+      targetLabel: this.sequence[Math.min(this.currentIndex, this.sequence.length - 1)] || '',
+      sectorResult: '',
+      scoreDelta: 0,
+      scoreAfter: this.totalScore,
+      detectedAt: new Date().toISOString(),
+      payload: {
+        rows: Array.from(rows).map((row, rowIndex) => ({
+          target: this.sequence[rowIndex],
+          points: row.cells[1].textContent,
+          hit: row.cells[2].textContent,
+        })),
+      },
+    });
   }
 }
 
@@ -295,6 +338,118 @@ let overviewResizeHandlerRegistered = false;
 let overviewFooterCollapsed = localStorage.getItem('overviewFooterCollapsed') === 'true';
 let controlsFooterCollapsed = localStorage.getItem('controlsFooterCollapsed') === 'true';
 let controlsFooterInitialized = false;
+let storageEnabled = false;
+let activeSaveId = null;
+let activeSaveLabel = '';
+let archivedMode = false;
+let savedGamesCache = [];
+let savedGamesCurrentPage = 1;
+let savedGamesTotalCount = 0;
+let savedGamesFilterTimer = null;
+let savedGamesTooltipEl = null;
+const SAVED_GAMES_PAGE_SIZE = 10;
+let savedGamesFilters = {
+  updatedAt: '',
+  saveName: '',
+  participants: '',
+};
+let storageSaveChain = Promise.resolve();
+let isRestoringState = false;
+const shanghaiAppConfig = window.SHANGHAI_APP || {};
+const isAuthenticatedUser = Boolean(shanghaiAppConfig.isAuthenticated);
+const storageApiUrl = '/shanghai-storage.php';
+
+function formatLocalDateTime(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function updateUndoButtonVisibility() {
+  const undoBtn = document.getElementById('undoButton');
+  if (!undoBtn) return;
+
+  const activePlayer = getActivePlayer();
+  const canUndo = Boolean(!archivedMode && activePlayer && activePlayer.currentIndex > 0 && editingPlayerIndex === null);
+  undoBtn.style.visibility = canUndo ? 'visible' : 'hidden';
+  undoBtn.style.pointerEvents = canUndo ? 'auto' : 'none';
+  undoBtn.disabled = !canUndo;
+}
+
+function getStorageStatusElement() {
+  return document.getElementById('saveStateInfo');
+}
+
+function setStorageInfo(message = '', isError = false) {
+  const statusEl = getStorageStatusElement();
+  if (!statusEl) return;
+
+  const fallbackMessage = archivedMode && activeSaveId
+    ? `Cloud Spiel archiviert${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+    : (storageEnabled && activeSaveId
+      ? `Cloud Spiel aktiv${activeSaveLabel ? `: ${activeSaveLabel}` : '.'}`
+      : 'Lokales Spiel aktiv. Noch nicht in der Cloud gespeichert.');
+
+  statusEl.textContent = message || fallbackMessage;
+  statusEl.classList.toggle('error', Boolean(isError));
+}
+
+function setSaveControlsBusy(isBusy) {
+  ['newGameBtn', 'toggleStorageBtn', 'loadGamesBtn'].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.disabled = Boolean(isBusy);
+  });
+}
+
+function updateStorageToggleButton() {
+  const toggleBtn = document.getElementById('toggleStorageBtn');
+  if (!toggleBtn) return;
+
+  const isCloudMode = Boolean(storageEnabled && activeSaveId);
+  toggleBtn.textContent = isCloudMode ? 'Cloud Spiel' : 'Lokales Spiel';
+  toggleBtn.title = isCloudMode
+    ? 'Wechselt zum lokalen Spiel. Der aktuelle Spielstand bleibt in der Cloud bestehen.'
+    : 'Neuen Cloud Spielstand mit den aktuellen Ergebnissen anlegen.';
+  toggleBtn.setAttribute('aria-label', toggleBtn.title);
+  toggleBtn.classList.toggle('storage-local-mode', !isCloudMode);
+  toggleBtn.classList.toggle('storage-cloud-mode', isCloudMode);
+}
+
+function updateGameInteractionState() {
+  const isLocked = Boolean(archivedMode && activeSaveId);
+  const manualSectorInput = document.getElementById('manualSector');
+  if (manualSectorInput) {
+    manualSectorInput.disabled = isLocked;
+  }
+
+  ['manualSubmit', 'btnMiss', 'btnSingle', 'btnDouble', 'btnTriple', 'addPlayerButton', 'editButton', 'saveButton'].forEach(id => {
+    const control = document.getElementById(id);
+    if (control) {
+      control.disabled = isLocked;
+    }
+  });
+}
+
+function setArchiveMode(nextArchived) {
+  const shouldLock = Boolean(nextArchived && activeSaveId);
+
+  if (shouldLock && editingPlayerIndex !== null && players[editingPlayerIndex]) {
+    players[editingPlayerIndex].exitEditMode();
+  }
+
+  archivedMode = shouldLock;
+  updateAllActivateBtns();
+  updateAutoPlayerSwitchBtn();
+  updateUndoButtonVisibility();
+  updateGameInteractionState();
+}
 
 function updateFooterLayout() {
   syncOverviewFooterHeight();
@@ -463,6 +618,989 @@ function getActivePlayer() {
   return players[activePlayerIndex] || null;
 }
 
+function buildPlayerState(player) {
+  return {
+    index: player.index,
+    name: player.name,
+    portalUserId: Number.isFinite(Number(player.portalUserId)) ? Number(player.portalUserId) : null,
+    participantRole: player.participantRole
+      || (Number(player.portalUserId) === Number(shanghaiAppConfig.userId) ? 'owner' : (player.portalUserId ? 'friend' : 'guest')),
+    invitationStatus: player.invitationStatus || 'accepted',
+    invitedByUserId: Number.isFinite(Number(player.invitedByUserId)) ? Number(player.invitedByUserId) : null,
+    currentIndex: player.currentIndex,
+    totalScore: player.totalScore,
+    rows: Array.from(player.tbody.children).map((row, rowIndex) => ({
+      target: player.sequence[rowIndex],
+      points: row.cells[1].textContent,
+      hit: row.cells[2].textContent,
+    })),
+  };
+}
+
+function collectGameState() {
+  return {
+    gameType: shanghaiAppConfig.gameType || '',
+    activePlayerIndex,
+    nextPlayerId,
+    autoPlayerSwitch,
+    players: getPlayerIds().map(id => buildPlayerState(players[id])),
+  };
+}
+
+function resetLocalGameState() {
+  Object.values(players).forEach(player => player?.container?.remove());
+  players = {};
+  activePlayerIndex = 0;
+  editingPlayerIndex = null;
+  nextPlayerId = 0;
+  autoPlayerSwitch = false;
+
+  const editBtn = document.getElementById('editButton');
+  const saveBtn = document.getElementById('saveButton');
+  if (editBtn) editBtn.style.display = 'inline';
+  if (saveBtn) saveBtn.style.display = 'none';
+  if (overviewTableBody) overviewTableBody.innerHTML = '';
+}
+
+function applyLoadedPlayerState(savedPlayer, fallbackIndex) {
+  const parsedIndex = Number.parseInt(String(savedPlayer?.index ?? fallbackIndex), 10);
+  const playerIndex = Number.isFinite(parsedIndex) ? parsedIndex : fallbackIndex;
+  const playerName = (savedPlayer?.name || '').toString().trim() || `Spieler ${playerIndex + 1}`;
+  const player = new Player(playerName, playerIndex);
+  const restoredPortalUserId = Number.parseInt(String(savedPlayer?.portalUserId ?? savedPlayer?.userId ?? ''), 10);
+  const restoredInvitedByUserId = Number.parseInt(String(savedPlayer?.invitedByUserId ?? ''), 10);
+  player.portalUserId = Number.isFinite(restoredPortalUserId) ? restoredPortalUserId : null;
+  player.participantRole = (savedPlayer?.participantRole || '').toString().trim()
+    || (Number(player.portalUserId) === Number(shanghaiAppConfig.userId) ? 'owner' : (player.portalUserId ? 'friend' : 'guest'));
+  player.invitationStatus = (savedPlayer?.invitationStatus || 'accepted').toString().trim() || 'accepted';
+  player.invitedByUserId = Number.isFinite(restoredInvitedByUserId) ? restoredInvitedByUserId : null;
+  players[playerIndex] = player;
+  tablesContainer.appendChild(player.container);
+
+  const rows = Array.isArray(savedPlayer?.rows) ? savedPlayer.rows : [];
+  let totalScore = 0;
+
+  Array.from(player.tbody.children).forEach((tableRow, rowIndex) => {
+    const savedRow = rows[rowIndex] || {};
+    const hit = (savedRow.hit ?? '').toString().trim();
+    tableRow.cells[2].textContent = hit;
+
+    if (hit === '') {
+      tableRow.cells[1].textContent = '';
+      tableRow.classList.remove('hit', 'miss');
+      return;
+    }
+
+    const parsedPoints = Number.parseInt(String(savedRow.points ?? ''), 10);
+    const points = Number.isFinite(parsedPoints)
+      ? parsedPoints
+      : player.calculatePoints(hit, player.sequence[rowIndex]);
+
+    tableRow.cells[1].textContent = String(points);
+    tableRow.classList.toggle('hit', points > 0);
+    tableRow.classList.toggle('miss', points < 0);
+    totalScore += points;
+  });
+
+  player.totalScore = Number.isFinite(Number(savedPlayer?.totalScore))
+    ? Number(savedPlayer.totalScore)
+    : totalScore;
+  if (player.totalScore !== totalScore) {
+    player.totalScore = totalScore;
+  }
+  player.sumCell.textContent = String(player.totalScore);
+
+  const requestedIndex = Number.parseInt(String(savedPlayer?.currentIndex ?? ''), 10);
+  if (Number.isFinite(requestedIndex)) {
+    player.currentIndex = Math.min(Math.max(requestedIndex, 0), player.sequence.length);
+  } else {
+    const firstEmptyIndex = Array.from(player.tbody.children).findIndex(tableRow => tableRow.cells[2].textContent.trim() === '');
+    player.currentIndex = firstEmptyIndex === -1 ? player.sequence.length : firstEmptyIndex;
+  }
+
+  player.highlightRow(player.currentIndex);
+  player.updateTripleButton();
+}
+
+function loadGameState(state = {}) {
+  isRestoringState = true;
+
+  try {
+    resetLocalGameState();
+
+    const savedPlayers = Array.isArray(state.players) ? state.players : [];
+    if (savedPlayers.length === 0) {
+      addPlayer();
+      autoPlayerSwitch = false;
+    } else {
+      savedPlayers.forEach((savedPlayer, fallbackIndex) => applyLoadedPlayerState(savedPlayer, fallbackIndex));
+
+      const availableIds = getPlayerIds();
+      const requestedActivePlayer = Number.parseInt(String(state.activePlayerIndex ?? ''), 10);
+      activePlayerIndex = availableIds.includes(requestedActivePlayer)
+        ? requestedActivePlayer
+        : (availableIds[0] ?? 0);
+
+      const requestedNextPlayerId = Number.parseInt(String(state.nextPlayerId ?? ''), 10);
+      const minNextPlayerId = availableIds.reduce((maxValue, id) => Math.max(maxValue, id + 1), 0);
+      nextPlayerId = Number.isFinite(requestedNextPlayerId)
+        ? Math.max(requestedNextPlayerId, minNextPlayerId)
+        : minNextPlayerId;
+
+      autoPlayerSwitch = Boolean(state.autoPlayerSwitch);
+    }
+  } finally {
+    isRestoringState = false;
+  }
+
+  updateAllActivateBtns();
+  updateAutoPlayerSwitchBtn();
+  updateOverviewTable();
+
+  const activePlayer = getActivePlayer();
+  if (activePlayer) {
+    activePlayer.updateTripleButton();
+  }
+
+  updateUndoButtonVisibility();
+  updateFooterLayout();
+  updateGameInteractionState();
+}
+
+function hasGameProgress() {
+  const playerIds = getPlayerIds();
+  if (playerIds.length > 1) return true;
+
+  return playerIds.some(id => {
+    const player = players[id];
+    if (!player) return false;
+
+    const defaultName = `Spieler ${player.index + 1}`;
+    const hasRowContent = Array.from(player.tbody.children).some(row => {
+      return row.cells[1].textContent !== '' || row.cells[2].textContent !== '';
+    });
+
+    return player.currentIndex > 0
+      || player.totalScore !== 0
+      || hasRowContent
+      || ((player.name || '').trim() !== '' && player.name !== defaultName);
+  });
+}
+
+function confirmDiscardResults() {
+  return !hasGameProgress() || window.confirm('Ungespeicherte Ergebnisse gehen verloren!');
+}
+
+function createManualEventMeta(source, payload = {}) {
+  return {
+    eventType: 'throw_detected',
+    source,
+    detectedAt: new Date().toISOString(),
+    payload: {
+      ...payload,
+      manual: true,
+    },
+  };
+}
+
+function getDefaultSaveName() {
+  return shanghaiAppConfig.gameType === 'shanghai42' ? 'Shanghai 42' : 'Shanghai 21';
+}
+
+function getSavedGamesPanel() {
+  return document.getElementById('savedGamesPanel');
+}
+
+function isSavedGamesPanelOpen() {
+  const panel = getSavedGamesPanel();
+  return Boolean(panel && !panel.hidden);
+}
+
+async function refreshSavedGamesAfterMutation() {
+  savedGamesCurrentPage = 1;
+  if (isSavedGamesPanelOpen()) {
+    await refreshSavedGamesList(1);
+  }
+}
+
+function ensureSavedGamesTooltip() {
+  if (savedGamesTooltipEl && document.body.contains(savedGamesTooltipEl)) {
+    return savedGamesTooltipEl;
+  }
+
+  const tooltip = document.createElement('div');
+  tooltip.id = 'savedGamesTooltip';
+  tooltip.className = 'saved-games-tooltip';
+  tooltip.hidden = true;
+  document.body.appendChild(tooltip);
+  savedGamesTooltipEl = tooltip;
+  return tooltip;
+}
+
+function resolveSavedGamesTooltipText(textOrFactory) {
+  const rawValue = typeof textOrFactory === 'function' ? textOrFactory() : textOrFactory;
+  return (rawValue ?? '').toString().trim();
+}
+
+function positionSavedGamesTooltip(event) {
+  const tooltip = ensureSavedGamesTooltip();
+  if (tooltip.hidden) return;
+
+  const offset = 14;
+  tooltip.style.left = `${event.clientX + offset}px`;
+  tooltip.style.top = `${event.clientY + offset}px`;
+
+  const rect = tooltip.getBoundingClientRect();
+  let nextLeft = event.clientX + offset;
+  let nextTop = event.clientY + offset;
+
+  if (rect.right > window.innerWidth - 10) {
+    nextLeft = Math.max(10, event.clientX - rect.width - offset);
+  }
+  if (rect.bottom > window.innerHeight - 10) {
+    nextTop = Math.max(10, event.clientY - rect.height - offset);
+  }
+
+  tooltip.style.left = `${nextLeft}px`;
+  tooltip.style.top = `${nextTop}px`;
+}
+
+function showSavedGamesTooltip(textOrFactory, event) {
+  const text = resolveSavedGamesTooltipText(textOrFactory);
+  if (!text) return;
+
+  const tooltip = ensureSavedGamesTooltip();
+  tooltip.textContent = text;
+  tooltip.hidden = false;
+  positionSavedGamesTooltip(event);
+}
+
+function hideSavedGamesTooltip() {
+  if (!savedGamesTooltipEl) return;
+  savedGamesTooltipEl.hidden = true;
+}
+
+function bindSavedGamesTooltip(target, textOrFactory) {
+  if (!target) return;
+
+  target.addEventListener('mouseenter', event => {
+    showSavedGamesTooltip(textOrFactory, event);
+  });
+  target.addEventListener('mousemove', positionSavedGamesTooltip);
+  target.addEventListener('mouseleave', hideSavedGamesTooltip);
+  target.addEventListener('blur', hideSavedGamesTooltip);
+}
+
+function upsertSaveCacheEntry(save) {
+  if (!save || !save.id) return;
+
+  const entry = {
+    id: Number(save.id),
+    saveName: (save.saveName || getDefaultSaveName()).toString(),
+    updatedAt: save.updatedAt || formatLocalDateTime(new Date()),
+    participantSummary: (save.participantSummary || '').toString(),
+    isArchived: Boolean(save.isArchived),
+    isOwner: save.isOwner !== false,
+  };
+
+  const existingIndex = savedGamesCache.findIndex(item => Number(item.id) === entry.id);
+  if (existingIndex !== -1) {
+    savedGamesCache.splice(existingIndex, 1, { ...savedGamesCache[existingIndex], ...entry });
+  } else {
+    savedGamesCache.unshift(entry);
+    savedGamesTotalCount += 1;
+    if (savedGamesCache.length > SAVED_GAMES_PAGE_SIZE) {
+      savedGamesCache = savedGamesCache.slice(0, SAVED_GAMES_PAGE_SIZE);
+    }
+  }
+
+  renderSavedGames();
+}
+
+function removeSaveCacheEntry(saveId) {
+  const beforeCount = savedGamesCache.length;
+  savedGamesCache = savedGamesCache.filter(item => Number(item.id) !== Number(saveId));
+  if (savedGamesCache.length !== beforeCount) {
+    savedGamesTotalCount = Math.max(0, savedGamesTotalCount - 1);
+  }
+  renderSavedGames();
+}
+
+function syncSavedGamesFilterInputs() {
+  const updatedAtInput = document.getElementById('savedGamesFilterUpdatedAt');
+  const saveNameInput = document.getElementById('savedGamesFilterSaveName');
+  const participantsInput = document.getElementById('savedGamesFilterParticipants');
+
+  if (updatedAtInput) updatedAtInput.value = savedGamesFilters.updatedAt;
+  if (saveNameInput) saveNameInput.value = savedGamesFilters.saveName;
+  if (participantsInput) participantsInput.value = savedGamesFilters.participants;
+}
+
+function updateSavedGamesPagination() {
+  const countInfo = document.getElementById('savedGamesCountInfo');
+  const prevBtn = document.getElementById('savedGamesPrevBtn');
+  const nextBtn = document.getElementById('savedGamesNextBtn');
+  const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+
+  if (countInfo) {
+    if (savedGamesTotalCount === 0) {
+      countInfo.textContent = '0 Speicherstände';
+    } else {
+      const start = ((savedGamesCurrentPage - 1) * SAVED_GAMES_PAGE_SIZE) + 1;
+      const end = Math.min(savedGamesTotalCount, start + Math.max(savedGamesCache.length - 1, 0));
+      countInfo.textContent = `${start}-${end} von ${savedGamesTotalCount} Speicherständen`;
+    }
+  }
+
+  if (prevBtn) prevBtn.disabled = savedGamesCurrentPage <= 1;
+  if (nextBtn) nextBtn.disabled = savedGamesCurrentPage >= totalPages || savedGamesTotalCount === 0;
+}
+
+function renderSavedGames() {
+  const tableBody = document.getElementById('savedGamesBody');
+  if (!tableBody) return;
+
+  tableBody.innerHTML = '';
+
+  if (!savedGamesCache.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.textContent = 'Keine Speicherstände vorhanden.';
+    row.appendChild(cell);
+    tableBody.appendChild(row);
+    updateSavedGamesPagination();
+    return;
+  }
+
+  savedGamesCache.forEach(save => {
+    const row = document.createElement('tr');
+    row.classList.toggle('active-save-row', Number(save.id) === Number(activeSaveId));
+
+    const updatedAtCell = document.createElement('td');
+    updatedAtCell.textContent = save.updatedAt || '';
+    bindSavedGamesTooltip(updatedAtCell, () => save.updatedAt || '');
+
+    const saveNameCell = document.createElement('td');
+    const saveNameInput = document.createElement('input');
+    saveNameInput.type = 'text';
+    saveNameInput.className = 'saved-games-name-input';
+    saveNameInput.maxLength = 160;
+    saveNameInput.value = save.saveName || getDefaultSaveName();
+    saveNameInput.disabled = Boolean(save.isArchived || !save.isOwner);
+    saveNameInput.title = !save.isOwner
+      ? 'Nur der Besitzer kann den Speicherstand umbenennen'
+      : (save.isArchived ? 'Archivierte Speicherstände sind schreibgeschützt' : 'Speicherstandsname ändern');
+    saveNameInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveNameInput.blur();
+      }
+    });
+    saveNameInput.addEventListener('change', () => {
+      const nextName = saveNameInput.value.trim() || getDefaultSaveName();
+      if (nextName === (save.saveName || getDefaultSaveName())) {
+        saveNameInput.value = nextName;
+        return;
+      }
+      void renameSavedGame(save.id, nextName);
+    });
+    bindSavedGamesTooltip(saveNameInput, () => saveNameInput.value || getDefaultSaveName());
+    saveNameCell.appendChild(saveNameInput);
+
+    const summaryCell = document.createElement('td');
+    summaryCell.textContent = save.participantSummary || '';
+    bindSavedGamesTooltip(summaryCell, () => save.participantSummary || '');
+
+    const actionCell = document.createElement('td');
+    const actionGroup = document.createElement('div');
+    actionGroup.className = 'saved-games-action-group';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.type = 'button';
+    loadBtn.className = 'saved-games-load-btn';
+    loadBtn.textContent = '📂';
+    loadBtn.title = 'Cloud-Spielstand laden';
+    loadBtn.setAttribute('aria-label', loadBtn.title);
+    bindSavedGamesTooltip(loadBtn, () => loadBtn.title);
+    loadBtn.onclick = () => {
+      void loadSavedGame(save.id);
+    };
+    actionGroup.appendChild(loadBtn);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'saved-games-copy-btn';
+    copyBtn.textContent = '📄';
+    copyBtn.title = 'Kopie als neuen Cloud-Spielstand anlegen und direkt öffnen';
+    copyBtn.setAttribute('aria-label', copyBtn.title);
+    bindSavedGamesTooltip(copyBtn, () => copyBtn.title);
+    copyBtn.onclick = () => {
+      void copySavedGame(save.id);
+    };
+    actionGroup.appendChild(copyBtn);
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.type = 'button';
+    archiveBtn.className = 'saved-games-archive-btn';
+    archiveBtn.textContent = save.isArchived ? '♻️' : '🗄️';
+    archiveBtn.disabled = !save.isOwner;
+    archiveBtn.title = save.isOwner
+      ? (save.isArchived ? 'Schreibschutz aufheben und Speicherstand reaktivieren' : 'Speicherstand archivieren und schreibschützen')
+      : 'Nur der Besitzer kann diesen Speicherstand archivieren';
+    archiveBtn.setAttribute('aria-label', archiveBtn.title);
+    bindSavedGamesTooltip(archiveBtn, () => archiveBtn.title);
+    archiveBtn.onclick = () => {
+      void toggleSaveArchive(save.id, !save.isArchived);
+    };
+    actionGroup.appendChild(archiveBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'saved-games-delete-btn';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.disabled = !save.isOwner;
+    deleteBtn.title = save.isOwner ? 'Speicherstand löschen' : 'Nur der Besitzer kann diesen Speicherstand löschen';
+    deleteBtn.setAttribute('aria-label', deleteBtn.title);
+    bindSavedGamesTooltip(deleteBtn, () => deleteBtn.title);
+    deleteBtn.onclick = () => {
+      void deleteSavedGame(save.id);
+    };
+    actionGroup.appendChild(deleteBtn);
+
+    actionCell.appendChild(actionGroup);
+
+    row.appendChild(updatedAtCell);
+    row.appendChild(saveNameCell);
+    row.appendChild(summaryCell);
+    row.appendChild(actionCell);
+    tableBody.appendChild(row);
+  });
+
+  updateSavedGamesPagination();
+}
+
+async function fetchStorageJson(url, options = {}) {
+  const requestOptions = {
+    cache: 'no-store',
+    ...options,
+  };
+
+  const response = await fetch(url, requestOptions);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || 'Spielstand konnte nicht verarbeitet werden.');
+  }
+
+  return data;
+}
+
+async function refreshSavedGamesList(page = savedGamesCurrentPage) {
+  if (!isAuthenticatedUser) return;
+
+  const requestedPage = Math.max(1, Number(page) || 1);
+  const params = new URLSearchParams({
+    action: 'list',
+    gameType: shanghaiAppConfig.gameType || '',
+    page: String(requestedPage),
+    pageSize: String(SAVED_GAMES_PAGE_SIZE),
+    filterUpdatedAt: savedGamesFilters.updatedAt || '',
+    filterSaveName: savedGamesFilters.saveName || '',
+    filterParticipants: savedGamesFilters.participants || '',
+  });
+
+  const data = await fetchStorageJson(`${storageApiUrl}?${params.toString()}`);
+  savedGamesCache = Array.isArray(data.saves) ? data.saves : [];
+  savedGamesTotalCount = Number(data.totalCount) || 0;
+  savedGamesCurrentPage = Number(data.page) || requestedPage;
+
+  const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+  if (savedGamesCurrentPage > totalPages) {
+    savedGamesCurrentPage = totalPages;
+    return refreshSavedGamesList(savedGamesCurrentPage);
+  }
+
+  renderSavedGames();
+}
+
+async function renameSavedGame(saveId, saveName) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const normalizedName = (saveName || '').trim() || getDefaultSaveName();
+  const existingEntry = savedGamesCache.find(item => Number(item.id) === numericSaveId);
+  if (existingEntry && normalizedName === (existingEntry.saveName || getDefaultSaveName())) {
+    return;
+  }
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'rename',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+        saveName: normalizedName,
+      }),
+    });
+
+    if (Number(activeSaveId) === numericSaveId) {
+      activeSaveLabel = data.save?.saveName || normalizedName;
+    }
+
+    upsertSaveCacheEntry({
+      id: numericSaveId,
+      saveName: data.save?.saveName || normalizedName,
+      updatedAt: data.save?.updatedAt || formatLocalDateTime(new Date()),
+      participantSummary: data.save?.participantSummary || existingEntry?.participantSummary || '',
+    });
+    await refreshSavedGamesAfterMutation();
+    setStorageInfo(data.message || 'Speicherstandsname gespeichert.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstandsname konnte nicht gespeichert werden.', true);
+    renderSavedGames();
+  }
+}
+
+function toggleSavedGamesPanel() {
+  const panel = getSavedGamesPanel();
+  if (!panel) return;
+
+  const shouldOpen = panel.hidden;
+  panel.hidden = !shouldOpen;
+
+  if (shouldOpen) {
+    syncSavedGamesFilterInputs();
+    void refreshSavedGamesList(savedGamesCurrentPage).catch(error => {
+      setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+    });
+  }
+}
+
+function bindSavedGamesControls() {
+  const panel = getSavedGamesPanel();
+  if (!panel || panel.dataset.bound === 'true') return;
+
+  panel.dataset.bound = 'true';
+
+  const scheduleRefresh = () => {
+    savedGamesFilters = {
+      updatedAt: (document.getElementById('savedGamesFilterUpdatedAt')?.value || '').trim(),
+      saveName: (document.getElementById('savedGamesFilterSaveName')?.value || '').trim(),
+      participants: (document.getElementById('savedGamesFilterParticipants')?.value || '').trim(),
+    };
+
+    window.clearTimeout(savedGamesFilterTimer);
+    savedGamesFilterTimer = window.setTimeout(() => {
+      void refreshSavedGamesList(1).catch(error => {
+        setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+      });
+    }, 200);
+  };
+
+  ['savedGamesFilterUpdatedAt', 'savedGamesFilterSaveName', 'savedGamesFilterParticipants'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('input', scheduleRefresh);
+    }
+  });
+
+  const clearBtn = document.getElementById('clearSavedGamesFiltersBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      savedGamesFilters = { updatedAt: '', saveName: '', participants: '' };
+      syncSavedGamesFilterInputs();
+      void refreshSavedGamesList(1).catch(error => {
+        setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+      });
+    });
+  }
+
+  const prevBtn = document.getElementById('savedGamesPrevBtn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (savedGamesCurrentPage > 1) {
+        void refreshSavedGamesList(savedGamesCurrentPage - 1).catch(error => {
+          setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+        });
+      }
+    });
+  }
+
+  const nextBtn = document.getElementById('savedGamesNextBtn');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+      if (savedGamesCurrentPage < totalPages) {
+        void refreshSavedGamesList(savedGamesCurrentPage + 1).catch(error => {
+          setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+        });
+      }
+    });
+  }
+}
+
+async function enableStorage() {
+  if (!isAuthenticatedUser) return;
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'create',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveName: getDefaultSaveName(),
+        state: collectGameState(),
+      }),
+    });
+
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || 0) || null;
+    activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    setArchiveMode(Boolean(data.save?.isArchived));
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    await refreshSavedGamesAfterMutation();
+    setStorageInfo(data.message || 'Speichern aktiviert.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speichern konnte nicht aktiviert werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function deleteSavedGame(saveId) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  if (!window.confirm('Diesen Speicherstand wirklich löschen?')) {
+    return;
+  }
+
+  const wasActiveSave = Number(activeSaveId) === numericSaveId;
+  setSaveControlsBusy(true);
+
+  try {
+    await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'delete',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+      }),
+    });
+
+    if (wasActiveSave) {
+      storageEnabled = false;
+      activeSaveId = null;
+      activeSaveLabel = '';
+      setArchiveMode(false);
+      updateStorageToggleButton();
+    }
+
+    removeSaveCacheEntry(numericSaveId);
+    await refreshSavedGamesAfterMutation();
+    renderSavedGames();
+    setStorageInfo(wasActiveSave ? 'Speicherstand gelöscht. Aktuelles Spiel bleibt lokal geöffnet.' : 'Speicherstand gelöscht.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht gelöscht werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function deleteActiveSave() {
+  if (!activeSaveId) {
+    storageEnabled = false;
+    activeSaveLabel = '';
+    setArchiveMode(false);
+    updateStorageToggleButton();
+    setStorageInfo();
+    return;
+  }
+
+  await deleteSavedGame(activeSaveId);
+}
+
+function disableStorage() {
+  storageEnabled = false;
+  activeSaveId = null;
+  activeSaveLabel = '';
+  setArchiveMode(false);
+  updateStorageToggleButton();
+  renderSavedGames();
+  setStorageInfo('Speichern deaktiviert. Änderungen bleiben lokal, bis du erneut speicherst.');
+}
+
+async function toggleStorage() {
+  if (storageEnabled && activeSaveId) {
+    disableStorage();
+    return;
+  }
+
+  await enableStorage();
+}
+
+async function loadSavedGame(saveId) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const hasSavedCurrentGame = Boolean(storageEnabled && activeSaveId);
+  if (!hasSavedCurrentGame && !confirmDiscardResults()) {
+    return;
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(
+      `${storageApiUrl}?action=load&gameType=${encodeURIComponent(shanghaiAppConfig.gameType || '')}&saveId=${encodeURIComponent(numericSaveId)}`
+    );
+
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
+    activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    loadGameState(data.save?.state || {});
+    setArchiveMode(Boolean(data.save?.isArchived));
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    renderSavedGames();
+    setStorageInfo(
+      archivedMode
+        ? `Archivierter Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}. Änderungen sind gesperrt.`
+        : `Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`
+    );
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function copySavedGame(saveId) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const hasSavedCurrentGame = Boolean(storageEnabled && activeSaveId);
+  if (!hasSavedCurrentGame && !confirmDiscardResults()) {
+    return;
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'copy',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+      }),
+    });
+
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || 0) || null;
+    activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    loadGameState(data.save?.state || {});
+    setArchiveMode(Boolean(data.save?.isArchived));
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    await refreshSavedGamesAfterMutation();
+    renderSavedGames();
+    setStorageInfo(`Speicherstand kopiert und geladen: ${activeSaveLabel || `#${activeSaveId}`}.`);
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht kopiert werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+async function toggleSaveArchive(saveId, shouldArchive) {
+  const numericSaveId = Number(saveId);
+  if (!numericSaveId) return;
+
+  const activeEntry = savedGamesCache.find(item => Number(item.id) === numericSaveId);
+  const isActiveTarget = Number(activeSaveId) === numericSaveId;
+
+  if (shouldArchive && isActiveTarget && editingPlayerIndex !== null && players[editingPlayerIndex]) {
+    players[editingPlayerIndex].exitEditMode();
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: shouldArchive ? 'archive' : 'reactivate',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: numericSaveId,
+      }),
+    });
+
+    upsertSaveCacheEntry({
+      id: numericSaveId,
+      saveName: data.save?.saveName || activeEntry?.saveName || getDefaultSaveName(),
+      updatedAt: data.save?.updatedAt || formatLocalDateTime(new Date()),
+      participantSummary: data.save?.participantSummary || activeEntry?.participantSummary || '',
+      isArchived: Boolean(data.save?.isArchived),
+      isOwner: data.save?.isOwner !== false,
+    });
+
+    if (isActiveTarget) {
+      activeSaveLabel = data.save?.saveName || activeSaveLabel;
+      setArchiveMode(Boolean(data.save?.isArchived));
+      updateStorageToggleButton();
+      renderSavedGames();
+    }
+
+    await refreshSavedGamesAfterMutation();
+    setStorageInfo(
+      data.message
+      || (shouldArchive ? 'Speicherstand archiviert.' : 'Speicherstand reaktiviert.')
+    );
+  } catch (error) {
+    setStorageInfo(error.message || 'Archivstatus konnte nicht geändert werden.', true);
+    renderSavedGames();
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+function recordStateChange(event = {}) {
+  if (isRestoringState || archivedMode || !isAuthenticatedUser || !storageEnabled || !activeSaveId) {
+    return;
+  }
+
+  const saveId = Number(activeSaveId);
+  if (!saveId) return;
+
+  const stateSnapshot = collectGameState();
+  const eventSnapshot = {
+    eventType: event.eventType || 'state_update',
+    source: event.source || 'ui',
+    playerIndex: Number.isFinite(Number(event.playerIndex)) ? Number(event.playerIndex) : null,
+    playerUserId: Number.isFinite(Number(event.playerUserId)) ? Number(event.playerUserId) : null,
+    playerName: event.playerName || '',
+    targetLabel: event.targetLabel || '',
+    sectorResult: event.sectorResult || '',
+    scoreDelta: Number.isFinite(Number(event.scoreDelta)) ? Number(event.scoreDelta) : 0,
+    scoreAfter: Number.isFinite(Number(event.scoreAfter)) ? Number(event.scoreAfter) : 0,
+    detectedAt: event.detectedAt || new Date().toISOString(),
+    payload: event.payload && typeof event.payload === 'object' ? event.payload : {},
+  };
+
+  storageSaveChain = storageSaveChain
+    .catch(() => undefined)
+    .then(async () => {
+      if (!storageEnabled || archivedMode || Number(activeSaveId) !== saveId) {
+        return;
+      }
+
+      const data = await fetchStorageJson(storageApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update',
+          csrfToken: shanghaiAppConfig.csrfToken || '',
+          gameType: shanghaiAppConfig.gameType || '',
+          saveId,
+          state: stateSnapshot,
+          event: eventSnapshot,
+        }),
+      });
+
+      activeSaveLabel = data.save?.saveName || activeSaveLabel;
+      upsertSaveCacheEntry({
+        id: saveId,
+        saveName: activeSaveLabel,
+        updatedAt: formatLocalDateTime(new Date()),
+        participantSummary: data.save?.participantSummary || '',
+      });
+      await refreshSavedGamesAfterMutation();
+      setStorageInfo();
+    })
+    .catch(error => {
+      setStorageInfo(error.message || 'Automatisches Speichern fehlgeschlagen.', true);
+    });
+}
+
+function startNewGame() {
+  const hadActiveSave = Boolean(storageEnabled && activeSaveId);
+
+  if (!hadActiveSave && !confirmDiscardResults()) {
+    return;
+  }
+
+  if (hadActiveSave) {
+    storageEnabled = false;
+    activeSaveId = null;
+    activeSaveLabel = '';
+    setArchiveMode(false);
+    updateStorageToggleButton();
+    renderSavedGames();
+  }
+
+  loadGameState({ players: [] });
+  setStorageInfo(hadActiveSave ? 'Speicherstand geschlossen. Neues Spiel gestartet.' : 'Neues Spiel gestartet.');
+  recordStateChange({
+    eventType: 'new_game',
+    source: 'ui',
+    detectedAt: new Date().toISOString(),
+    payload: { action: 'new_game' },
+  });
+}
+
+function initStorageControls() {
+  if (!isAuthenticatedUser) return;
+
+  const newGameBtn = document.getElementById('newGameBtn');
+  const toggleStorageBtn = document.getElementById('toggleStorageBtn');
+  const loadGamesBtn = document.getElementById('loadGamesBtn');
+
+  if (newGameBtn) {
+    newGameBtn.onclick = startNewGame;
+  }
+  if (toggleStorageBtn) {
+    toggleStorageBtn.onclick = () => {
+      void toggleStorage();
+    };
+  }
+  if (loadGamesBtn) {
+    loadGamesBtn.onclick = toggleSavedGamesPanel;
+  }
+
+  bindSavedGamesControls();
+  updateStorageToggleButton();
+  updateSavedGamesPagination();
+  setStorageInfo();
+}
+
 function ensureControlsFooter() {
   if (controlsFooterInitialized) return;
 
@@ -514,7 +1652,13 @@ function setupControlsFooterButtons(container) {
     manualSubmitBtn.onclick = () => {
       const val = manualSectorInput ? manualSectorInput.value.trim() : '';
       const player = getActivePlayer();
-      if (val && player) player.processThrow(val);
+      if (val && player) {
+        player.processThrow(val, null, createManualEventMeta('manual_input', {
+          sector: val,
+          rawInput: val,
+        }));
+        if (manualSectorInput) manualSectorInput.value = '';
+      }
     };
   }
   if (manualSectorInput && manualSubmitBtn) {
@@ -531,25 +1675,45 @@ function setupControlsFooterButtons(container) {
   if (btnMiss) {
     btnMiss.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow('None', 'miss');
+      if (player) {
+        player.processThrow('None', 'miss', createManualEventMeta('manual_button', {
+          sector: 'None',
+          type: 'miss',
+        }));
+      }
     };
   }
   if (btnSingle) {
     btnSingle.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow(player.sequence[player.currentIndex], 'Single');
+      if (player) {
+        player.processThrow(player.sequence[player.currentIndex], 'Single', createManualEventMeta('manual_button', {
+          sector: player.sequence[player.currentIndex],
+          type: 'Single',
+        }));
+      }
     };
   }
   if (btnDouble) {
     btnDouble.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow(player.sequence[player.currentIndex], 'Double');
+      if (player) {
+        player.processThrow(player.sequence[player.currentIndex], 'Double', createManualEventMeta('manual_button', {
+          sector: player.sequence[player.currentIndex],
+          type: 'Double',
+        }));
+      }
     };
   }
   if (btnTriple) {
     btnTriple.onclick = () => {
       const player = getActivePlayer();
-      if (player) player.processThrow(player.sequence[player.currentIndex], 'Triple');
+      if (player) {
+        player.processThrow(player.sequence[player.currentIndex], 'Triple', createManualEventMeta('manual_button', {
+          sector: player.sequence[player.currentIndex],
+          type: 'Triple',
+        }));
+      }
     };
   }
   
@@ -583,12 +1747,24 @@ function setupControlsFooterButtons(container) {
     autoBtn.onclick = () => {
       autoPlayerSwitch = true;
       updateAutoPlayerSwitchBtn();
+      recordStateChange({
+        eventType: 'auto_switch_enabled',
+        source: 'ui',
+        detectedAt: new Date().toISOString(),
+        payload: { autoPlayerSwitch: true },
+      });
     };
   }
   if (manualBtn) {
     manualBtn.onclick = () => {
       autoPlayerSwitch = false;
       updateAutoPlayerSwitchBtn();
+      recordStateChange({
+        eventType: 'auto_switch_disabled',
+        source: 'ui',
+        detectedAt: new Date().toISOString(),
+        payload: { autoPlayerSwitch: false },
+      });
     };
   }
 }
@@ -600,25 +1776,44 @@ function initApp() {
 
   // 2) WebSocket-Verbindung initialisieren
   const statusEl = document.getElementById('status');
-  let ws = new WebSocket(
-    `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
-  );
-  ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
-  ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
-  ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
-  ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  if (statusEl && serialNumber && accessToken) {
+    let ws = new WebSocket(
+      `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
+    );
+    ws.onopen = () => statusEl.textContent = 'Board-Status: Ready';
+    ws.onclose = () => statusEl.textContent = 'Board-Status: Offline';
+    ws.onerror = () => statusEl.textContent = 'Board-Status: Fehler';
+    ws.onmessage = ({ data }) => handleMessage(JSON.parse(data));
+  }
 
   // Erstelle Controls Footer
   ensureControlsFooter();
   addPlayer();
   updateOverviewTable();
+  updateUndoButtonVisibility();
+  initStorageControls();
 }
 
 function addPlayer() {
+  if (archivedMode) return;
+
   const playerIndex = nextPlayerId++;
   const activePlayer = getActivePlayer();
-  const playerName = activePlayer ? activePlayer.name : `Spieler ${playerIndex + 1}`;
+  const currentUserId = Number.parseInt(String(shanghaiAppConfig.userId ?? ''), 10);
+  const currentDisplayName = (shanghaiAppConfig.displayName || shanghaiAppConfig.username || '').toString().trim();
+  const playerName = activePlayer
+    ? activePlayer.name
+    : (currentDisplayName || `Spieler ${playerIndex + 1}`);
   const player = new Player(playerName, playerIndex);
+  player.portalUserId = activePlayer
+    ? (Number.isFinite(Number(activePlayer.portalUserId)) ? Number(activePlayer.portalUserId) : null)
+    : (Number.isFinite(currentUserId) ? currentUserId : null);
+  player.participantRole = activePlayer?.participantRole
+    || (player.portalUserId === currentUserId ? 'owner' : (player.portalUserId ? 'friend' : 'guest'));
+  player.invitationStatus = activePlayer?.invitationStatus || 'accepted';
+  player.invitedByUserId = activePlayer
+    ? (Number.isFinite(Number(activePlayer.invitedByUserId)) ? Number(activePlayer.invitedByUserId) : null)
+    : null;
   players[playerIndex] = player;
   tablesContainer.appendChild(player.container);
   if (getPlayerIds().length === 1) {
@@ -627,11 +1822,25 @@ function addPlayer() {
   updateAllActivateBtns();
   updateAutoPlayerSwitchBtn();
   updateOverviewTable();
+  updateUndoButtonVisibility();
+  recordStateChange({
+    eventType: 'player_add',
+    source: 'ui',
+    playerIndex,
+    playerName: player.name,
+    scoreAfter: player.totalScore,
+    detectedAt: new Date().toISOString(),
+    payload: { playerIndex, playerName: player.name },
+  });
 }
 
 function deletePlayer(index) {
+  if (archivedMode) return;
+
   const player = players[index];
   if (!player) return;
+
+  const removedPlayerName = player.name;
 
   if (editingPlayerIndex === player.index) {
     editingPlayerIndex = null;
@@ -645,7 +1854,16 @@ function deletePlayer(index) {
 
   const remainingIds = getPlayerIds();
   if (remainingIds.length === 0) {
+    recordStateChange({
+      eventType: 'player_delete',
+      source: 'ui',
+      playerIndex: index,
+      playerName: removedPlayerName,
+      detectedAt: new Date().toISOString(),
+      payload: { playerIndex: index, playerName: removedPlayerName },
+    });
     addPlayer();
+    updateUndoButtonVisibility();
     return;
   }
 
@@ -655,29 +1873,38 @@ function deletePlayer(index) {
   updateOverviewTable();
   const activePlayer = getActivePlayer();
   if (activePlayer) activePlayer.updateTripleButton();
-  const undoBtn = document.getElementById('undoButton');
-  const _ubShow1 = activePlayer && activePlayer.currentIndex > 0;
-  undoBtn.style.visibility = _ubShow1 ? 'visible' : 'hidden';
-  undoBtn.style.pointerEvents = _ubShow1 ? 'auto' : 'none';
+  updateUndoButtonVisibility();
+  recordStateChange({
+    eventType: 'player_delete',
+    source: 'ui',
+    playerIndex: index,
+    playerName: removedPlayerName,
+    detectedAt: new Date().toISOString(),
+    payload: { playerIndex: index, playerName: removedPlayerName },
+  });
 }
 
 function setActivePlayer(index) {
-  if (!players[index]) return;
+  if (archivedMode || !players[index]) return;
   if (editingPlayerIndex !== null && editingPlayerIndex !== index && players[editingPlayerIndex]) {
     players[editingPlayerIndex].exitEditMode();
   }
   activePlayerIndex = index;
   updateAllActivateBtns();
-  // Update Triple Button für aktiven Spieler
   const activePlayer = getActivePlayer();
   if (activePlayer) {
     activePlayer.updateTripleButton();
   }
-  // Update Undo Button basierend auf neuem aktiven Spieler
-  const undoBtn = document.getElementById('undoButton');
-  const _ubShow2 = activePlayer && activePlayer.currentIndex > 0;
-  undoBtn.style.visibility = _ubShow2 ? 'visible' : 'hidden';
-  undoBtn.style.pointerEvents = _ubShow2 ? 'auto' : 'none';
+  updateUndoButtonVisibility();
+  recordStateChange({
+    eventType: 'player_activate',
+    source: 'ui',
+    playerIndex: index,
+    playerName: activePlayer?.name || '',
+    scoreAfter: activePlayer?.totalScore || 0,
+    detectedAt: new Date().toISOString(),
+    payload: { playerIndex: index },
+  });
 }
 
 function updateAllActivateBtns() {
@@ -685,6 +1912,8 @@ function updateAllActivateBtns() {
 }
 
 function switchToNextPlayer() {
+  if (archivedMode) return;
+
   const openIds = getOpenPlayerIds();
 
   if (openIds.length === 0) {
@@ -710,6 +1939,8 @@ function updateAutoPlayerSwitchBtn() {
   const openCount = getOpenPlayerIds().length;
   const autoBtn = document.getElementById('autoPlayerBtn');
   const manualBtn = document.getElementById('manualPlayerBtn');
+  if (!autoBtn || !manualBtn) return;
+
   if (openCount === 0 || count <= 1) {
     autoPlayerSwitch = false;
     autoBtn.style.display = 'inline';
@@ -718,23 +1949,39 @@ function updateAutoPlayerSwitchBtn() {
   } else if (autoPlayerSwitch) {
     autoBtn.style.display = 'none';
     manualBtn.style.display = 'inline';
+    manualBtn.disabled = archivedMode;
   } else {
     autoBtn.style.display = 'inline';
-    autoBtn.disabled = false;
+    autoBtn.disabled = archivedMode ? true : false;
     manualBtn.style.display = 'none';
+  }
+
+  if (archivedMode) {
+    autoBtn.disabled = true;
+    manualBtn.disabled = true;
   }
 }
 
 function handleMessage(msg) {
   console.debug('WS message:', msg);
+  if (archivedMode) {
+    return;
+  }
+
   if (msg.type === 'THROW_DETECTED') {
-    const sector = (msg.payload.sector || '').toString().toLowerCase();
-    const bounceout = Boolean(msg.payload.bounceout);
-    const miss = bounceout || sector === 'none';
-    console.debug('THROW_DETECTED', { sector, bounceout, miss, payload: msg.payload });
+    const payload = msg && typeof msg.payload === 'object' && msg.payload ? msg.payload : {};
+    const sector = (payload.sector || '').toString().toLowerCase();
+    const bounceout = Boolean(payload.bounceout);
+    const miss = bounceout || sector === 'none' || !sector;
+    console.debug('THROW_DETECTED', { sector, bounceout, miss, payload });
     const player = getActivePlayer();
     if (player) {
-      player.processThrow(miss ? 'None' : msg.payload.sector, miss ? 'miss' : null);
+      player.processThrow(miss ? 'None' : sector, miss ? 'miss' : null, {
+        eventType: 'throw_detected',
+        source: 'scolia_ws',
+        detectedAt: payload.detectionTime || new Date().toISOString(),
+        payload: { ...payload },
+      });
     }
   }
   if (msg.type === 'TAKEOUT_FINISHED' && autoPlayerSwitch) {
