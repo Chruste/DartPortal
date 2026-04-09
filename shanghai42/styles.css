@@ -291,9 +291,10 @@ body {
     .saved-games-table td:nth-child(2),
     .saved-games-table th:nth-child(3),
     .saved-games-table td:nth-child(3) {
-      width: 100%;
-      min-width: 0;
-      max-width: none;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      white-space: normal;
     }
 
     .saved-games-filter-row th {
