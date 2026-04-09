@@ -359,6 +359,7 @@ body {
 
     .saved-games-row.active-save-row {
       border-color: rgba(255, 215, 0, 0.6);
+      background: rgba(255, 215, 0, 0.14);
       box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.24), 0 10px 24px rgba(0, 0, 0, 0.2);
     }
 
