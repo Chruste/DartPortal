@@ -1,4 +1,4 @@
-const cacheName = 'cdp-cache-v24';
+const cacheName = 'cdp-cache-v25';
 const assets = [
   '/',
   '/index.php',
