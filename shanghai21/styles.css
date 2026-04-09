@@ -212,6 +212,33 @@ body {
   }
 
   @media (max-width: 680px) {
+    .save-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: stretch;
+      gap: 0.35em;
+      width: min(100%, calc(100vw - 16px));
+    }
+
+    .save-controls button {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 6px;
+      font-size: 0.88rem;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    #toggleStorageBtn {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .save-state-info {
+      grid-column: 1 / -1;
+      margin-top: 0.15em;
+    }
+
     .saved-games-panel {
       width: min(100%, calc(100vw - 16px));
       padding-inline: 8px;
