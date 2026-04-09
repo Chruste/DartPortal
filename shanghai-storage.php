@@ -125,7 +125,9 @@ function portal_shanghai_normalize_participants(array $state, int $ownerUserId):
             'seatNo' => $seatNo,
             'portalUserId' => $portalUserId,
             'invitedByUserId' => $invitedByUserId,
-            'displayName' => substr($displayName, 0, 120),
+            'displayName' => function_exists('mb_substr')
+                ? mb_substr($displayName, 0, 120, 'UTF-8')
+                : substr($displayName, 0, 120),
             'participantRole' => $participantRole,
             'invitationStatus' => $invitationStatus,
             'currentTargetIndex' => $currentTargetIndex,
