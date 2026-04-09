@@ -17,6 +17,6 @@ try {
         'results' => portal_search_users($mysqli_user, $userId, $query),
     ]);
 } catch (Throwable $exception) {
-    error_log('Freundesuche Fehler: ' . $exception->getMessage());
+    portal_log_error('Freundesuche Fehler', $exception);
     portal_json_response(['success' => false, 'message' => 'Suche konnte nicht ausgefuehrt werden.'], 500);
 }

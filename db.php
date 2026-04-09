@@ -10,7 +10,7 @@ $user = oauth_env('DB_USER');
 $pw = oauth_env('DB_PASS');
 
 if ($host === '' || $db === '') {
-    error_log('DB_HOST und DB_NAME fehlen (weder Umgebungsvariable noch Secret-Datei).');
+    portal_log_error('DB_HOST und DB_NAME fehlen (weder Umgebungsvariable noch Secret-Datei).');
     if (!headers_sent()) {
         http_response_code(500);
     }
@@ -18,7 +18,7 @@ if ($host === '' || $db === '') {
 }
 
 if ($user === '' || $pw === '') {
-    error_log('DB_USER und DB_PASS fehlen (weder Umgebungsvariable noch Secret-Datei).');
+    portal_log_error('DB_USER und DB_PASS fehlen (weder Umgebungsvariable noch Secret-Datei).');
     if (!headers_sent()) {
         http_response_code(500);
     }
@@ -27,7 +27,7 @@ if ($user === '' || $pw === '') {
 
 $mysqli = new mysqli($host, $user, $pw, $db);
 if ($mysqli->connect_error) {
-    error_log('DB-Verbindung fehlgeschlagen: ' . $mysqli->connect_error);
+    portal_log_error('DB-Verbindung fehlgeschlagen: ' . $mysqli->connect_error);
     if (!headers_sent()) {
         http_response_code(500);
     }

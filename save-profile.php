@@ -51,6 +51,6 @@ try {
 } catch (InvalidArgumentException $exception) {
     portal_json_response(['success' => false, 'message' => $exception->getMessage()], 400);
 } catch (Throwable $exception) {
-    error_log('Profil speichern Fehler: ' . $exception->getMessage());
+    portal_log_error('Profil speichern Fehler', $exception);
     portal_json_response(['success' => false, 'message' => 'Profil konnte nicht gespeichert werden.'], 500);
 }

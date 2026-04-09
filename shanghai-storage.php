@@ -10,7 +10,7 @@ $userId = portal_require_authenticated_user();
 try {
     require __DIR__ . '/db_user.php';
 } catch (Throwable $exception) {
-    error_log('Shanghai Storage DB Fehler: ' . $exception->getMessage());
+    portal_log_error('Shanghai Storage DB Fehler', $exception);
     portal_json_response(['success' => false, 'message' => 'Datenbank nicht erreichbar.'], 500);
 }
 
@@ -1110,6 +1110,6 @@ try {
 } catch (InvalidArgumentException $exception) {
     portal_json_response(['success' => false, 'message' => $exception->getMessage()], 400);
 } catch (Throwable $exception) {
-    error_log('Shanghai Storage Fehler: ' . $exception->getMessage());
+    portal_log_error('Shanghai Storage Fehler', $exception);
     portal_json_response(['success' => false, 'message' => 'Spielstand konnte nicht verarbeitet werden.'], 500);
 }
