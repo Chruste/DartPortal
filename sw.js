@@ -38,6 +38,12 @@ const assets = [
   '/turnierplaner/turnierplaner.php'
 ];
 
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(cacheName)
@@ -78,6 +84,14 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/friend-action.php';
 }
 
+function isVersionSensitiveAsset(request) {
+  return request.destination === 'script'
+    || request.destination === 'style'
+    || request.destination === 'worker'
+    || request.url.endsWith('.js')
+    || request.url.endsWith('.css');
+}
+
 self.addEventListener('fetch', event => {
   const { request } = event;
   const requestUrl = new URL(request.url);
@@ -99,6 +113,21 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match(request).then(cached => cached || caches.match('/index.php')))
+    );
+    return;
+  }
+
+  if (isVersionSensitiveAsset(request)) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(cacheName).then(cache => cache.put(request, responseClone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
