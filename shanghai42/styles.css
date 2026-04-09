@@ -207,10 +207,15 @@ body {
 
   @media (max-width: 680px) {
     .saved-games-panel {
+      width: min(100%, calc(100vw - 16px));
+      padding-inline: 8px;
+      box-sizing: border-box;
       overflow: visible;
     }
 
     .saved-games-table {
+      width: auto;
+      max-width: 100%;
       margin-bottom: 0.75em;
     }
 
@@ -270,16 +275,20 @@ body {
     .saved-games-table tbody {
       display: grid;
       gap: 0.85em;
+      justify-items: center;
     }
 
     .saved-games-row {
       display: grid;
       gap: 0.7em;
+      width: min(100%, 32rem);
+      max-width: calc(100vw - 16px);
       padding: 0.85em;
       border: 1px solid #444;
       border-radius: 12px;
       background: #141414;
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+      text-align: left;
     }
 
     .saved-games-row td {
@@ -309,6 +318,8 @@ body {
     }
 
     .saved-games-empty-row {
+      width: min(100%, 32rem);
+      max-width: calc(100vw - 16px);
       border: 1px dashed #444;
       border-radius: 12px;
       background: #141414;
