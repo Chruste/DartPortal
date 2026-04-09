@@ -52,6 +52,9 @@ function portal_shanghai_normalize_save_name(mixed $value, string $gameType): st
         $saveName = portal_shanghai_default_save_name($gameType);
     }
 
+    if (function_exists('mb_substr')) {
+        return mb_substr($saveName, 0, 160, 'UTF-8');
+    }
     return substr($saveName, 0, 160);
 }
 
