@@ -965,7 +965,6 @@ function renderSavedGames() {
     const updatedAtCell = document.createElement('td');
     updatedAtCell.setAttribute('data-label', 'Letzte Änderung');
     updatedAtCell.textContent = save.updatedAt || '';
-    bindSavedGamesTooltip(updatedAtCell, () => save.updatedAt || '');
 
     const saveNameCell = document.createElement('td');
     saveNameCell.setAttribute('data-label', 'Speicherstand');

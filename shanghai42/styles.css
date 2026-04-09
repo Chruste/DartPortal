@@ -87,8 +87,10 @@ body {
 
   .saved-games-table th:first-child,
   .saved-games-table td:first-child {
-    width: 22%;
-    min-width: 200px;
+    width: 160px;
+    min-width: 142px;
+    max-width: 160px;
+    white-space: nowrap;
   }
 
   .saved-games-table th:nth-child(2),
@@ -211,7 +213,7 @@ body {
     padding: 14px 12px;
   }
 
-  @media (max-width: 680px) {
+  @media (max-width: 755px) {
     .save-controls {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
