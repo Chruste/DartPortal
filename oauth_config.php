@@ -28,7 +28,7 @@ function portal_log_rotation_max_files(): int
         }
     }
 
-    return 10;
+    return 9;
 }
 
 function portal_rotate_log_file_if_needed(string $logFile, int $maxBytes = 5242880): void
