@@ -363,8 +363,8 @@ body {
       box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.24), 0 10px 24px rgba(0, 0, 0, 0.2);
     }
 
-    .saved-games-row.active-save-row td {
-      background: transparent;
+    .saved-games-table .saved-games-row.active-save-row td {
+      background: transparent !important;
     }
 
     .saved-games-empty-row {
