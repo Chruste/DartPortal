@@ -149,6 +149,7 @@ body, html {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .topbar-refresh-button {
@@ -168,6 +169,11 @@ body, html {
 
 .topbar-refresh-button:hover {
   background: #383838;
+}
+
+.topbar-refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .topbar #pageTitle,
@@ -219,6 +225,10 @@ body, html {
   .topbar-refresh-button {
     width: 34px;
     height: 34px;
+  }
+
+  .topbar-refresh-wrap {
+    gap: 6px;
   }
 }
 

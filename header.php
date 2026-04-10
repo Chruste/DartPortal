@@ -52,6 +52,8 @@ $assetVersion = portal_asset_version();
       <button id="mobileMenuButton" class="mobile-menu-button" aria-label="Menü">☰</button>
       <h1 id="pageTitle"><?= $pageTitle ?? 'Home'; ?></h1>
       <div class="topbar-refresh-wrap">
+        <button id="topbarZoomOutButton" class="topbar-refresh-button" type="button" title="Ansicht verkleinern" aria-label="Ansicht verkleinern">➖</button>
+        <button id="topbarZoomInButton" class="topbar-refresh-button" type="button" title="Ansicht vergroessern" aria-label="Ansicht vergroessern">➕</button>
         <button id="topbarRefreshButton" class="topbar-refresh-button" type="button" title="Seite aktualisieren" aria-label="Seite aktualisieren">🔄</button>
       </div>
       <div class="topbar-actions">
