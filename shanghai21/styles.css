@@ -48,6 +48,11 @@ body {
     min-width: 150px;
   }
 
+  #loadGamesBtn {
+    width: 18ch;
+    min-width: 18ch;
+  }
+
   #toggleStorageBtn.storage-local-mode {
     background: #8b0000;
     border-color: #f55;
