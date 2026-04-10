@@ -22,6 +22,10 @@
 	margin-bottom: 16px;
 }
 
+.compact-header {
+	margin-bottom: 10px;
+}
+
 .section-header p {
 	margin: 8px 0 0;
 	color: #aeb8c5;

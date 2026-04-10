@@ -467,3 +467,166 @@ function portal_apply_friend_action(mysqli $portalDb, int $userId, int $targetUs
         throw $exception;
     }
 }
+
+function portal_game_invitation_sources(): array
+{
+    return [
+        [
+            'gameType' => 'shanghai21',
+            'gameLabel' => 'Shanghai 21',
+            'gamePath' => '/shanghai21/',
+            'sessions' => 'shanghai21_sessions',
+            'participants' => 'shanghai21_session_participants',
+        ],
+        [
+            'gameType' => 'shanghai42',
+            'gameLabel' => 'Shanghai 42',
+            'gamePath' => '/shanghai42/',
+            'sessions' => 'shanghai42_sessions',
+            'participants' => 'shanghai42_session_participants',
+        ],
+    ];
+}
+
+function portal_game_invitation_status_label(string $status): string
+{
+    return match (strtolower(trim($status))) {
+        'declined' => 'Abgelehnt',
+        default => 'Laufend',
+    };
+}
+
+function portal_fetch_game_invitations(mysqli $portalDb, int $userId): array
+{
+    $invitations = [];
+
+    foreach (portal_game_invitation_sources() as $source) {
+        $sql = "
+            SELECT
+                p.session_id AS save_id,
+                s.save_name,
+                p.invited_by_user_id,
+                inviter.display_name AS inviter_name,
+                p.created_at,
+                p.updated_at
+            FROM {$source['participants']} p
+            INNER JOIN {$source['sessions']} s
+                ON s.id = p.session_id
+            LEFT JOIN portal_users inviter
+                ON inviter.id = p.invited_by_user_id
+            WHERE p.portal_user_id = ?
+              AND p.invitation_status = 'pending'
+              AND p.is_active = 1
+              AND s.is_deleted = 0
+            ORDER BY p.updated_at DESC, p.id DESC
+        ";
+
+        $stmt = $portalDb->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Spiel-Einladungen konnten nicht geladen werden.');
+        }
+
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        while ($result && ($row = $result->fetch_assoc())) {
+            $updatedAtRaw = (string) ($row['updated_at'] ?? '');
+            $invitations[] = [
+                'gameType' => (string) $source['gameType'],
+                'gameLabel' => (string) $source['gameLabel'],
+                'gamePath' => (string) $source['gamePath'],
+                'saveId' => (int) ($row['save_id'] ?? 0),
+                'saveName' => (string) ($row['save_name'] ?? $source['gameLabel']),
+                'inviterUserId' => (int) ($row['invited_by_user_id'] ?? 0),
+                'inviterName' => (string) ($row['inviter_name'] ?? 'Unbekannt'),
+                'updatedAt' => portal_format_datetime($updatedAtRaw),
+                'updatedAtRaw' => $updatedAtRaw,
+            ];
+        }
+
+        $stmt->close();
+    }
+
+    usort(
+        $invitations,
+        static fn (array $left, array $right): int => strcmp((string) ($right['updatedAtRaw'] ?? ''), (string) ($left['updatedAtRaw'] ?? ''))
+    );
+
+    return array_map(
+        static function (array $invitation): array {
+            unset($invitation['updatedAtRaw']);
+            return $invitation;
+        },
+        $invitations
+    );
+}
+
+function portal_fetch_sent_game_invitations(mysqli $portalDb, int $userId): array
+{
+    $invitations = [];
+
+    foreach (portal_game_invitation_sources() as $source) {
+        $sql = "
+            SELECT
+                p.session_id AS save_id,
+                s.save_name,
+                p.portal_user_id AS invited_user_id,
+                target.display_name AS invited_name,
+                p.invitation_status,
+                p.created_at,
+                p.updated_at
+            FROM {$source['participants']} p
+            INNER JOIN {$source['sessions']} s
+                ON s.id = p.session_id
+            LEFT JOIN portal_users target
+                ON target.id = p.portal_user_id
+            WHERE p.invited_by_user_id = ?
+              AND p.invitation_status IN ('pending', 'declined')
+              AND s.is_deleted = 0
+            ORDER BY p.updated_at DESC, p.id DESC
+        ";
+
+        $stmt = $portalDb->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Gesendete Spiel-Einladungen konnten nicht geladen werden.');
+        }
+
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        while ($result && ($row = $result->fetch_assoc())) {
+            $status = (string) ($row['invitation_status'] ?? 'pending');
+            $updatedAtRaw = (string) ($row['updated_at'] ?? '');
+            $invitations[] = [
+                'gameType' => (string) $source['gameType'],
+                'gameLabel' => (string) $source['gameLabel'],
+                'gamePath' => (string) $source['gamePath'],
+                'saveId' => (int) ($row['save_id'] ?? 0),
+                'saveName' => (string) ($row['save_name'] ?? $source['gameLabel']),
+                'invitedUserId' => (int) ($row['invited_user_id'] ?? 0),
+                'invitedName' => (string) ($row['invited_name'] ?? 'Unbekannt'),
+                'status' => $status,
+                'statusLabel' => portal_game_invitation_status_label($status),
+                'updatedAt' => portal_format_datetime($updatedAtRaw),
+                'updatedAtRaw' => $updatedAtRaw,
+            ];
+        }
+
+        $stmt->close();
+    }
+
+    usort(
+        $invitations,
+        static fn (array $left, array $right): int => strcmp((string) ($right['updatedAtRaw'] ?? ''), (string) ($left['updatedAtRaw'] ?? ''))
+    );
+
+    return array_map(
+        static function (array $invitation): array {
+            unset($invitation['updatedAtRaw']);
+            return $invitation;
+        },
+        $invitations
+    );
+}

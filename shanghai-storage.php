@@ -239,7 +239,11 @@ function portal_shanghai_state_json(array $state): string
 
 function portal_shanghai_sync_participants(mysqli $db, string $table, int $sessionId, array $participants): array
 {
-    $selectStmt = $db->prepare("SELECT id, seat_no, portal_user_id, display_name FROM {$table} WHERE session_id = ?");
+    $selectStmt = $db->prepare(
+        "SELECT id, seat_no, portal_user_id, display_name, participant_role, invitation_status, is_active
+         FROM {$table}
+         WHERE session_id = ?"
+    );
     if (!$selectStmt) {
         throw new RuntimeException('Teilnehmer konnten nicht geladen werden.');
     }
@@ -254,6 +258,9 @@ function portal_shanghai_sync_participants(mysqli $db, string $table, int $sessi
             'id' => (int) $row['id'],
             'portalUserId' => isset($row['portal_user_id']) ? (int) $row['portal_user_id'] : null,
             'displayName' => (string) ($row['display_name'] ?? ''),
+            'participantRole' => (string) ($row['participant_role'] ?? 'guest'),
+            'invitationStatus' => (string) ($row['invitation_status'] ?? 'accepted'),
+            'isActive' => (int) ($row['is_active'] ?? 0),
         ];
     }
     $selectStmt->close();
@@ -366,6 +373,12 @@ function portal_shanghai_sync_participants(mysqli $db, string $table, int $sessi
             continue;
         }
 
+        $existingInvitationStatus = strtolower(trim((string) ($existingParticipant['invitationStatus'] ?? '')));
+        $existingParticipantRole = strtolower(trim((string) ($existingParticipant['participantRole'] ?? '')));
+        if ($existingParticipantRole !== 'owner' && in_array($existingInvitationStatus, ['pending', 'declined'], true)) {
+            continue;
+        }
+
         $participantId = (int) $existingParticipant['id'];
         $deactivateStmt->bind_param('i', $participantId);
         $deactivateStmt->execute();
@@ -466,7 +479,7 @@ function portal_shanghai_fetch_session_for_user(mysqli $db, array $config, int $
                         WHERE p.session_id = s.id
                           AND p.portal_user_id = ?
                           AND p.is_active = 1
-                          AND p.invitation_status IN ('accepted', 'pending')
+                                                    AND p.invitation_status = 'accepted'
                     )
               )
             LIMIT 1";
@@ -487,6 +500,223 @@ function portal_shanghai_fetch_session_for_user(mysqli $db, array $config, int $
     $stmt->close();
 
     return is_array($row) ? $row : null;
+}
+
+function portal_shanghai_fetch_pending_invitation(mysqli $db, array $config, int $saveId, int $userId, bool $forUpdate = false): ?array
+{
+    $sql = "SELECT
+                s.id,
+                s.owner_user_id,
+                s.save_name,
+                s.participant_summary,
+                s.participants_json,
+                s.updated_at,
+                s.state_json,
+                s.event_count,
+                s.last_event_at,
+                s.participant_count,
+                s.is_archived,
+                p.id AS participant_id,
+                p.seat_no,
+                p.display_name,
+                p.invited_by_user_id,
+                p.participant_role,
+                p.invitation_status,
+                p.current_target_index,
+                p.current_total_score
+            FROM {$config['sessions']} s
+            INNER JOIN {$config['participants']} p
+                ON p.session_id = s.id
+            WHERE s.id = ?
+              AND s.is_deleted = 0
+              AND p.portal_user_id = ?
+              AND p.invitation_status = 'pending'
+              AND p.is_active = 1
+            LIMIT 1";
+
+    if ($forUpdate) {
+        $sql .= ' FOR UPDATE';
+    }
+
+    $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Einladung konnte nicht geladen werden.');
+    }
+
+    $stmt->bind_param('ii', $saveId, $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return is_array($row) ? $row : null;
+}
+
+function portal_shanghai_fetch_participant_by_user(mysqli $db, string $table, int $sessionId, int $portalUserId, bool $forUpdate = false): ?array
+{
+    $sql = "SELECT
+                id,
+                seat_no,
+                portal_user_id,
+                invited_by_user_id,
+                display_name,
+                participant_role,
+                invitation_status,
+                current_target_index,
+                current_total_score,
+                is_active
+            FROM {$table}
+            WHERE session_id = ?
+              AND portal_user_id = ?
+            ORDER BY id DESC
+            LIMIT 1";
+
+    if ($forUpdate) {
+        $sql .= ' FOR UPDATE';
+    }
+
+    $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Teilnehmer konnte nicht geladen werden.');
+    }
+
+    $stmt->bind_param('ii', $sessionId, $portalUserId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return is_array($row) ? $row : null;
+}
+
+function portal_shanghai_fetch_next_seat_no(mysqli $db, string $table, int $sessionId): int
+{
+    $stmt = $db->prepare("SELECT COALESCE(MAX(seat_no), -1) + 1 AS next_seat_no FROM {$table} WHERE session_id = ?");
+    if (!$stmt) {
+        throw new RuntimeException('Naechster Platz konnte nicht ermittelt werden.');
+    }
+
+    $stmt->bind_param('i', $sessionId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return max(0, (int) ($row['next_seat_no'] ?? 0));
+}
+
+function portal_shanghai_state_has_player(array $state, int $portalUserId): bool
+{
+    $players = $state['players'] ?? [];
+    if (!is_array($players)) {
+        return false;
+    }
+
+    foreach ($players as $player) {
+        if (!is_array($player)) {
+            continue;
+        }
+
+        $playerUserId = portal_shanghai_normalize_portal_user_id(
+            $player['portalUserId'] ?? $player['playerUserId'] ?? $player['userId'] ?? null
+        );
+        if ($playerUserId === $portalUserId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function portal_shanghai_append_accepted_player(array $state, array $participant): array
+{
+    $players = $state['players'] ?? [];
+    if (!is_array($players)) {
+        $players = [];
+    }
+
+    $seatNo = isset($participant['seat_no']) ? (int) $participant['seat_no'] : 0;
+    $players[] = [
+        'index' => $seatNo,
+        'name' => (string) ($participant['display_name'] ?? 'Spieler'),
+        'portalUserId' => isset($participant['portal_user_id']) ? (int) $participant['portal_user_id'] : null,
+        'participantRole' => (string) ($participant['participant_role'] ?? 'friend'),
+        'invitationStatus' => 'accepted',
+        'invitedByUserId' => isset($participant['invited_by_user_id']) ? (int) $participant['invited_by_user_id'] : null,
+        'currentIndex' => isset($participant['current_target_index']) ? (int) $participant['current_target_index'] : 0,
+        'totalScore' => isset($participant['current_total_score']) ? (int) $participant['current_total_score'] : 0,
+        'rows' => [],
+    ];
+
+    usort(
+        $players,
+        static fn (mixed $left, mixed $right): int => ((int) (($left['index'] ?? 0))) <=> ((int) (($right['index'] ?? 0)))
+    );
+
+    $state['players'] = array_values($players);
+    $maxIndex = -1;
+    foreach ($state['players'] as $player) {
+        if (!is_array($player)) {
+            continue;
+        }
+        $maxIndex = max($maxIndex, (int) ($player['index'] ?? -1));
+    }
+    $state['nextPlayerId'] = max((int) ($state['nextPlayerId'] ?? 0), $maxIndex + 1);
+
+    if (!isset($state['activePlayerIndex']) && $state['players'] !== []) {
+        $state['activePlayerIndex'] = (int) ($state['players'][0]['index'] ?? 0);
+    }
+
+    return $state;
+}
+
+function portal_shanghai_resolve_invite_candidate(mysqli $db, array $config, int $sessionId, array $friend): array
+{
+    $friendId = (int) ($friend['id'] ?? 0);
+    $participant = $friendId > 0
+        ? portal_shanghai_fetch_participant_by_user($db, $config['participants'], $sessionId, $friendId)
+        : null;
+
+    $status = 'available';
+    $statusLabel = 'Nicht eingeladen';
+    $action = 'invite_friend';
+    $actionLabel = 'Einladen';
+    $actionEnabled = true;
+
+    if (is_array($participant)) {
+        $participantStatus = strtolower(trim((string) ($participant['invitation_status'] ?? 'accepted')));
+        $participantActive = (int) ($participant['is_active'] ?? 0) === 1;
+
+        if ($participantStatus === 'accepted' && $participantActive) {
+            $status = 'accepted';
+            $statusLabel = 'Bereits im Spiel';
+            $action = 'none';
+            $actionLabel = 'Im Spiel';
+            $actionEnabled = false;
+        } elseif ($participantStatus === 'pending' && $participantActive) {
+            $status = 'pending';
+            $statusLabel = 'Einladung offen';
+            $action = 'none';
+            $actionLabel = 'Offen';
+            $actionEnabled = false;
+        } elseif ($participantStatus === 'declined') {
+            $status = 'declined';
+            $statusLabel = 'Zuletzt abgelehnt';
+            $action = 'invite_friend';
+            $actionLabel = 'Erneut einladen';
+        }
+    }
+
+    return [
+        'id' => $friendId,
+        'name' => (string) ($friend['name'] ?? 'Unbekannt'),
+        'lastLogin' => (string) ($friend['lastLogin'] ?? ''),
+        'status' => $status,
+        'statusLabel' => $statusLabel,
+        'action' => $action,
+        'actionLabel' => $actionLabel,
+        'actionEnabled' => $actionEnabled,
+    ];
 }
 
 try {
@@ -519,7 +749,7 @@ try {
                             WHERE p.session_id = s.id
                               AND p.portal_user_id = ?
                               AND p.is_active = 1
-                              AND p.invitation_status IN ('accepted', 'pending')
+                            AND p.invitation_status = 'accepted'
                         )
                    )
                    AND (? = '' OR DATE_FORMAT(s.updated_at, '%d.%m.%Y %H:%i') LIKE ?)
@@ -559,7 +789,7 @@ try {
                             WHERE p.session_id = s.id
                               AND p.portal_user_id = ?
                               AND p.is_active = 1
-                              AND p.invitation_status IN ('accepted', 'pending')
+                            AND p.invitation_status = 'accepted'
                         )
                    )
                    AND (? = '' OR DATE_FORMAT(s.updated_at, '%d.%m.%Y %H:%i') LIKE ?)
@@ -638,6 +868,35 @@ try {
                     'isArchived' => !empty($row['is_archived']),
                     'isOwner' => (int) ($row['owner_user_id'] ?? 0) === $userId,
                     'state' => $state,
+                ],
+            ]);
+        }
+
+        if ($action === 'invite_candidates') {
+            $saveId = isset($_GET['saveId']) && is_numeric($_GET['saveId']) ? (int) $_GET['saveId'] : 0;
+            if ($saveId <= 0) {
+                throw new InvalidArgumentException('Ungueltiger Speicherstand.');
+            }
+
+            $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId);
+            if ($sessionRow === null) {
+                portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+            }
+
+            $friends = portal_fetch_friends($mysqli_user, $userId);
+            $candidates = [];
+            foreach ($friends as $friend) {
+                $candidates[] = portal_shanghai_resolve_invite_candidate($mysqli_user, $config, $saveId, $friend);
+            }
+
+            portal_json_response([
+                'success' => true,
+                'friends' => $candidates,
+                'save' => [
+                    'id' => $saveId,
+                    'saveName' => (string) ($sessionRow['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
+                    'isArchived' => !empty($sessionRow['is_archived']),
+                    'isOwner' => (int) ($sessionRow['owner_user_id'] ?? 0) === $userId,
                 ],
             ]);
         }
@@ -1150,6 +1409,242 @@ try {
         }
 
         portal_json_response(['success' => true, 'message' => 'Speicherstand geloescht.']);
+    }
+
+    if ($action === 'invite_friend') {
+        $saveId = isset($input['saveId']) && is_numeric($input['saveId']) ? (int) $input['saveId'] : 0;
+        $targetUserId = isset($input['targetUserId']) && is_numeric($input['targetUserId']) ? (int) $input['targetUserId'] : 0;
+        if ($saveId <= 0 || $targetUserId <= 0) {
+            throw new InvalidArgumentException('Ungueltige Einladung.');
+        }
+        if ($targetUserId === $userId) {
+            throw new InvalidArgumentException('Du kannst dich nicht selbst einladen.');
+        }
+
+        $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId, true);
+        if ($sessionRow === null) {
+            portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+        }
+        if (!empty($sessionRow['is_archived'])) {
+            throw new InvalidArgumentException('Archivierte Speicherstaende koennen nicht erweitert werden.');
+        }
+
+        $friendship = portal_fetch_friendship($mysqli_user, $userId, $targetUserId);
+        if ($friendship === null || (int) ($friendship['active'] ?? 0) !== 1 || (string) ($friendship['status'] ?? '') !== 'accepted') {
+            throw new InvalidArgumentException('Du kannst nur bestaetigte Freunde einladen.');
+        }
+
+        $targetUser = portal_fetch_user($mysqli_user, $targetUserId);
+        if ($targetUser === null) {
+            throw new InvalidArgumentException('Benutzer nicht gefunden.');
+        }
+
+        $mysqli_user->begin_transaction();
+
+        try {
+            $participantRow = portal_shanghai_fetch_participant_by_user($mysqli_user, $config['participants'], $saveId, $targetUserId, true);
+
+            if ($participantRow !== null) {
+                $participantStatus = strtolower(trim((string) ($participantRow['invitation_status'] ?? 'accepted')));
+                $participantActive = (int) ($participantRow['is_active'] ?? 0) === 1;
+
+                if ($participantStatus === 'accepted' && $participantActive) {
+                    throw new InvalidArgumentException('Dieser Freund ist bereits im Spiel.');
+                }
+                if ($participantStatus === 'pending' && $participantActive) {
+                    throw new InvalidArgumentException('Fuer diesen Freund gibt es bereits eine offene Einladung.');
+                }
+
+                $updateStmt = $mysqli_user->prepare(
+                    "UPDATE {$config['participants']}
+                     SET invited_by_user_id = ?,
+                         display_name = ?,
+                         participant_role = 'friend',
+                         invitation_status = 'pending',
+                         is_active = 1,
+                         current_target_index = 0,
+                         current_total_score = 0,
+                         joined_at = NULL,
+                         last_throw_at = NULL
+                     WHERE id = ?"
+                );
+                if (!$updateStmt) {
+                    throw new RuntimeException('Einladung konnte nicht aktualisiert werden.');
+                }
+
+                $participantId = (int) $participantRow['id'];
+                $displayName = (string) ($targetUser['display_name'] ?? 'Spieler');
+                $updateStmt->bind_param('isi', $userId, $displayName, $participantId);
+                $updateStmt->execute();
+                $updateStmt->close();
+            } else {
+                $seatNo = portal_shanghai_fetch_next_seat_no($mysqli_user, $config['participants'], $saveId);
+                $insertStmt = $mysqli_user->prepare(
+                    "INSERT INTO {$config['participants']} (
+                        session_id,
+                        seat_no,
+                        portal_user_id,
+                        invited_by_user_id,
+                        display_name,
+                        participant_role,
+                        invitation_status,
+                        current_target_index,
+                        current_total_score,
+                        is_active,
+                        joined_at,
+                        last_throw_at
+                    ) VALUES (?, ?, ?, ?, ?, 'friend', 'pending', 0, 0, 1, NULL, NULL)"
+                );
+                if (!$insertStmt) {
+                    throw new RuntimeException('Einladung konnte nicht gespeichert werden.');
+                }
+
+                $displayName = (string) ($targetUser['display_name'] ?? 'Spieler');
+                $insertStmt->bind_param('iiiis', $saveId, $seatNo, $targetUserId, $userId, $displayName);
+                $insertStmt->execute();
+                $insertStmt->close();
+            }
+
+            $mysqli_user->commit();
+        } catch (Throwable $exception) {
+            $mysqli_user->rollback();
+            throw $exception;
+        }
+
+        portal_json_response([
+            'success' => true,
+            'message' => 'Spiel-Einladung gesendet.',
+        ]);
+    }
+
+    if ($action === 'accept_invitation') {
+        $saveId = isset($input['saveId']) && is_numeric($input['saveId']) ? (int) $input['saveId'] : 0;
+        if ($saveId <= 0) {
+            throw new InvalidArgumentException('Ungueltige Einladung.');
+        }
+
+        $mysqli_user->begin_transaction();
+
+        try {
+            $invitationRow = portal_shanghai_fetch_pending_invitation($mysqli_user, $config, $saveId, $userId, true);
+            if ($invitationRow === null) {
+                throw new InvalidArgumentException('Keine offene Spiel-Einladung gefunden.');
+            }
+            if (!empty($invitationRow['is_archived'])) {
+                throw new InvalidArgumentException('Archivierte Speicherstaende koennen nicht erweitert werden.');
+            }
+
+            $state = json_decode((string) ($invitationRow['state_json'] ?? '{}'), true);
+            if (!is_array($state)) {
+                $state = [];
+            }
+
+            $participantUpdateStmt = $mysqli_user->prepare(
+                "UPDATE {$config['participants']}
+                 SET invitation_status = 'accepted',
+                     participant_role = 'friend',
+                     is_active = 1,
+                     joined_at = COALESCE(joined_at, CURRENT_TIMESTAMP(3))
+                 WHERE id = ?"
+            );
+            if (!$participantUpdateStmt) {
+                throw new RuntimeException('Einladung konnte nicht angenommen werden.');
+            }
+
+            $participantId = (int) ($invitationRow['participant_id'] ?? 0);
+            $participantUpdateStmt->bind_param('i', $participantId);
+            $participantUpdateStmt->execute();
+            $participantUpdateStmt->close();
+
+            $participantRow = portal_shanghai_fetch_participant_by_user($mysqli_user, $config['participants'], $saveId, $userId, true);
+            if ($participantRow === null) {
+                throw new RuntimeException('Teilnehmer konnte nach Annahme nicht geladen werden.');
+            }
+
+            if (!portal_shanghai_state_has_player($state, $userId)) {
+                $state = portal_shanghai_append_accepted_player($state, $participantRow);
+            }
+
+            $ownerUserId = (int) ($invitationRow['owner_user_id'] ?? 0);
+            $stateJson = portal_shanghai_state_json($state);
+            $meta = portal_shanghai_state_meta($state, $ownerUserId);
+            portal_shanghai_sync_participants($mysqli_user, $config['participants'], $saveId, $meta['participants']);
+
+            $sessionUpdateStmt = $mysqli_user->prepare(
+                "UPDATE {$config['sessions']}
+                 SET participant_summary = ?,
+                     participants_json = ?,
+                     state_json = ?,
+                     participant_count = ?
+                 WHERE id = ? AND is_deleted = 0"
+            );
+            if (!$sessionUpdateStmt) {
+                throw new RuntimeException('Spielstand konnte nicht aktualisiert werden.');
+            }
+
+            $participantCount = (int) $meta['participantCount'];
+            $sessionUpdateStmt->bind_param(
+                'sssii',
+                $meta['participantSummary'],
+                $meta['participantsJson'],
+                $stateJson,
+                $participantCount,
+                $saveId
+            );
+            $sessionUpdateStmt->execute();
+            $sessionUpdateStmt->close();
+
+            $mysqli_user->commit();
+        } catch (Throwable $exception) {
+            $mysqli_user->rollback();
+            throw $exception;
+        }
+
+        portal_json_response([
+            'success' => true,
+            'message' => 'Spiel-Einladung angenommen.',
+        ]);
+    }
+
+    if ($action === 'reject_invitation') {
+        $saveId = isset($input['saveId']) && is_numeric($input['saveId']) ? (int) $input['saveId'] : 0;
+        if ($saveId <= 0) {
+            throw new InvalidArgumentException('Ungueltige Einladung.');
+        }
+
+        $mysqli_user->begin_transaction();
+
+        try {
+            $invitationRow = portal_shanghai_fetch_pending_invitation($mysqli_user, $config, $saveId, $userId, true);
+            if ($invitationRow === null) {
+                throw new InvalidArgumentException('Keine offene Spiel-Einladung gefunden.');
+            }
+
+            $stmt = $mysqli_user->prepare(
+                "UPDATE {$config['participants']}
+                 SET invitation_status = 'declined',
+                     is_active = 0
+                 WHERE id = ?"
+            );
+            if (!$stmt) {
+                throw new RuntimeException('Einladung konnte nicht abgelehnt werden.');
+            }
+
+            $participantId = (int) ($invitationRow['participant_id'] ?? 0);
+            $stmt->bind_param('i', $participantId);
+            $stmt->execute();
+            $stmt->close();
+
+            $mysqli_user->commit();
+        } catch (Throwable $exception) {
+            $mysqli_user->rollback();
+            throw $exception;
+        }
+
+        portal_json_response([
+            'success' => true,
+            'message' => 'Spiel-Einladung abgelehnt.',
+        ]);
     }
 
     throw new InvalidArgumentException('Ungueltige Aktion.');

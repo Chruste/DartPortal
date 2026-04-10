@@ -354,6 +354,7 @@ let savedGamesFilters = {
   participants: '',
 };
 let storageSaveChain = Promise.resolve();
+let inviteCandidatesCache = [];
 let isRestoringState = false;
 const shanghaiAppConfig = window.SHANGHAI_APP || {};
 const isAuthenticatedUser = Boolean(shanghaiAppConfig.isAuthenticated);
@@ -502,10 +503,119 @@ function setStorageInfo(message = '', isError = false) {
   statusEl.classList.toggle('error', Boolean(isError));
 }
 
+function getInviteStatusElement() {
+  return document.getElementById('inviteStateInfo');
+}
+
+function setInviteInfo(message = '', isError = false) {
+  const statusEl = getInviteStatusElement();
+  if (!statusEl) return;
+
+  let fallbackMessage = 'Aktiviere zuerst einen Cloud-Spielstand, um Freunde einzuladen.';
+  if (archivedMode && activeSaveId) {
+    fallbackMessage = 'Archivierte Cloud Spiele koennen keine neuen Einladungen annehmen.';
+  } else if (storageEnabled && activeSaveId) {
+    fallbackMessage = 'Lade bestaetigte Freunde fuer diesen Spielstand.';
+  }
+
+  statusEl.textContent = message || fallbackMessage;
+  statusEl.classList.toggle('error', Boolean(isError));
+}
+
+function createInviteMessageRow(message) {
+  const row = document.createElement('tr');
+  const cell = document.createElement('td');
+  cell.colSpan = 5;
+  cell.textContent = message;
+  row.appendChild(cell);
+  return row;
+}
+
+function renderInviteCandidates() {
+  const tableBody = document.getElementById('inviteFriendsBody');
+  if (!tableBody) return;
+
+  tableBody.innerHTML = '';
+
+  if (!storageEnabled || !activeSaveId) {
+    tableBody.appendChild(createInviteMessageRow('Cloud-Spielstand aktivieren, um Freunde einzuladen.'));
+    return;
+  }
+
+  if (archivedMode) {
+    tableBody.appendChild(createInviteMessageRow('Archivierte Spiele koennen nicht erweitert werden.'));
+    return;
+  }
+
+  if (!Array.isArray(inviteCandidatesCache) || inviteCandidatesCache.length === 0) {
+    tableBody.appendChild(createInviteMessageRow('Keine bestaetigten Freunde verfuegbar oder bereits eingeladen.'));
+    return;
+  }
+
+  inviteCandidatesCache.forEach(friend => {
+    const row = document.createElement('tr');
+    const idCell = document.createElement('td');
+    const nameCell = document.createElement('td');
+    const lastLoginCell = document.createElement('td');
+    const statusCell = document.createElement('td');
+    const actionCell = document.createElement('td');
+
+    idCell.textContent = String(friend.id ?? '');
+    nameCell.textContent = friend.name || 'Unbekannt';
+    lastLoginCell.textContent = friend.lastLogin || '';
+    statusCell.textContent = friend.statusLabel || '';
+
+    if (friend.actionEnabled && friend.action === 'invite_friend') {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = friend.actionLabel || 'Einladen';
+      button.dataset.action = 'invite_friend';
+      button.dataset.userId = String(friend.id ?? '');
+      actionCell.appendChild(button);
+    } else {
+      actionCell.textContent = friend.actionLabel || 'Nicht verfuegbar';
+    }
+
+    row.appendChild(idCell);
+    row.appendChild(nameCell);
+    row.appendChild(lastLoginCell);
+    row.appendChild(statusCell);
+    row.appendChild(actionCell);
+    tableBody.appendChild(row);
+  });
+}
+
+function updateInviteControls() {
+  const toggleBtn = document.getElementById('toggleInvitePanelBtn');
+  const refreshBtn = document.getElementById('refreshInviteCandidatesBtn');
+  const panel = document.getElementById('invitePanel');
+  const isAvailable = Boolean(isAuthenticatedUser && storageEnabled && activeSaveId && !archivedMode);
+
+  if (toggleBtn) toggleBtn.disabled = !isAvailable;
+  if (refreshBtn) refreshBtn.disabled = !isAvailable;
+
+  if (!isAvailable && panel) {
+    panel.hidden = true;
+  }
+
+  renderInviteCandidates();
+  setInviteInfo();
+
+  if (isAvailable && panel && !panel.hidden) {
+    void refreshInviteCandidates().catch(error => {
+      setInviteInfo(error.message || 'Freundesliste konnte nicht geladen werden.', true);
+    });
+  }
+}
+
 function setSaveControlsBusy(isBusy) {
-  ['newGameBtn', 'toggleStorageBtn', 'loadGamesBtn'].forEach(id => {
+  ['newGameBtn', 'toggleStorageBtn', 'loadGamesBtn', 'toggleInvitePanelBtn', 'refreshInviteCandidatesBtn'].forEach(id => {
     const button = document.getElementById(id);
     if (button) button.disabled = Boolean(isBusy);
+  });
+
+  document.querySelectorAll('#inviteFriendsBody button').forEach(button => {
+    button.disabled = Boolean(isBusy);
   });
 }
 
@@ -521,6 +631,7 @@ function updateStorageToggleButton() {
   toggleBtn.setAttribute('aria-label', toggleBtn.title);
   toggleBtn.classList.toggle('storage-local-mode', !isCloudMode);
   toggleBtn.classList.toggle('storage-cloud-mode', isCloudMode);
+  updateInviteControls();
 }
 
 function updateGameInteractionState() {
@@ -550,6 +661,7 @@ function setArchiveMode(nextArchived) {
   updateAutoPlayerSwitchBtn();
   updateUndoButtonVisibility();
   updateGameInteractionState();
+  updateInviteControls();
 }
 
 function updateFooterLayout() {
@@ -1230,6 +1342,111 @@ async function fetchStorageJson(url, options = {}) {
   return data;
 }
 
+async function refreshInviteCandidates() {
+  if (!isAuthenticatedUser || !storageEnabled || !activeSaveId || archivedMode) {
+    inviteCandidatesCache = [];
+    renderInviteCandidates();
+    return;
+  }
+
+  const params = new URLSearchParams({
+    action: 'invite_candidates',
+    gameType: shanghaiAppConfig.gameType || '',
+    saveId: String(activeSaveId),
+  });
+
+  const data = await fetchStorageJson(`${storageApiUrl}?${params.toString()}`);
+  inviteCandidatesCache = Array.isArray(data.friends) ? data.friends : [];
+  renderInviteCandidates();
+  setInviteInfo();
+}
+
+async function sendGameInvite(targetUserId) {
+  const numericTargetUserId = Number(targetUserId);
+  if (!numericTargetUserId) return;
+
+  if (!storageEnabled || !activeSaveId || archivedMode) {
+    setInviteInfo('Aktiviere zuerst einen aktiven Cloud-Spielstand.', true);
+    return;
+  }
+
+  setSaveControlsBusy(true);
+
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'invite_friend',
+        csrfToken: shanghaiAppConfig.csrfToken || '',
+        gameType: shanghaiAppConfig.gameType || '',
+        saveId: Number(activeSaveId),
+        targetUserId: numericTargetUserId,
+      }),
+    });
+
+    await refreshInviteCandidates();
+    setInviteInfo(data.message || 'Spiel-Einladung gesendet.');
+  } catch (error) {
+    setInviteInfo(error.message || 'Spiel-Einladung konnte nicht gesendet werden.', true);
+  } finally {
+    setSaveControlsBusy(false);
+  }
+}
+
+function toggleInvitePanel() {
+  const panel = document.getElementById('invitePanel');
+  if (!panel) return;
+
+  const shouldOpen = panel.hidden;
+  panel.hidden = !shouldOpen;
+
+  if (shouldOpen) {
+    void refreshInviteCandidates().catch(error => {
+      setInviteInfo(error.message || 'Freundesliste konnte nicht geladen werden.', true);
+    });
+  }
+}
+
+function initInviteControls() {
+  const toggleBtn = document.getElementById('toggleInvitePanelBtn');
+  if (!toggleBtn || toggleBtn.dataset.bound === 'true') return;
+
+  toggleBtn.dataset.bound = 'true';
+  toggleBtn.addEventListener('click', toggleInvitePanel);
+
+  const refreshBtn = document.getElementById('refreshInviteCandidatesBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      void refreshInviteCandidates().catch(error => {
+        setInviteInfo(error.message || 'Freundesliste konnte nicht geladen werden.', true);
+      });
+    });
+  }
+
+  const tableBody = document.getElementById('inviteFriendsBody');
+  if (tableBody) {
+    tableBody.addEventListener('click', event => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const action = target.dataset.action || '';
+      const userId = target.dataset.userId || '';
+      if (action !== 'invite_friend' || !userId) {
+        return;
+      }
+
+      void sendGameInvite(userId);
+    });
+  }
+
+  updateInviteControls();
+}
+
 async function refreshSavedGamesList(page = savedGamesCurrentPage) {
   if (!isAuthenticatedUser) return;
 
@@ -1775,10 +1992,12 @@ async function initStorageControls() {
   }
 
   bindSavedGamesControls();
+  initInviteControls();
   setSavedGamesPanelOpen(getSavedGamesPanelPersistedState());
   updateStorageToggleButton();
   updateSavedGamesPagination();
   setStorageInfo();
+  setInviteInfo();
   if (isSavedGamesPanelOpen()) {
     syncSavedGamesFilterInputs();
     await refreshSavedGamesList(savedGamesCurrentPage).catch(error => {
