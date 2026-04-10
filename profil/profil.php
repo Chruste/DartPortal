@@ -116,6 +116,65 @@ include '../header.php';
         </table>
       </div>
     </section>
+
+    <section id="game-invitations-section" class="subsection is-hidden">
+      <div class="section-header compact-header">
+        <h3>Spiel Einladungen</h3>
+        <p>Angenommene Einladungen fuegen dich direkt als Spieler zum betreffenden Spiel hinzu.</p>
+      </div>
+      <p id="game-invitations-status" class="section-status" aria-live="polite"></p>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Spiel</th>
+              <th>Speicherstand</th>
+              <th>Von</th>
+              <th>Aktualisiert</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="game-invitations-body">
+            <tr class="empty-row">
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="sent-game-invitations-section" class="subsection is-hidden">
+      <div class="section-header compact-header">
+        <h3>Gesendete Spiel Einladungen</h3>
+        <p>Hier siehst du laufende und abgelehnte Spiel-Einladungen.</p>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Spiel</th>
+              <th>Speicherstand</th>
+              <th>An</th>
+              <th>Status</th>
+              <th>Aktualisiert</th>
+            </tr>
+          </thead>
+          <tbody id="sent-game-invitations-body">
+            <tr class="empty-row">
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </section>
 </div>
 

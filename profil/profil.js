@@ -12,10 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const scoliaTokenInput = document.getElementById('scoliaToken');
     const profileStatus = document.getElementById('profile-status');
     const searchStatus = document.getElementById('friend-search-status');
+    const gameInvitationsStatus = document.getElementById('game-invitations-status');
     const friendsTableBody = document.getElementById('friends-table-body');
     const invitationsTableBody = document.getElementById('invitations-table-body');
     const searchResultsBody = document.getElementById('search-results-body');
+    const gameInvitationsBody = document.getElementById('game-invitations-body');
+    const sentGameInvitationsBody = document.getElementById('sent-game-invitations-body');
     const invitationsSection = document.getElementById('invitations-section');
+    const gameInvitationsSection = document.getElementById('game-invitations-section');
+    const sentGameInvitationsSection = document.getElementById('sent-game-invitations-section');
     const searchResultsSection = document.getElementById('search-results-section');
     const searchInput = document.getElementById('friend-search-input');
 
@@ -52,6 +57,17 @@ document.addEventListener('DOMContentLoaded', () => {
         button.textContent = label;
         button.dataset.action = action;
         button.dataset.userId = String(userId);
+        return button;
+    }
+
+    function createGameActionButton(label, action, gameType, saveId) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'table-button';
+        button.textContent = label;
+        button.dataset.action = action;
+        button.dataset.gameType = gameType;
+        button.dataset.saveId = String(saveId);
         return button;
     }
 
@@ -132,6 +148,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function renderGameInvitations(invitations) {
+        gameInvitationsBody.innerHTML = '';
+        const hasInvitations = Array.isArray(invitations) && invitations.length > 0;
+        gameInvitationsSection.classList.toggle('is-hidden', !hasInvitations);
+
+        if (!hasInvitations) {
+            gameInvitationsBody.appendChild(createEmptyRow(5));
+            return;
+        }
+
+        invitations.forEach(invitation => {
+            const row = document.createElement('tr');
+            appendCell(row, invitation.gameLabel || 'Spiel');
+            appendCell(row, invitation.saveName || 'Speicherstand');
+            appendCell(row, invitation.inviterName || 'Unbekannt');
+            appendCell(row, invitation.updatedAt || '');
+            const actionCell = appendCell(row, '');
+            actionCell.appendChild(createGameActionButton('Annehmen', 'accept_invitation', invitation.gameType, invitation.saveId));
+            actionCell.appendChild(createGameActionButton('Ablehnen', 'reject_invitation', invitation.gameType, invitation.saveId));
+            gameInvitationsBody.appendChild(row);
+        });
+    }
+
+    function renderSentGameInvitations(invitations) {
+        sentGameInvitationsBody.innerHTML = '';
+        const hasInvitations = Array.isArray(invitations) && invitations.length > 0;
+        sentGameInvitationsSection.classList.toggle('is-hidden', !hasInvitations);
+
+        if (!hasInvitations) {
+            sentGameInvitationsBody.appendChild(createEmptyRow(5));
+            return;
+        }
+
+        invitations.forEach(invitation => {
+            const row = document.createElement('tr');
+            appendCell(row, invitation.gameLabel || 'Spiel');
+            appendCell(row, invitation.saveName || 'Speicherstand');
+            appendCell(row, invitation.invitedName || 'Unbekannt');
+            appendCell(row, invitation.statusLabel || 'Laufend');
+            appendCell(row, invitation.updatedAt || '');
+            sentGameInvitationsBody.appendChild(row);
+        });
+    }
+
     async function fetchJson(url, options) {
         const response = await fetch(url, options);
         const data = await response.json();
@@ -151,6 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
             scoliaTokenInput.value = data.profile.accessToken || '';
             renderFriends(data.friends || []);
             renderInvitations(data.invitations || []);
+            renderGameInvitations(data.gameInvitations || []);
+            renderSentGameInvitations(data.sentGameInvitations || []);
 
             if (statusMessage) {
                 setStatus(profileStatus, statusMessage, 'success');
@@ -196,6 +258,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             setStatus(searchStatus, error.message, 'error');
+        }
+    }
+
+    async function handleGameInvitationAction(action, gameType, saveId) {
+        try {
+            const data = await fetchJson('/shanghai-storage.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    csrfToken,
+                    action,
+                    gameType,
+                    saveId: Number(saveId)
+                })
+            });
+
+            setStatus(gameInvitationsStatus, data.message, 'success');
+            await loadProfileData();
+        } catch (error) {
+            setStatus(gameInvitationsStatus, error.message, 'error');
         }
     }
 
@@ -248,6 +330,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             void handleFriendAction(action, userId);
         });
+    });
+
+    gameInvitationsBody.addEventListener('click', event => {
+        const target = event.target;
+        if (!(target instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const action = target.dataset.action || '';
+        const gameType = target.dataset.gameType || '';
+        const saveId = target.dataset.saveId || '';
+        if (!action || !gameType || !saveId) {
+            return;
+        }
+
+        void handleGameInvitationAction(action, gameType, saveId);
     });
 
     void loadProfileData();

@@ -6,6 +6,16 @@ $isAuthenticated = isset($_SESSION['user_id']);
 $displayName = $_SESSION['username'] ?? 'Login';
 $navAuthLabel = $isAuthenticated ? 'Ausloggen' : 'Anmeldung';
 $assetVersion = portal_asset_version();
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+
+function portal_nav_link_attrs(string $targetPath, string $currentPath): string
+{
+  $isActive = $targetPath === $currentPath;
+  $classes = $isActive ? 'sidebar-link is-active' : 'sidebar-link';
+  $ariaCurrent = $isActive ? ' aria-current="page"' : '';
+
+  return 'class="' . $classes . '"' . $ariaCurrent;
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -27,12 +37,12 @@ $assetVersion = portal_asset_version();
     <button id="toggleSidebar" aria-label="Sidebar umschalten">☰</button>
     <nav>
       <ul>
-        <li><a href="/index.php" data-title="Home">Home</a></li>
-        <li><a href="/shanghai21/index.php" data-title="Shanghai 21">Shanghai 21</a></li>
-        <li><a href="/shanghai42/index.php" data-title="Shanghai 42">Shanghai 42</a></li>
-        <li><a href="/dartball/index.php" data-title="Dartball">Dartball</a></li>
-        <li><a href="/turnierplaner/turnierplaner.php" data-title="Turnierplaner">Turnierplaner</a></li>
-        <li><a href="/profil/profil.php" data-title="Profil und Freunde">Profil und Freunde</a></li>
+        <li><a href="/index.php" <?= portal_nav_link_attrs('/index.php', $currentPath); ?>>Home</a></li>
+        <li><a href="/shanghai21/index.php" <?= portal_nav_link_attrs('/shanghai21/index.php', $currentPath); ?>>Shanghai 21</a></li>
+        <li><a href="/shanghai42/index.php" <?= portal_nav_link_attrs('/shanghai42/index.php', $currentPath); ?>>Shanghai 42</a></li>
+        <li><a href="/dartball/index.php" <?= portal_nav_link_attrs('/dartball/index.php', $currentPath); ?>>Dartball</a></li>
+        <li><a href="/turnierplaner/turnierplaner.php" <?= portal_nav_link_attrs('/turnierplaner/turnierplaner.php', $currentPath); ?>>Turnierplaner</a></li>
+        <li><a href="/profil/profil.php" <?= portal_nav_link_attrs('/profil/profil.php', $currentPath); ?>>Profil und Freunde</a></li>
         <li>
           <?php if ($isAuthenticated): ?>
             <form method="post" action="/logout.php" class="sidebar-nav-form">
@@ -40,7 +50,7 @@ $assetVersion = portal_asset_version();
               <button type="submit" class="sidebar-nav-button" data-title="<?= $navAuthLabel; ?>"><?= $navAuthLabel; ?></button>
             </form>
           <?php else: ?>
-            <a href="/login.php" data-title="<?= $navAuthLabel; ?>"><?= $navAuthLabel; ?></a>
+            <a href="/login.php" <?= portal_nav_link_attrs('/login.php', $currentPath); ?>><?= $navAuthLabel; ?></a>
           <?php endif; ?>
         </li>
       </ul>
@@ -50,7 +60,13 @@ $assetVersion = portal_asset_version();
   <div id="main">
     <header class="topbar">
       <button id="mobileMenuButton" class="mobile-menu-button" aria-label="Menü">☰</button>
-      <h1 id="pageTitle"><?= $pageTitle ?? 'Home'; ?></h1>
+      <h1 id="pageTitle" class="topbar-page-title"><?= htmlspecialchars($pageTitle ?? 'Home', ENT_QUOTES, 'UTF-8'); ?></h1>
+      <div class="topbar-refresh-wrap">
+        <button id="topbarZoomOutButton" class="topbar-refresh-button" type="button" title="Ansicht verkleinern" aria-label="Ansicht verkleinern">➖</button>
+        <button id="topbarZoomResetButton" class="topbar-refresh-button" type="button" title="Ansicht auf 100 Prozent zuruecksetzen" aria-label="Ansicht auf 100 Prozent zuruecksetzen">💯</button>
+        <button id="topbarZoomInButton" class="topbar-refresh-button" type="button" title="Ansicht vergroessern" aria-label="Ansicht vergroessern">➕</button>
+        <button id="topbarRefreshButton" class="topbar-refresh-button" type="button" title="Seite aktualisieren" aria-label="Seite aktualisieren">🔄</button>
+      </div>
       <div class="topbar-actions">
         <?php if ($isAuthenticated): ?>
           <a href="/profil/profil.php" id="userInfo" class="username">

@@ -19,6 +19,33 @@ include __DIR__ . '/../header.php';
         <button id="loadGamesBtn" type="button">Speicherstände...</button>
         <div id="saveStateInfo" class="save-state-info">Speichern ist aktuell deaktiviert.</div>
       </div>
+      <section id="inviteControls" class="invite-controls">
+        <div class="invite-controls__header">
+          <button id="toggleInvitePanelBtn" type="button">Freunde einladen</button>
+          <button id="refreshInviteCandidatesBtn" type="button">Aktualisieren</button>
+        </div>
+        <div id="inviteStateInfo" class="invite-state-info">Aktiviere zuerst einen Cloud-Spielstand, um Freunde einzuladen.</div>
+        <section id="invitePanel" class="invite-panel" hidden>
+          <div class="invite-panel__content table-wrapper">
+            <table class="invite-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Letzter Login</th>
+                  <th>Status</th>
+                  <th>Aktion</th>
+                </tr>
+              </thead>
+              <tbody id="inviteFriendsBody">
+                <tr>
+                  <td colspan="5">Noch keine Freunde geladen.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
       <section id="savedGamesPanel" class="saved-games-panel" hidden>
         <div class="saved-games-panel__content">
           <table id="savedGamesTable" class="saved-games-table">
