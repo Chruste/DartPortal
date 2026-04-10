@@ -201,6 +201,7 @@ body, html {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: auto;
 }
 
 .logout-form {
@@ -250,6 +251,10 @@ body, html {
 
 @media (max-width: 900px) {
   .topbar-page-title {
+    display: none;
+  }
+
+  .logout-form {
     display: none;
   }
 }
