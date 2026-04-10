@@ -359,6 +359,107 @@ const shanghaiAppConfig = window.SHANGHAI_APP || {};
 const isAuthenticatedUser = Boolean(shanghaiAppConfig.isAuthenticated);
 const storageApiUrl = '/shanghai-storage.php';
 
+function getPersistedActiveSaveStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  const parsedUserId = Number.parseInt(String(shanghaiAppConfig.userId ?? ''), 10);
+  const userScope = Number.isFinite(parsedUserId) && parsedUserId > 0 ? String(parsedUserId) : 'guest';
+  return `shanghai:last-opened-save:${gameType}:${userScope}`;
+}
+
+function getSavedGamesPanelStateStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  return `shanghai:saved-games-panel-open:${gameType}`;
+}
+
+function getScrollPositionStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  return `shanghai:scroll-position:${gameType}`;
+}
+
+function getSavedGamesPanelPersistedState() {
+  return localStorage.getItem(getSavedGamesPanelStateStorageKey()) === 'true';
+}
+
+function persistSavedGamesPanelState(isOpen) {
+  localStorage.setItem(getSavedGamesPanelStateStorageKey(), isOpen ? 'true' : 'false');
+}
+
+function persistScrollPosition() {
+  sessionStorage.setItem(getScrollPositionStorageKey(), String(window.scrollY || window.pageYOffset || 0));
+}
+
+function getPersistedScrollPosition() {
+  const storedValue = sessionStorage.getItem(getScrollPositionStorageKey());
+  const parsedValue = Number.parseInt(String(storedValue ?? ''), 10);
+  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
+}
+
+function restoreScrollPosition() {
+  const targetY = getPersistedScrollPosition();
+  if (targetY <= 0) return;
+
+  let attempts = 0;
+  const maxAttempts = 12;
+
+  const applyScroll = () => {
+    window.scrollTo({ top: targetY, behavior: 'auto' });
+    attempts += 1;
+
+    const reachedTarget = Math.abs((window.scrollY || window.pageYOffset || 0) - targetY) <= 2;
+    const documentHeight = Math.max(
+      document.body?.scrollHeight || 0,
+      document.documentElement?.scrollHeight || 0
+    );
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const noMoreScrollableSpace = targetY >= Math.max(documentHeight - viewportHeight, 0);
+
+    if (reachedTarget || noMoreScrollableSpace || attempts >= maxAttempts) {
+      return;
+    }
+
+    window.requestAnimationFrame(applyScroll);
+  };
+
+  window.requestAnimationFrame(applyScroll);
+}
+
+function initScrollPositionPersistence() {
+  if (window.__shanghaiScrollPersistenceInitialized) return;
+
+  window.__shanghaiScrollPersistenceInitialized = true;
+  window.addEventListener('scroll', persistScrollPosition, { passive: true });
+  window.addEventListener('beforeunload', persistScrollPosition);
+}
+
+function syncPersistedActiveSave() {
+  if (!isAuthenticatedUser) return;
+
+  const storageKey = getPersistedActiveSaveStorageKey();
+  const saveId = Number(activeSaveId);
+  if (storageEnabled && Number.isFinite(saveId) && saveId > 0) {
+    localStorage.setItem(storageKey, JSON.stringify({ saveId }));
+    return;
+  }
+
+  localStorage.removeItem(storageKey);
+}
+
+function getPersistedActiveSaveId() {
+  if (!isAuthenticatedUser) return null;
+
+  const rawValue = localStorage.getItem(getPersistedActiveSaveStorageKey());
+  if (!rawValue) return null;
+
+  try {
+    const parsedValue = JSON.parse(rawValue);
+    const saveId = Number(parsedValue?.saveId);
+    return Number.isFinite(saveId) && saveId > 0 ? saveId : null;
+  } catch {
+    const saveId = Number(rawValue);
+    return Number.isFinite(saveId) && saveId > 0 ? saveId : null;
+  }
+}
+
 function formatLocalDateTime(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -813,7 +914,32 @@ function getSavedGamesPanel() {
 
 function isSavedGamesPanelOpen() {
   const panel = getSavedGamesPanel();
-  return Boolean(panel && !panel.hidden);
+  return Boolean(panel && panel.classList.contains('is-open'));
+}
+
+function updateSavedGamesPanelButtonState(isOpen) {
+  const toggleBtn = document.getElementById('loadGamesBtn');
+  if (!toggleBtn) return;
+
+  toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  toggleBtn.textContent = isOpen ? '... einklappen' : 'Speicherstände...';
+}
+
+function setSavedGamesPanelOpen(shouldOpen) {
+  const panel = getSavedGamesPanel();
+  if (!panel) return false;
+
+  panel.hidden = false;
+  panel.classList.toggle('is-open', shouldOpen);
+  panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+  updateSavedGamesPanelButtonState(shouldOpen);
+  persistSavedGamesPanelState(shouldOpen);
+
+  if (!shouldOpen) {
+    hideSavedGamesTooltip();
+  }
+
+  return shouldOpen;
 }
 
 async function refreshSavedGamesAfterMutation() {
@@ -1076,8 +1202,8 @@ function renderSavedGames() {
 
     actionCell.appendChild(actionGroup);
 
-    row.appendChild(updatedAtCell);
     row.appendChild(saveNameCell);
+    row.appendChild(updatedAtCell);
     row.appendChild(summaryCell);
     row.appendChild(actionCell);
     tableBody.appendChild(row);
@@ -1096,7 +1222,9 @@ async function fetchStorageJson(url, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok || !data.success) {
-    throw new Error(data.message || 'Spielstand konnte nicht verarbeitet werden.');
+    const error = new Error(data.message || 'Spielstand konnte nicht verarbeitet werden.');
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -1177,8 +1305,8 @@ function toggleSavedGamesPanel() {
   const panel = getSavedGamesPanel();
   if (!panel) return;
 
-  const shouldOpen = panel.hidden;
-  panel.hidden = !shouldOpen;
+  const shouldOpen = !isSavedGamesPanelOpen();
+  setSavedGamesPanelOpen(shouldOpen);
 
   if (shouldOpen) {
     syncSavedGamesFilterInputs();
@@ -1193,6 +1321,15 @@ function bindSavedGamesControls() {
   if (!panel || panel.dataset.bound === 'true') return;
 
   panel.dataset.bound = 'true';
+  panel.hidden = false;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
+
+  const loadGamesBtn = document.getElementById('loadGamesBtn');
+  if (loadGamesBtn) {
+    loadGamesBtn.setAttribute('aria-controls', 'savedGamesPanel');
+  }
+  updateSavedGamesPanelButtonState(false);
 
   const scheduleRefresh = () => {
     savedGamesFilters = {
@@ -1274,6 +1411,7 @@ async function enableStorage() {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+  syncPersistedActiveSave();
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
@@ -1315,6 +1453,7 @@ async function deleteSavedGame(saveId) {
       storageEnabled = false;
       activeSaveId = null;
       activeSaveLabel = '';
+      syncPersistedActiveSave();
       setArchiveMode(false);
       updateStorageToggleButton();
     }
@@ -1334,6 +1473,7 @@ async function deleteActiveSave() {
   if (!activeSaveId) {
     storageEnabled = false;
     activeSaveLabel = '';
+    syncPersistedActiveSave();
     setArchiveMode(false);
     updateStorageToggleButton();
     setStorageInfo();
@@ -1347,6 +1487,7 @@ function disableStorage() {
   storageEnabled = false;
   activeSaveId = null;
   activeSaveLabel = '';
+  syncPersistedActiveSave();
   setArchiveMode(false);
   updateStorageToggleButton();
   renderSavedGames();
@@ -1362,13 +1503,16 @@ async function toggleStorage() {
   await enableStorage();
 }
 
-async function loadSavedGame(saveId) {
+async function loadSavedGame(saveId, options = {}) {
   const numericSaveId = Number(saveId);
-  if (!numericSaveId) return;
+  if (!numericSaveId) return false;
+
+  const skipDiscardConfirm = Boolean(options.skipDiscardConfirm);
+  const restoreAttempt = Boolean(options.restoreAttempt);
 
   const hasSavedCurrentGame = Boolean(storageEnabled && activeSaveId);
-  if (!hasSavedCurrentGame && !confirmDiscardResults()) {
-    return;
+  if (!hasSavedCurrentGame && !skipDiscardConfirm && !confirmDiscardResults()) {
+    return false;
   }
 
   setSaveControlsBusy(true);
@@ -1381,6 +1525,7 @@ async function loadSavedGame(saveId) {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+  syncPersistedActiveSave();
     loadGameState(data.save?.state || {});
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
@@ -1391,11 +1536,37 @@ async function loadSavedGame(saveId) {
         ? `Archivierter Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}. Änderungen sind gesperrt.`
         : `Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`
     );
+    return true;
   } catch (error) {
+    if (restoreAttempt) {
+      storageEnabled = false;
+      activeSaveId = null;
+      activeSaveLabel = '';
+      if (Number(error?.status) === 404) {
+        syncPersistedActiveSave();
+      }
+      setArchiveMode(false);
+      updateStorageToggleButton();
+      renderSavedGames();
+      setStorageInfo('Zuletzt geöffneter Speicherstand konnte nicht wiederhergestellt werden.', true);
+      return false;
+    }
+
     setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
+    return false;
   } finally {
     setSaveControlsBusy(false);
   }
+}
+
+async function restorePersistedActiveSave() {
+  const persistedSaveId = getPersistedActiveSaveId();
+  if (!persistedSaveId || activeSaveId) return false;
+
+  return loadSavedGame(persistedSaveId, {
+    skipDiscardConfirm: true,
+    restoreAttempt: true,
+  });
 }
 
 async function copySavedGame(saveId) {
@@ -1426,6 +1597,7 @@ async function copySavedGame(saveId) {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+  syncPersistedActiveSave();
     loadGameState(data.save?.state || {});
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
@@ -1567,6 +1739,7 @@ function startNewGame() {
     storageEnabled = false;
     activeSaveId = null;
     activeSaveLabel = '';
+    syncPersistedActiveSave();
     setArchiveMode(false);
     updateStorageToggleButton();
     renderSavedGames();
@@ -1582,7 +1755,7 @@ function startNewGame() {
   });
 }
 
-function initStorageControls() {
+async function initStorageControls() {
   if (!isAuthenticatedUser) return;
 
   const newGameBtn = document.getElementById('newGameBtn');
@@ -1602,9 +1775,18 @@ function initStorageControls() {
   }
 
   bindSavedGamesControls();
+  setSavedGamesPanelOpen(getSavedGamesPanelPersistedState());
   updateStorageToggleButton();
   updateSavedGamesPagination();
   setStorageInfo();
+  if (isSavedGamesPanelOpen()) {
+    syncSavedGamesFilterInputs();
+    await refreshSavedGamesList(savedGamesCurrentPage).catch(error => {
+      setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+    });
+  }
+  await restorePersistedActiveSave();
+  restoreScrollPosition();
 }
 
 function ensureControlsFooter() {
@@ -1777,6 +1959,8 @@ function setupControlsFooterButtons(container) {
 
 // 1) Init-Funktion nach Login (v3.1)
 function initApp() {
+  initScrollPositionPersistence();
+
   // Anmeldedaten aus config (bzw. localStorage) übernehmen
   const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
 
