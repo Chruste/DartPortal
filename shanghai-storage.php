@@ -152,11 +152,56 @@ function portal_shanghai_normalize_participants(array $state, int $ownerUserId):
     return array_values($participants);
 }
 
+function portal_shanghai_build_participant_summary(array $participants): string
+{
+    $totalsByName = [];
+
+    foreach ($participants as $participant) {
+        if (!is_array($participant)) {
+            continue;
+        }
+
+        $name = trim((string) ($participant['displayName'] ?? $participant['name'] ?? 'Spieler'));
+        $name = $name !== '' ? $name : 'Spieler';
+
+        $totalScore = 0;
+        if (isset($participant['currentTotalScore']) && is_numeric($participant['currentTotalScore'])) {
+            $totalScore = (int) $participant['currentTotalScore'];
+        } elseif (isset($participant['totalScore']) && is_numeric($participant['totalScore'])) {
+            $totalScore = (int) $participant['totalScore'];
+        }
+
+        $totalsByName[$name] = ($totalsByName[$name] ?? 0) + $totalScore;
+    }
+
+    $summaryParts = [];
+    foreach ($totalsByName as $name => $totalScore) {
+        $summaryParts[] = $name . ' (' . $totalScore . ')';
+    }
+
+    return implode(', ', $summaryParts);
+}
+
+function portal_shanghai_resolve_participant_summary(array $row): string
+{
+    $participantsJson = trim((string) ($row['participants_json'] ?? ''));
+    if ($participantsJson !== '') {
+        $participants = json_decode($participantsJson, true);
+        if (is_array($participants)) {
+            $summary = portal_shanghai_build_participant_summary($participants);
+            if ($summary !== '') {
+                return $summary;
+            }
+        }
+    }
+
+    return trim((string) ($row['participant_summary'] ?? ''));
+}
+
 function portal_shanghai_state_meta(array $state, int $ownerUserId): array
 {
     $seatParticipants = portal_shanghai_normalize_participants($state, $ownerUserId);
     $participants = [];
-    $summaryParts = [];
 
     foreach ($seatParticipants as $participant) {
         $participants[] = [
@@ -167,8 +212,6 @@ function portal_shanghai_state_meta(array $state, int $ownerUserId): array
             'participantRole' => $participant['participantRole'],
             'invitationStatus' => $participant['invitationStatus'],
         ];
-
-        $summaryParts[] = $participant['displayName'] . ' (' . $participant['currentTotalScore'] . ')';
     }
 
     $participantsJson = json_encode($participants, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -177,7 +220,7 @@ function portal_shanghai_state_meta(array $state, int $ownerUserId): array
     }
 
     return [
-        'participantSummary' => implode(', ', $summaryParts),
+        'participantSummary' => portal_shanghai_build_participant_summary($seatParticipants),
         'participantsJson' => $participantsJson,
         'participants' => $seatParticipants,
         'participantCount' => count($seatParticipants),
@@ -405,6 +448,7 @@ function portal_shanghai_fetch_session_for_user(mysqli $db, array $config, int $
                 s.owner_user_id,
                 s.save_name,
                 s.participant_summary,
+                s.participants_json,
                 s.updated_at,
                 s.state_json,
                 s.event_count,
@@ -504,7 +548,7 @@ try {
             $totalCount = is_array($countRow) ? (int) ($countRow['total_count'] ?? 0) : 0;
 
             $stmt = $mysqli_user->prepare(
-                "SELECT s.id, s.owner_user_id, s.save_name, s.participant_summary, s.updated_at, s.is_archived
+                "SELECT s.id, s.owner_user_id, s.save_name, s.participant_summary, s.participants_json, s.updated_at, s.is_archived
                  FROM {$config['sessions']} s
                  WHERE s.is_deleted = 0
                    AND (
@@ -550,7 +594,7 @@ try {
                     'id' => (int) $row['id'],
                     'saveName' => (string) ($row['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
                     'updatedAt' => portal_format_datetime((string) ($row['updated_at'] ?? '')),
-                    'participantSummary' => (string) ($row['participant_summary'] ?? ''),
+                    'participantSummary' => portal_shanghai_resolve_participant_summary($row),
                     'isArchived' => !empty($row['is_archived']),
                     'isOwner' => (int) ($row['owner_user_id'] ?? 0) === $userId,
                 ];
@@ -588,7 +632,7 @@ try {
                     'id' => (int) $row['id'],
                     'saveName' => (string) ($row['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
                     'updatedAt' => portal_format_datetime((string) ($row['updated_at'] ?? '')),
-                    'participantSummary' => (string) ($row['participant_summary'] ?? ''),
+                    'participantSummary' => portal_shanghai_resolve_participant_summary($row),
                     'eventCount' => (int) ($row['event_count'] ?? 0),
                     'participantCount' => (int) ($row['participant_count'] ?? 0),
                     'isArchived' => !empty($row['is_archived']),
@@ -1027,7 +1071,7 @@ try {
                 'id' => $saveId,
                 'saveName' => $saveName,
                 'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
-                'participantSummary' => (string) ($sessionRow['participant_summary'] ?? ''),
+                'participantSummary' => portal_shanghai_resolve_participant_summary($sessionRow),
                 'isArchived' => !empty($sessionRow['is_archived']),
                 'isOwner' => true,
             ],
@@ -1071,7 +1115,7 @@ try {
                 'id' => $saveId,
                 'saveName' => (string) ($sessionRow['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
                 'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
-                'participantSummary' => (string) ($sessionRow['participant_summary'] ?? ''),
+                'participantSummary' => portal_shanghai_resolve_participant_summary($sessionRow),
                 'isArchived' => $shouldArchive,
                 'isOwner' => true,
             ],
