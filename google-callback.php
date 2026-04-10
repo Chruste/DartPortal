@@ -240,7 +240,7 @@ try {
     header('Location: /index.php');
     exit;
 } catch (Throwable $exception) {
-    error_log('Google OAuth Fehler: ' . $exception->getMessage());
+    portal_log_error('Google OAuth Fehler', $exception);
     header('Location: /login.php?error=oauth_serverfehler');
     exit;
 }

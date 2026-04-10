@@ -2,6 +2,62 @@
 
 declare(strict_types=1);
 
+function portal_latest_deploy_mtime(string $rootDir): int
+{
+    $latestMtime = 0;
+    $allowedExtensions = ['php', 'js', 'css', 'json', 'ico', 'png', 'jpg', 'jpeg', 'webp', 'svg'];
+
+    $directory = new RecursiveDirectoryIterator($rootDir, FilesystemIterator::SKIP_DOTS);
+    $filtered = new RecursiveCallbackFilterIterator(
+        $directory,
+        static function (SplFileInfo $current): bool {
+            if ($current->isDir()) {
+                return !in_array($current->getFilename(), ['.git', '.github', 'node_modules'], true);
+            }
+
+            return true;
+        }
+    );
+    $iterator = new RecursiveIteratorIterator($filtered, RecursiveIteratorIterator::LEAVES_ONLY);
+
+    foreach ($iterator as $fileInfo) {
+        if (!$fileInfo->isFile()) {
+            continue;
+        }
+
+        $extension = strtolower($fileInfo->getExtension());
+        if (!in_array($extension, $allowedExtensions, true)) {
+            continue;
+        }
+
+        $mtime = $fileInfo->getMTime();
+        if ($mtime > $latestMtime) {
+            $latestMtime = $mtime;
+        }
+    }
+
+    return $latestMtime;
+}
+
+function portal_asset_version(): string
+{
+    static $version = null;
+
+    if ($version !== null) {
+        return $version;
+    }
+
+    $latestMtime = portal_latest_deploy_mtime(__DIR__);
+    $version = $latestMtime > 0 ? gmdate('YmdHis', $latestMtime) : gmdate('YmdHis');
+    return $version;
+}
+
+function portal_asset_url(string $path): string
+{
+    $separator = str_contains($path, '?') ? '&' : '?';
+    return $path . $separator . 'v=' . rawurlencode(portal_asset_version());
+}
+
 function portal_is_https_request(): bool
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {

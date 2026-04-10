@@ -2,6 +2,103 @@
 
 declare(strict_types=1);
 
+function portal_log_file_path(): string
+{
+    return __DIR__ . '/private_config/dartportal_error.log';
+}
+
+function portal_log_rotation_limit_bytes(): int
+{
+    if (defined('PORTAL_LOG_ROTATION_MAX_BYTES')) {
+        $configuredLimit = (int) constant('PORTAL_LOG_ROTATION_MAX_BYTES');
+        if ($configuredLimit > 0) {
+            return $configuredLimit;
+        }
+    }
+
+    return 5242880;
+}
+
+function portal_log_rotation_max_files(): int
+{
+    if (defined('PORTAL_LOG_ROTATION_MAX_FILES')) {
+        $configuredCount = (int) constant('PORTAL_LOG_ROTATION_MAX_FILES');
+        if ($configuredCount > 1) {
+            return $configuredCount;
+        }
+    }
+
+    return 9;
+}
+
+function portal_rotate_log_file_if_needed(string $logFile, int $maxBytes = 5242880): void
+{
+    if (!is_file($logFile)) {
+        return;
+    }
+
+    $fileSize = @filesize($logFile);
+    if (!is_int($fileSize) || $fileSize < $maxBytes) {
+        return;
+    }
+
+    $maxFiles = portal_log_rotation_max_files();
+    $oldestFile = $logFile . '.' . $maxFiles;
+    if (is_file($oldestFile)) {
+        @unlink($oldestFile);
+    }
+
+    for ($index = $maxFiles - 1; $index >= 1; $index--) {
+        $sourceFile = $logFile . '.' . $index;
+        if (!is_file($sourceFile)) {
+            continue;
+        }
+
+        $targetFile = $logFile . '.' . ($index + 1);
+        @rename($sourceFile, $targetFile);
+    }
+
+    @rename($logFile, $logFile . '.1');
+}
+
+function portal_log_error(string $message, ?Throwable $exception = null, array $context = []): void
+{
+    $timestamp = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+    $entry = [
+        '[' . $timestamp . ']',
+        $message,
+    ];
+
+    if ($exception !== null) {
+        $entry[] = 'exception=' . get_class($exception);
+        $entry[] = 'exception_message=' . $exception->getMessage();
+        $entry[] = 'file=' . $exception->getFile() . ':' . $exception->getLine();
+    }
+
+    if ($context !== []) {
+        $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (is_string($contextJson)) {
+            $entry[] = 'context=' . $contextJson;
+        }
+    }
+
+    $line = implode(' ', $entry) . PHP_EOL;
+
+    $logFile = portal_log_file_path();
+    $directory = dirname($logFile);
+
+    if (is_dir($directory) && is_writable($directory) && (!is_file($logFile) || is_writable($logFile))) {
+        portal_rotate_log_file_if_needed($logFile, portal_log_rotation_limit_bytes());
+
+        $written = @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+        if ($written !== false) {
+            return;
+        }
+    }
+
+    error_log(trim($line));
+}
+
 function load_auth_secrets(): array
 {
     static $secrets = null;

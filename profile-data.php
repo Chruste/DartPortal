@@ -18,6 +18,6 @@ try {
         'invitations' => portal_fetch_invitations($mysqli_user, $userId),
     ]);
 } catch (Throwable $exception) {
-    error_log('Profil-Daten Fehler: ' . $exception->getMessage());
+    portal_log_error('Profil-Daten Fehler', $exception);
     portal_json_response(['success' => false, 'message' => 'Profil-Daten konnten nicht geladen werden.'], 500);
 }

@@ -1,4 +1,6 @@
-const cacheName = 'cdp-cache-v20';
+const swVersion = (new URL(self.location.href).searchParams.get('v') || 'dev')
+  .replace(/[^a-z0-9_-]+/gi, '-');
+const cacheName = `cdp-cache-${swVersion}`;
 const assets = [
   '/',
   '/index.php',
@@ -82,9 +84,7 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/save-profile.php'
     || requestUrl.pathname === '/friend-search.php'
     || requestUrl.pathname === '/friend-action.php'
-    || requestUrl.pathname === '/shanghai-storage.php'
-    || requestUrl.pathname === '/login-api.php'
-    || requestUrl.pathname === '/set_session_username.php';
+    || requestUrl.pathname === '/shanghai-storage.php';
 }
 
 function isVersionSensitiveAsset(request) {

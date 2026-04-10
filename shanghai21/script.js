@@ -946,7 +946,9 @@ function renderSavedGames() {
 
   if (!savedGamesCache.length) {
     const row = document.createElement('tr');
+    row.className = 'saved-games-empty-row';
     const cell = document.createElement('td');
+    cell.className = 'saved-games-empty-cell';
     cell.colSpan = 4;
     cell.textContent = 'Keine Speicherstände vorhanden.';
     row.appendChild(cell);
@@ -957,13 +959,15 @@ function renderSavedGames() {
 
   savedGamesCache.forEach(save => {
     const row = document.createElement('tr');
+    row.className = 'saved-games-row';
     row.classList.toggle('active-save-row', Number(save.id) === Number(activeSaveId));
 
     const updatedAtCell = document.createElement('td');
+    updatedAtCell.setAttribute('data-label', 'Letzte Änderung');
     updatedAtCell.textContent = save.updatedAt || '';
-    bindSavedGamesTooltip(updatedAtCell, () => save.updatedAt || '');
 
     const saveNameCell = document.createElement('td');
+    saveNameCell.setAttribute('data-label', 'Speicherstand');
     const saveNameInput = document.createElement('input');
     saveNameInput.type = 'text';
     saveNameInput.className = 'saved-games-name-input';
@@ -991,10 +995,12 @@ function renderSavedGames() {
     saveNameCell.appendChild(saveNameInput);
 
     const summaryCell = document.createElement('td');
+    summaryCell.setAttribute('data-label', 'Teilnehmende');
     summaryCell.textContent = save.participantSummary || '';
     bindSavedGamesTooltip(summaryCell, () => save.participantSummary || '');
 
     const actionCell = document.createElement('td');
+    actionCell.setAttribute('data-label', 'Aktionen');
     const actionGroup = document.createElement('div');
     actionGroup.className = 'saved-games-action-group';
 

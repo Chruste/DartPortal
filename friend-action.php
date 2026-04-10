@@ -28,6 +28,6 @@ try {
 } catch (InvalidArgumentException $exception) {
     portal_json_response(['success' => false, 'message' => $exception->getMessage()], 400);
 } catch (Throwable $exception) {
-    error_log('Freundesystem Aktion Fehler: ' . $exception->getMessage());
+    portal_log_error('Freundesystem Aktion Fehler', $exception);
     portal_json_response(['success' => false, 'message' => 'Aktion konnte nicht ausgefuehrt werden.'], 500);
 }

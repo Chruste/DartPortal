@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/oauth_config.php';
+
 function portal_json_response(array $payload, int $statusCode = 200): void
 {
     http_response_code($statusCode);

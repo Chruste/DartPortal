@@ -19,7 +19,7 @@ if ($userDbUser === '' || $userDbPass === '') {
 
 $mysqli_user = new mysqli($userDbHost, $userDbUser, $userDbPass, $userDbName);
 if ($mysqli_user->connect_error) {
-    error_log('Portal-DB-Verbindung fehlgeschlagen: ' . $mysqli_user->connect_error);
+    portal_log_error('Portal-DB-Verbindung fehlgeschlagen: ' . $mysqli_user->connect_error);
     if (!headers_sent()) {
         http_response_code(500);
     }

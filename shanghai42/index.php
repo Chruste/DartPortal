@@ -3,7 +3,7 @@ require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Shanghai 42';
 $username  = $_SESSION['username'] ?? null;
 $isAuthenticated = isset($_SESSION['user_id']);
-$extraHead = '<link rel="stylesheet" href="/shanghai42/styles.css">';
+$extraHead = '<link rel="stylesheet" href="' . htmlspecialchars(portal_asset_url('/shanghai42/styles.css'), ENT_QUOTES, 'UTF-8') . '">';
 include __DIR__ . '/../header.php';
 ?>
   <!-- Haupt-App -->
@@ -29,9 +29,9 @@ include __DIR__ . '/../header.php';
               <th>Aktionen</th>
             </tr>
             <tr class="saved-games-filter-row">
-              <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Filtern..." /></th>
-              <th><input id="savedGamesFilterSaveName" type="text" placeholder="Filtern..." /></th>
-              <th><input id="savedGamesFilterParticipants" type="text" placeholder="Filtern..." /></th>
+              <th><input id="savedGamesFilterUpdatedAt" type="text" placeholder="Letzte Änderung filtern" aria-label="Filter für letzte Änderung" /></th>
+              <th><input id="savedGamesFilterSaveName" type="text" placeholder="Speicherstand filtern" aria-label="Filter für Speicherstand" /></th>
+              <th><input id="savedGamesFilterParticipants" type="text" placeholder="Teilnehmende filtern" aria-label="Filter für Teilnehmende" /></th>
               <th><button id="clearSavedGamesFiltersBtn" type="button">Filter löschen</button></th>
             </tr>
           </thead>
@@ -93,7 +93,7 @@ include __DIR__ . '/../header.php';
       csrfToken: <?= json_encode((string) ($_SESSION['csrf_token'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
     };
   </script>
-  <script src="script.js"></script>
+  <script src="<?= htmlspecialchars(portal_asset_url('/shanghai42/script.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       fetch('/scolia-config.php')
