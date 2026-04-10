@@ -323,6 +323,7 @@ let controlsFooterInitialized = false;
 let storageEnabled = false;
 let activeSaveId = null;
 let activeSaveLabel = '';
+let activeSaveIsOwner = false;
 let archivedMode = false;
 let savedGamesCache = [];
 let savedGamesCurrentPage = 1;
@@ -496,6 +497,8 @@ function setInviteInfo(message = '', isError = false) {
   let fallbackMessage = 'Aktiviere zuerst einen Cloud-Spielstand, um Freunde einzuladen.';
   if (archivedMode && activeSaveId) {
     fallbackMessage = 'Archivierte Cloud Spiele koennen keine neuen Einladungen annehmen.';
+  } else if (storageEnabled && activeSaveId && !activeSaveIsOwner) {
+    fallbackMessage = 'Nur der Besitzer dieses Cloud-Spiels kann weitere Spieler einladen.';
   } else if (storageEnabled && activeSaveId) {
     fallbackMessage = 'Lade bestaetigte Freunde fuer diesen Spielstand.';
   }
@@ -521,6 +524,11 @@ function renderInviteCandidates() {
 
   if (!storageEnabled || !activeSaveId) {
     tableBody.appendChild(createInviteMessageRow('Cloud-Spielstand aktivieren, um Freunde einzuladen.'));
+    return;
+  }
+
+  if (!activeSaveIsOwner) {
+    tableBody.appendChild(createInviteMessageRow('Nur der Besitzer kann weitere Spieler einladen.'));
     return;
   }
 
@@ -571,7 +579,7 @@ function updateInviteControls() {
   const toggleBtn = document.getElementById('toggleInvitePanelBtn');
   const refreshBtn = document.getElementById('refreshInviteCandidatesBtn');
   const panel = document.getElementById('invitePanel');
-  const isAvailable = Boolean(isAuthenticatedUser && storageEnabled && activeSaveId && !archivedMode);
+  const isAvailable = Boolean(isAuthenticatedUser && storageEnabled && activeSaveId && !archivedMode && activeSaveIsOwner);
 
   if (toggleBtn) toggleBtn.disabled = !isAvailable;
   if (refreshBtn) refreshBtn.disabled = !isAvailable;
@@ -1610,6 +1618,7 @@ async function enableStorage() {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    activeSaveIsOwner = data.save?.isOwner !== false;
   syncPersistedActiveSave();
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
@@ -1652,6 +1661,7 @@ async function deleteSavedGame(saveId) {
       storageEnabled = false;
       activeSaveId = null;
       activeSaveLabel = '';
+      activeSaveIsOwner = false;
       syncPersistedActiveSave();
       setArchiveMode(false);
       updateStorageToggleButton();
@@ -1672,6 +1682,7 @@ async function deleteActiveSave() {
   if (!activeSaveId) {
     storageEnabled = false;
     activeSaveLabel = '';
+    activeSaveIsOwner = false;
     syncPersistedActiveSave();
     setArchiveMode(false);
     updateStorageToggleButton();
@@ -1686,6 +1697,7 @@ function disableStorage() {
   storageEnabled = false;
   activeSaveId = null;
   activeSaveLabel = '';
+  activeSaveIsOwner = false;
   syncPersistedActiveSave();
   setArchiveMode(false);
   updateStorageToggleButton();
@@ -1724,6 +1736,7 @@ async function loadSavedGame(saveId, options = {}) {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    activeSaveIsOwner = data.save?.isOwner !== false;
   syncPersistedActiveSave();
     loadGameState(data.save?.state || {});
     setArchiveMode(Boolean(data.save?.isArchived));
@@ -1741,6 +1754,7 @@ async function loadSavedGame(saveId, options = {}) {
       storageEnabled = false;
       activeSaveId = null;
       activeSaveLabel = '';
+      activeSaveIsOwner = false;
       if (Number(error?.status) === 404) {
         syncPersistedActiveSave();
       }
@@ -1796,6 +1810,7 @@ async function copySavedGame(saveId) {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+    activeSaveIsOwner = data.save?.isOwner !== false;
   syncPersistedActiveSave();
     loadGameState(data.save?.state || {});
     setArchiveMode(Boolean(data.save?.isArchived));
@@ -1849,6 +1864,7 @@ async function toggleSaveArchive(saveId, shouldArchive) {
 
     if (isActiveTarget) {
       activeSaveLabel = data.save?.saveName || activeSaveLabel;
+      activeSaveIsOwner = data.save?.isOwner !== false;
       setArchiveMode(Boolean(data.save?.isArchived));
       updateStorageToggleButton();
       renderSavedGames();
@@ -1938,6 +1954,7 @@ function startNewGame() {
     storageEnabled = false;
     activeSaveId = null;
     activeSaveLabel = '';
+    activeSaveIsOwner = false;
     syncPersistedActiveSave();
     setArchiveMode(false);
     updateStorageToggleButton();

@@ -589,9 +589,14 @@ function portal_shanghai_fetch_participant_by_user(mysqli $db, string $table, in
     return is_array($row) ? $row : null;
 }
 
-function portal_shanghai_fetch_next_seat_no(mysqli $db, string $table, int $sessionId): int
+function portal_shanghai_fetch_next_seat_no(mysqli $db, string $table, int $sessionId, bool $forUpdate = false): int
 {
-    $stmt = $db->prepare("SELECT COALESCE(MAX(seat_no), -1) + 1 AS next_seat_no FROM {$table} WHERE session_id = ?");
+    $sql = "SELECT seat_no FROM {$table} WHERE session_id = ? ORDER BY seat_no DESC LIMIT 1";
+    if ($forUpdate) {
+        $sql .= ' FOR UPDATE';
+    }
+
+    $stmt = $db->prepare($sql);
     if (!$stmt) {
         throw new RuntimeException('Naechster Platz konnte nicht ermittelt werden.');
     }
@@ -602,7 +607,7 @@ function portal_shanghai_fetch_next_seat_no(mysqli $db, string $table, int $sess
     $row = $result ? $result->fetch_assoc() : null;
     $stmt->close();
 
-    return max(0, (int) ($row['next_seat_no'] ?? 0));
+    return max(0, ((int) ($row['seat_no'] ?? -1)) + 1);
 }
 
 function portal_shanghai_state_has_player(array $state, int $portalUserId): bool
@@ -881,6 +886,9 @@ try {
             $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId);
             if ($sessionRow === null) {
                 portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+            }
+            if ((int) ($sessionRow['owner_user_id'] ?? 0) !== $userId) {
+                portal_json_response(['success' => false, 'message' => 'Nur der Besitzer kann Einladungen vorbereiten.'], 403);
             }
 
             $friends = portal_fetch_friends($mysqli_user, $userId);
@@ -1421,14 +1429,6 @@ try {
             throw new InvalidArgumentException('Du kannst dich nicht selbst einladen.');
         }
 
-        $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId, true);
-        if ($sessionRow === null) {
-            portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
-        }
-        if (!empty($sessionRow['is_archived'])) {
-            throw new InvalidArgumentException('Archivierte Speicherstaende koennen nicht erweitert werden.');
-        }
-
         $friendship = portal_fetch_friendship($mysqli_user, $userId, $targetUserId);
         if ($friendship === null || (int) ($friendship['active'] ?? 0) !== 1 || (string) ($friendship['status'] ?? '') !== 'accepted') {
             throw new InvalidArgumentException('Du kannst nur bestaetigte Freunde einladen.');
@@ -1442,6 +1442,17 @@ try {
         $mysqli_user->begin_transaction();
 
         try {
+            $sessionRow = portal_shanghai_fetch_session_for_user($mysqli_user, $config, $saveId, $userId, true);
+            if ($sessionRow === null) {
+                portal_json_response(['success' => false, 'message' => 'Spielstand nicht gefunden.'], 404);
+            }
+            if ((int) ($sessionRow['owner_user_id'] ?? 0) !== $userId) {
+                portal_json_response(['success' => false, 'message' => 'Nur der Besitzer kann weitere Spieler einladen.'], 403);
+            }
+            if (!empty($sessionRow['is_archived'])) {
+                throw new InvalidArgumentException('Archivierte Speicherstaende koennen nicht erweitert werden.');
+            }
+
             $participantRow = portal_shanghai_fetch_participant_by_user($mysqli_user, $config['participants'], $saveId, $targetUserId, true);
 
             if ($participantRow !== null) {
@@ -1478,7 +1489,7 @@ try {
                 $updateStmt->execute();
                 $updateStmt->close();
             } else {
-                $seatNo = portal_shanghai_fetch_next_seat_no($mysqli_user, $config['participants'], $saveId);
+                $seatNo = portal_shanghai_fetch_next_seat_no($mysqli_user, $config['participants'], $saveId, true);
                 $insertStmt = $mysqli_user->prepare(
                     "INSERT INTO {$config['participants']} (
                         session_id,
