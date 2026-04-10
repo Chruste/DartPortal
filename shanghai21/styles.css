@@ -136,6 +136,7 @@ body {
   .saved-games-table td:nth-child(3) {
     width: 31%;
     min-width: 240px;
+    text-align: left;
   }
 
   .saved-games-table td:last-child,
