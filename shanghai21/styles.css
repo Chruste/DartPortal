@@ -87,16 +87,16 @@ body {
 
   .saved-games-table th:first-child,
   .saved-games-table td:first-child {
-    width: 160px;
-    min-width: 142px;
-    max-width: 160px;
-    white-space: nowrap;
+    width: 29%;
+    min-width: 220px;
   }
 
   .saved-games-table th:nth-child(2),
   .saved-games-table td:nth-child(2) {
-    width: 29%;
-    min-width: 220px;
+    width: 160px;
+    min-width: 142px;
+    max-width: 160px;
+    white-space: nowrap;
   }
 
   .saved-games-table th:nth-child(3),

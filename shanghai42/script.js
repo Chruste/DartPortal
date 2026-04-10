@@ -1076,8 +1076,8 @@ function renderSavedGames() {
 
     actionCell.appendChild(actionGroup);
 
-    row.appendChild(updatedAtCell);
     row.appendChild(saveNameCell);
+    row.appendChild(updatedAtCell);
     row.appendChild(summaryCell);
     row.appendChild(actionCell);
     tableBody.appendChild(row);
