@@ -1053,7 +1053,8 @@ try {
 
         $stmt = $mysqli_user->prepare(
             "UPDATE {$config['sessions']}
-             SET save_name = ?
+             SET save_name = ?,
+                 updated_at = updated_at
              WHERE id = ? AND is_deleted = 0"
         );
         if (!$stmt) {
@@ -1070,7 +1071,7 @@ try {
             'save' => [
                 'id' => $saveId,
                 'saveName' => $saveName,
-                'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
+                'updatedAt' => portal_format_datetime((string) ($sessionRow['updated_at'] ?? '')),
                 'participantSummary' => portal_shanghai_resolve_participant_summary($sessionRow),
                 'isArchived' => !empty($sessionRow['is_archived']),
                 'isOwner' => true,
@@ -1096,7 +1097,8 @@ try {
         $stmt = $mysqli_user->prepare(
             "UPDATE {$config['sessions']}
              SET is_archived = ?,
-                 archived_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP(3) ELSE NULL END
+                 archived_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP(3) ELSE NULL END,
+                 updated_at = updated_at
              WHERE id = ? AND owner_user_id = ? AND is_deleted = 0"
         );
         if (!$stmt) {
@@ -1114,7 +1116,7 @@ try {
             'save' => [
                 'id' => $saveId,
                 'saveName' => (string) ($sessionRow['save_name'] ?? portal_shanghai_default_save_name($config['gameType'])),
-                'updatedAt' => portal_format_datetime((new DateTimeImmutable('now'))->format('Y-m-d H:i:s')),
+                'updatedAt' => portal_format_datetime((string) ($sessionRow['updated_at'] ?? '')),
                 'participantSummary' => portal_shanghai_resolve_participant_summary($sessionRow),
                 'isArchived' => $shouldArchive,
                 'isOwner' => true,
