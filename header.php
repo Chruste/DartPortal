@@ -51,6 +51,9 @@ $assetVersion = portal_asset_version();
     <header class="topbar">
       <button id="mobileMenuButton" class="mobile-menu-button" aria-label="Menü">☰</button>
       <h1 id="pageTitle"><?= $pageTitle ?? 'Home'; ?></h1>
+      <div class="topbar-refresh-wrap">
+        <button id="topbarRefreshButton" class="topbar-refresh-button" type="button" title="Seite aktualisieren" aria-label="Seite aktualisieren">🔄</button>
+      </div>
       <div class="topbar-actions">
         <?php if ($isAuthenticated): ?>
           <a href="/profil/profil.php" id="userInfo" class="username">

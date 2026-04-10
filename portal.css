@@ -141,6 +141,35 @@ body, html {
   padding: 0 1em 0 3em; /* Platz für mobilen Menü-Button */
   z-index: 101;
 }
+
+.topbar-refresh-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-refresh-button {
+  border: 1px solid #4a4a4a;
+  background: #2c2c2c;
+  color: #fff;
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.topbar-refresh-button:hover {
+  background: #383838;
+}
+
 .topbar #pageTitle,
 .topbar #userInfo {
   color: #fff;
@@ -180,6 +209,17 @@ body, html {
 }
 @media (min-width: 600px) {
   .content { margin-left: 240px; }
+}
+
+@media (max-width: 599px) {
+  .topbar {
+    padding-right: 0.75em;
+  }
+
+  .topbar-refresh-button {
+    width: 34px;
+    height: 34px;
+  }
 }
 
 #loginForm {

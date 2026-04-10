@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('sidebar');
   const desktopBtn = document.getElementById('toggleSidebar');
   const mobileBtn = document.getElementById('mobileMenuButton');
+  const refreshBtn = document.getElementById('topbarRefreshButton');
 
   // Desktop: toggle collapse
   if (desktopBtn && sidebar) {
@@ -66,6 +67,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mobileBtn && sidebar) {
     mobileBtn.addEventListener('click', () => {
       sidebar.classList.toggle('visible');
+    });
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      window.location.reload();
     });
   }
 
