@@ -71,6 +71,34 @@ body {
   .saved-games-panel {
     max-width: 960px;
     margin: 0 auto 1em;
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease, margin-bottom 220ms ease;
+  }
+
+  .saved-games-panel[hidden] {
+    display: none;
+  }
+
+  .saved-games-panel.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .saved-games-panel__content {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .saved-games-panel.is-open .saved-games-panel__content {
     overflow-x: auto;
   }
 
@@ -245,7 +273,6 @@ body {
       width: min(100%, calc(100vw - 16px));
       padding-inline: 8px;
       box-sizing: border-box;
-      overflow: visible;
     }
 
     .saved-games-table {

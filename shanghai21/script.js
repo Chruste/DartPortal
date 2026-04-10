@@ -795,7 +795,31 @@ function getSavedGamesPanel() {
 
 function isSavedGamesPanelOpen() {
   const panel = getSavedGamesPanel();
-  return Boolean(panel && !panel.hidden);
+  return Boolean(panel && panel.classList.contains('is-open'));
+}
+
+function updateSavedGamesPanelButtonState(isOpen) {
+  const toggleBtn = document.getElementById('loadGamesBtn');
+  if (!toggleBtn) return;
+
+  toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  toggleBtn.textContent = isOpen ? 'Speicherstände ausblenden' : 'Speicherstände...';
+}
+
+function setSavedGamesPanelOpen(shouldOpen) {
+  const panel = getSavedGamesPanel();
+  if (!panel) return false;
+
+  panel.hidden = false;
+  panel.classList.toggle('is-open', shouldOpen);
+  panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+  updateSavedGamesPanelButtonState(shouldOpen);
+
+  if (!shouldOpen) {
+    hideSavedGamesTooltip();
+  }
+
+  return shouldOpen;
 }
 
 async function refreshSavedGamesAfterMutation() {
@@ -1159,8 +1183,8 @@ function toggleSavedGamesPanel() {
   const panel = getSavedGamesPanel();
   if (!panel) return;
 
-  const shouldOpen = panel.hidden;
-  panel.hidden = !shouldOpen;
+  const shouldOpen = !isSavedGamesPanelOpen();
+  setSavedGamesPanelOpen(shouldOpen);
 
   if (shouldOpen) {
     syncSavedGamesFilterInputs();
@@ -1175,6 +1199,15 @@ function bindSavedGamesControls() {
   if (!panel || panel.dataset.bound === 'true') return;
 
   panel.dataset.bound = 'true';
+  panel.hidden = false;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
+
+  const loadGamesBtn = document.getElementById('loadGamesBtn');
+  if (loadGamesBtn) {
+    loadGamesBtn.setAttribute('aria-controls', 'savedGamesPanel');
+  }
+  updateSavedGamesPanelButtonState(false);
 
   const scheduleRefresh = () => {
     savedGamesFilters = {
