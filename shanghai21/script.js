@@ -803,7 +803,7 @@ function updateSavedGamesPanelButtonState(isOpen) {
   if (!toggleBtn) return;
 
   toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  toggleBtn.textContent = isOpen ? 'Speicherstände ausblenden' : 'Speicherstände...';
+  toggleBtn.textContent = isOpen ? '... einklappen' : 'Speicherstände...';
 }
 
 function setSavedGamesPanelOpen(shouldOpen) {
