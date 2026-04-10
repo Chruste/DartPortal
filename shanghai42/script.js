@@ -371,12 +371,64 @@ function getSavedGamesPanelStateStorageKey() {
   return `shanghai:saved-games-panel-open:${gameType}`;
 }
 
+function getScrollPositionStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  return `shanghai:scroll-position:${gameType}`;
+}
+
 function getSavedGamesPanelPersistedState() {
   return localStorage.getItem(getSavedGamesPanelStateStorageKey()) === 'true';
 }
 
 function persistSavedGamesPanelState(isOpen) {
   localStorage.setItem(getSavedGamesPanelStateStorageKey(), isOpen ? 'true' : 'false');
+}
+
+function persistScrollPosition() {
+  sessionStorage.setItem(getScrollPositionStorageKey(), String(window.scrollY || window.pageYOffset || 0));
+}
+
+function getPersistedScrollPosition() {
+  const storedValue = sessionStorage.getItem(getScrollPositionStorageKey());
+  const parsedValue = Number.parseInt(String(storedValue ?? ''), 10);
+  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
+}
+
+function restoreScrollPosition() {
+  const targetY = getPersistedScrollPosition();
+  if (targetY <= 0) return;
+
+  let attempts = 0;
+  const maxAttempts = 12;
+
+  const applyScroll = () => {
+    window.scrollTo({ top: targetY, behavior: 'auto' });
+    attempts += 1;
+
+    const reachedTarget = Math.abs((window.scrollY || window.pageYOffset || 0) - targetY) <= 2;
+    const documentHeight = Math.max(
+      document.body?.scrollHeight || 0,
+      document.documentElement?.scrollHeight || 0
+    );
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const noMoreScrollableSpace = targetY >= Math.max(documentHeight - viewportHeight, 0);
+
+    if (reachedTarget || noMoreScrollableSpace || attempts >= maxAttempts) {
+      return;
+    }
+
+    window.requestAnimationFrame(applyScroll);
+  };
+
+  window.requestAnimationFrame(applyScroll);
+}
+
+function initScrollPositionPersistence() {
+  if (window.__shanghaiScrollPersistenceInitialized) return;
+
+  window.__shanghaiScrollPersistenceInitialized = true;
+  window.addEventListener('scroll', persistScrollPosition, { passive: true });
+  window.addEventListener('beforeunload', persistScrollPosition);
 }
 
 function syncPersistedActiveSave() {
@@ -1734,6 +1786,7 @@ async function initStorageControls() {
     });
   }
   await restorePersistedActiveSave();
+  restoreScrollPosition();
 }
 
 function ensureControlsFooter() {
@@ -1906,6 +1959,8 @@ function setupControlsFooterButtons(container) {
 
 // 1) Init-Funktion nach Login (v3.1)
 function initApp() {
+  initScrollPositionPersistence();
+
   // Anmeldedaten aus config (bzw. localStorage) übernehmen
   const { serialNumber, accessToken } = window.SCOLIA_CONFIG;
 
