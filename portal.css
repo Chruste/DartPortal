@@ -49,6 +49,12 @@ body, html {
   cursor: pointer;
 }
 
+.sidebar nav a.is-active {
+  color: #ffd24a;
+  background: #2b2410;
+  font-weight: 700;
+}
+
 .sidebar nav a:hover,
 .sidebar-nav-button:hover {
   background: #1d1d1d;
@@ -142,6 +148,17 @@ body, html {
   z-index: 101;
 }
 
+.topbar-page-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(32vw, 360px);
+}
+
 .topbar-refresh-wrap {
   position: absolute;
   left: 50%;
@@ -176,7 +193,6 @@ body, html {
   cursor: not-allowed;
 }
 
-.topbar #pageTitle,
 .topbar #userInfo {
   color: #fff;
 }
@@ -229,6 +245,12 @@ body, html {
 
   .topbar-refresh-wrap {
     gap: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar-page-title {
+    display: none;
   }
 }
 

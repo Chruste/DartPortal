@@ -52,8 +52,8 @@ if ('serviceWorker' in navigator) {
 
 const PORTAL_ZOOM_STORAGE_KEY = 'portal:page-zoom';
 const PORTAL_ZOOM_STEP = 0.1;
-const PORTAL_ZOOM_MIN = 0.7;
-const PORTAL_ZOOM_MAX = 1.6;
+const PORTAL_ZOOM_MIN = 0.2;
+const PORTAL_ZOOM_MAX = 1;
 
 function normalizePortalZoom(value) {
   const numericValue = Number(value);
@@ -75,12 +75,19 @@ function applyPortalZoom(zoomLevel) {
 
   const zoomPercent = Math.round(normalizedZoom * 100);
   const zoomOutBtn = document.getElementById('topbarZoomOutButton');
+  const zoomResetBtn = document.getElementById('topbarZoomResetButton');
   const zoomInBtn = document.getElementById('topbarZoomInButton');
 
   if (zoomOutBtn) {
     zoomOutBtn.disabled = normalizedZoom <= PORTAL_ZOOM_MIN;
     zoomOutBtn.title = `Ansicht verkleinern (aktuell ${zoomPercent}%)`;
     zoomOutBtn.setAttribute('aria-label', zoomOutBtn.title);
+  }
+
+  if (zoomResetBtn) {
+    zoomResetBtn.disabled = normalizedZoom === 1;
+    zoomResetBtn.title = `Ansicht auf 100 Prozent zuruecksetzen (aktuell ${zoomPercent}%)`;
+    zoomResetBtn.setAttribute('aria-label', zoomResetBtn.title);
   }
 
   if (zoomInBtn) {
@@ -95,11 +102,23 @@ function changePortalZoom(delta) {
   applyPortalZoom(currentZoom + delta);
 }
 
+function closeSidebar(sidebar) {
+  if (!sidebar) return;
+
+  if (window.innerWidth < 600) {
+    sidebar.classList.remove('visible');
+    return;
+  }
+
+  sidebar.classList.add('collapsed');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('sidebar');
   const desktopBtn = document.getElementById('toggleSidebar');
   const mobileBtn = document.getElementById('mobileMenuButton');
   const zoomOutBtn = document.getElementById('topbarZoomOutButton');
+  const zoomResetBtn = document.getElementById('topbarZoomResetButton');
   const zoomInBtn = document.getElementById('topbarZoomInButton');
   const refreshBtn = document.getElementById('topbarRefreshButton');
 
@@ -131,6 +150,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (zoomResetBtn) {
+    zoomResetBtn.addEventListener('click', () => {
+      applyPortalZoom(1);
+    });
+  }
+
   if (zoomInBtn) {
     zoomInBtn.addEventListener('click', () => {
       changePortalZoom(PORTAL_ZOOM_STEP);
@@ -146,13 +171,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Navigation with title update
-  document.querySelectorAll('#sidebar nav a').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      const title = link.dataset.title;
-      document.getElementById('pageTitle').textContent = title;
-      window.location.href = link.href;
-    });
+  document.addEventListener('click', event => {
+    if (!sidebar) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    if (sidebar.contains(target) || desktopBtn?.contains(target) || mobileBtn?.contains(target)) {
+      return;
+    }
+
+    const isMobileOpen = window.innerWidth < 600 && sidebar.classList.contains('visible');
+    const isDesktopOpen = window.innerWidth >= 600 && !sidebar.classList.contains('collapsed');
+    if (isMobileOpen || isDesktopOpen) {
+      closeSidebar(sidebar);
+    }
   });
 });
