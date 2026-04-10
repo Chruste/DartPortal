@@ -341,6 +341,42 @@ const shanghaiAppConfig = window.SHANGHAI_APP || {};
 const isAuthenticatedUser = Boolean(shanghaiAppConfig.isAuthenticated);
 const storageApiUrl = '/shanghai-storage.php';
 
+function getPersistedActiveSaveStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  const parsedUserId = Number.parseInt(String(shanghaiAppConfig.userId ?? ''), 10);
+  const userScope = Number.isFinite(parsedUserId) && parsedUserId > 0 ? String(parsedUserId) : 'guest';
+  return `shanghai:last-opened-save:${gameType}:${userScope}`;
+}
+
+function syncPersistedActiveSave() {
+  if (!isAuthenticatedUser) return;
+
+  const storageKey = getPersistedActiveSaveStorageKey();
+  const saveId = Number(activeSaveId);
+  if (storageEnabled && Number.isFinite(saveId) && saveId > 0) {
+    localStorage.setItem(storageKey, JSON.stringify({ saveId }));
+    return;
+  }
+
+  localStorage.removeItem(storageKey);
+}
+
+function getPersistedActiveSaveId() {
+  if (!isAuthenticatedUser) return null;
+
+  const rawValue = localStorage.getItem(getPersistedActiveSaveStorageKey());
+  if (!rawValue) return null;
+
+  try {
+    const parsedValue = JSON.parse(rawValue);
+    const saveId = Number(parsedValue?.saveId);
+    return Number.isFinite(saveId) && saveId > 0 ? saveId : null;
+  } catch {
+    const saveId = Number(rawValue);
+    return Number.isFinite(saveId) && saveId > 0 ? saveId : null;
+  }
+}
+
 function formatLocalDateTime(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -1102,7 +1138,9 @@ async function fetchStorageJson(url, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok || !data.success) {
-    throw new Error(data.message || 'Spielstand konnte nicht verarbeitet werden.');
+    const error = new Error(data.message || 'Spielstand konnte nicht verarbeitet werden.');
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -1289,6 +1327,7 @@ async function enableStorage() {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+  syncPersistedActiveSave();
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
     upsertSaveCacheEntry(data.save);
@@ -1330,6 +1369,7 @@ async function deleteSavedGame(saveId) {
       storageEnabled = false;
       activeSaveId = null;
       activeSaveLabel = '';
+      syncPersistedActiveSave();
       setArchiveMode(false);
       updateStorageToggleButton();
     }
@@ -1349,6 +1389,7 @@ async function deleteActiveSave() {
   if (!activeSaveId) {
     storageEnabled = false;
     activeSaveLabel = '';
+    syncPersistedActiveSave();
     setArchiveMode(false);
     updateStorageToggleButton();
     setStorageInfo();
@@ -1362,6 +1403,7 @@ function disableStorage() {
   storageEnabled = false;
   activeSaveId = null;
   activeSaveLabel = '';
+  syncPersistedActiveSave();
   setArchiveMode(false);
   updateStorageToggleButton();
   renderSavedGames();
@@ -1377,13 +1419,16 @@ async function toggleStorage() {
   await enableStorage();
 }
 
-async function loadSavedGame(saveId) {
+async function loadSavedGame(saveId, options = {}) {
   const numericSaveId = Number(saveId);
-  if (!numericSaveId) return;
+  if (!numericSaveId) return false;
+
+  const skipDiscardConfirm = Boolean(options.skipDiscardConfirm);
+  const restoreAttempt = Boolean(options.restoreAttempt);
 
   const hasSavedCurrentGame = Boolean(storageEnabled && activeSaveId);
-  if (!hasSavedCurrentGame && !confirmDiscardResults()) {
-    return;
+  if (!hasSavedCurrentGame && !skipDiscardConfirm && !confirmDiscardResults()) {
+    return false;
   }
 
   setSaveControlsBusy(true);
@@ -1396,6 +1441,7 @@ async function loadSavedGame(saveId) {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || numericSaveId) || numericSaveId;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+  syncPersistedActiveSave();
     loadGameState(data.save?.state || {});
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
@@ -1406,11 +1452,37 @@ async function loadSavedGame(saveId) {
         ? `Archivierter Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}. Änderungen sind gesperrt.`
         : `Speicherstand geladen: ${activeSaveLabel || `#${activeSaveId}`}.`
     );
+    return true;
   } catch (error) {
+    if (restoreAttempt) {
+      storageEnabled = false;
+      activeSaveId = null;
+      activeSaveLabel = '';
+      if (Number(error?.status) === 404) {
+        syncPersistedActiveSave();
+      }
+      setArchiveMode(false);
+      updateStorageToggleButton();
+      renderSavedGames();
+      setStorageInfo('Zuletzt geöffneter Speicherstand konnte nicht wiederhergestellt werden.', true);
+      return false;
+    }
+
     setStorageInfo(error.message || 'Speicherstand konnte nicht geladen werden.', true);
+    return false;
   } finally {
     setSaveControlsBusy(false);
   }
+}
+
+async function restorePersistedActiveSave() {
+  const persistedSaveId = getPersistedActiveSaveId();
+  if (!persistedSaveId || activeSaveId) return false;
+
+  return loadSavedGame(persistedSaveId, {
+    skipDiscardConfirm: true,
+    restoreAttempt: true,
+  });
 }
 
 async function copySavedGame(saveId) {
@@ -1441,6 +1513,7 @@ async function copySavedGame(saveId) {
     storageEnabled = true;
     activeSaveId = Number(data.save?.id || 0) || null;
     activeSaveLabel = data.save?.saveName || getDefaultSaveName();
+  syncPersistedActiveSave();
     loadGameState(data.save?.state || {});
     setArchiveMode(Boolean(data.save?.isArchived));
     updateStorageToggleButton();
@@ -1582,6 +1655,7 @@ function startNewGame() {
     storageEnabled = false;
     activeSaveId = null;
     activeSaveLabel = '';
+    syncPersistedActiveSave();
     setArchiveMode(false);
     updateStorageToggleButton();
     renderSavedGames();
@@ -1597,7 +1671,7 @@ function startNewGame() {
   });
 }
 
-function initStorageControls() {
+async function initStorageControls() {
   if (!isAuthenticatedUser) return;
 
   const newGameBtn = document.getElementById('newGameBtn');
@@ -1620,6 +1694,7 @@ function initStorageControls() {
   updateStorageToggleButton();
   updateSavedGamesPagination();
   setStorageInfo();
+  await restorePersistedActiveSave();
 }
 
 function ensureControlsFooter() {
