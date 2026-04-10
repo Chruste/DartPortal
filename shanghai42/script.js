@@ -348,12 +348,6 @@ let savedGamesTotalCount = 0;
 let savedGamesFilterTimer = null;
 let savedGamesTooltipEl = null;
 const SAVED_GAMES_PAGE_SIZE = 10;
-function getSavedGamesPanelStorageKey() {
-  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
-  return `shanghai:saved-games-panel-open:${gameType}`;
-}
-
-let savedGamesPanelOpen = localStorage.getItem(getSavedGamesPanelStorageKey()) === 'true';
 let savedGamesFilters = {
   updatedAt: '',
   saveName: '',
@@ -370,6 +364,19 @@ function getPersistedActiveSaveStorageKey() {
   const parsedUserId = Number.parseInt(String(shanghaiAppConfig.userId ?? ''), 10);
   const userScope = Number.isFinite(parsedUserId) && parsedUserId > 0 ? String(parsedUserId) : 'guest';
   return `shanghai:last-opened-save:${gameType}:${userScope}`;
+}
+
+function getSavedGamesPanelStateStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  return `shanghai:saved-games-panel-open:${gameType}`;
+}
+
+function getSavedGamesPanelPersistedState() {
+  return localStorage.getItem(getSavedGamesPanelStateStorageKey()) === 'true';
+}
+
+function persistSavedGamesPanelState(isOpen) {
+  localStorage.setItem(getSavedGamesPanelStateStorageKey(), isOpen ? 'true' : 'false');
 }
 
 function syncPersistedActiveSave() {
@@ -870,18 +877,17 @@ function setSavedGamesPanelOpen(shouldOpen) {
   const panel = getSavedGamesPanel();
   if (!panel) return false;
 
-  savedGamesPanelOpen = Boolean(shouldOpen);
-  localStorage.setItem(getSavedGamesPanelStorageKey(), savedGamesPanelOpen ? 'true' : 'false');
   panel.hidden = false;
-  panel.classList.toggle('is-open', savedGamesPanelOpen);
-  panel.setAttribute('aria-hidden', savedGamesPanelOpen ? 'false' : 'true');
-  updateSavedGamesPanelButtonState(savedGamesPanelOpen);
+  panel.classList.toggle('is-open', shouldOpen);
+  panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+  updateSavedGamesPanelButtonState(shouldOpen);
+  persistSavedGamesPanelState(shouldOpen);
 
-  if (!savedGamesPanelOpen) {
+  if (!shouldOpen) {
     hideSavedGamesTooltip();
   }
 
-  return savedGamesPanelOpen;
+  return shouldOpen;
 }
 
 async function refreshSavedGamesAfterMutation() {
@@ -1264,12 +1270,14 @@ function bindSavedGamesControls() {
 
   panel.dataset.bound = 'true';
   panel.hidden = false;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
 
   const loadGamesBtn = document.getElementById('loadGamesBtn');
   if (loadGamesBtn) {
     loadGamesBtn.setAttribute('aria-controls', 'savedGamesPanel');
   }
-  setSavedGamesPanelOpen(savedGamesPanelOpen);
+  updateSavedGamesPanelButtonState(false);
 
   const scheduleRefresh = () => {
     savedGamesFilters = {
@@ -1715,10 +1723,11 @@ async function initStorageControls() {
   }
 
   bindSavedGamesControls();
+  setSavedGamesPanelOpen(getSavedGamesPanelPersistedState());
   updateStorageToggleButton();
   updateSavedGamesPagination();
   setStorageInfo();
-  if (savedGamesPanelOpen) {
+  if (isSavedGamesPanelOpen()) {
     syncSavedGamesFilterInputs();
     await refreshSavedGamesList(savedGamesCurrentPage).catch(error => {
       setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
