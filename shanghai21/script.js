@@ -330,6 +330,12 @@ let savedGamesTotalCount = 0;
 let savedGamesFilterTimer = null;
 let savedGamesTooltipEl = null;
 const SAVED_GAMES_PAGE_SIZE = 10;
+function getSavedGamesPanelStorageKey() {
+  const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';
+  return `shanghai:saved-games-panel-open:${gameType}`;
+}
+
+let savedGamesPanelOpen = localStorage.getItem(getSavedGamesPanelStorageKey()) === 'true';
 let savedGamesFilters = {
   updatedAt: '',
   saveName: '',
@@ -846,16 +852,18 @@ function setSavedGamesPanelOpen(shouldOpen) {
   const panel = getSavedGamesPanel();
   if (!panel) return false;
 
+  savedGamesPanelOpen = Boolean(shouldOpen);
+  localStorage.setItem(getSavedGamesPanelStorageKey(), savedGamesPanelOpen ? 'true' : 'false');
   panel.hidden = false;
-  panel.classList.toggle('is-open', shouldOpen);
-  panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
-  updateSavedGamesPanelButtonState(shouldOpen);
+  panel.classList.toggle('is-open', savedGamesPanelOpen);
+  panel.setAttribute('aria-hidden', savedGamesPanelOpen ? 'false' : 'true');
+  updateSavedGamesPanelButtonState(savedGamesPanelOpen);
 
-  if (!shouldOpen) {
+  if (!savedGamesPanelOpen) {
     hideSavedGamesTooltip();
   }
 
-  return shouldOpen;
+  return savedGamesPanelOpen;
 }
 
 async function refreshSavedGamesAfterMutation() {
@@ -1238,14 +1246,12 @@ function bindSavedGamesControls() {
 
   panel.dataset.bound = 'true';
   panel.hidden = false;
-  panel.classList.remove('is-open');
-  panel.setAttribute('aria-hidden', 'true');
 
   const loadGamesBtn = document.getElementById('loadGamesBtn');
   if (loadGamesBtn) {
     loadGamesBtn.setAttribute('aria-controls', 'savedGamesPanel');
   }
-  updateSavedGamesPanelButtonState(false);
+  setSavedGamesPanelOpen(savedGamesPanelOpen);
 
   const scheduleRefresh = () => {
     savedGamesFilters = {
@@ -1694,6 +1700,12 @@ async function initStorageControls() {
   updateStorageToggleButton();
   updateSavedGamesPagination();
   setStorageInfo();
+  if (savedGamesPanelOpen) {
+    syncSavedGamesFilterInputs();
+    await refreshSavedGamesList(savedGamesCurrentPage).catch(error => {
+      setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+    });
+  }
   await restorePersistedActiveSave();
 }
 
