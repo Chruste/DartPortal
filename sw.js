@@ -84,7 +84,8 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/save-profile.php'
     || requestUrl.pathname === '/friend-search.php'
     || requestUrl.pathname === '/friend-action.php'
-    || requestUrl.pathname === '/shanghai-storage.php';
+    || requestUrl.pathname === '/shanghai-storage.php'
+    || requestUrl.pathname === '/cloud-storage.php';
 }
 
 function isVersionSensitiveAsset(request) {

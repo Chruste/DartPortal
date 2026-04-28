@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleGameInvitationAction(action, gameType, saveId) {
         try {
-            const data = await fetchJson('/shanghai-storage.php', {
+            const data = await fetchJson('/cloud-storage.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

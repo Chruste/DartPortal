@@ -341,7 +341,7 @@ let inviteCandidatesCache = [];
 let isRestoringState = false;
 const shanghaiAppConfig = window.SHANGHAI_APP || {};
 const isAuthenticatedUser = Boolean(shanghaiAppConfig.isAuthenticated);
-const storageApiUrl = '/shanghai-storage.php';
+const storageApiUrl = '/cloud-storage.php';
 
 function getPersistedActiveSaveStorageKey() {
   const gameType = (shanghaiAppConfig.gameType || 'shanghai').toString().trim() || 'shanghai';

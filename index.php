@@ -15,6 +15,10 @@ include __DIR__ . '/header.php';
     <img src="/shanghai42/img/icon-192.png" alt="Shanghai 42">
     <span class="tile-title">Shanghai 42</span>
   </a>
+  <a href="/darts501/index.php" class="tile">
+    <img src="/darts501/img/icon-192.png" alt="Klassisches 501 Darts">
+    <span class="tile-title">501 Darts</span>
+  </a>
   <a href="/dartball/index.php" class="tile">
     <img src="/dartball/img/icon-192.png" alt="Dartball">
     <span class="tile-title">Dartball</span>
