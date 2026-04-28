@@ -53,14 +53,29 @@ body {
 }
 
 .throws {
-  max-height: 200px;
-  overflow-y: auto;
   text-align: left;
 }
 
-.throw {
+.throws table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5em;
+}
+
+.throws th, .throws td {
   padding: 0.2em;
-  border-bottom: 1px solid #333;
+  border: 1px solid #333;
+  text-align: center;
+}
+
+.throws th {
+  background: rgba(255, 255, 255, 0.2);
+  font-weight: bold;
+}
+
+.suggestions {
+  color: #888;
+  font-style: italic;
 }
 
 /* Eingabebereich */

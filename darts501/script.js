@@ -21,6 +21,8 @@ class Player {
     this.name = name;
     this.index = index;
     this.remainingScore = remainingScore;
+    this.currentRound = [];
+    this.rounds = [];
     this.element = this.createElement();
   }
 
@@ -31,7 +33,15 @@ class Player {
     div.innerHTML = `
       <h3>${this.name}</h3>
       <div class="score">Verbleibend: <span class="remaining-score">${this.remainingScore}</span></div>
-      <div class="throws"></div>
+      <div class="throws">
+        <table>
+          <thead>
+            <tr><th>1</th><th>2</th><th>3</th></tr>
+          </thead>
+          <tbody id="throwsBody${this.index}">
+          </tbody>
+        </table>
+      </div>
     `;
     return div;
   }
@@ -40,14 +50,81 @@ class Player {
     const remainingSpan = this.element.querySelector('.remaining-score');
     remainingSpan.textContent = this.remainingScore;
     this.element.classList.toggle('active', activePlayerIndex === this.index);
+    this.updateThrowsDisplay();
   }
 
   addThrow(sector, points) {
-    const throwsDiv = this.element.querySelector('.throws');
-    const throwDiv = document.createElement('div');
-    throwDiv.className = 'throw';
-    throwDiv.textContent = `${sector}: ${points}`;
-    throwsDiv.appendChild(throwDiv);
+    this.currentRound.push({ sector, points });
+    if (this.currentRound.length === 3) {
+      this.rounds.unshift(this.currentRound); // Neue Runde oben hinzufügen
+      this.currentRound = [];
+    }
+    this.updateThrowsDisplay();
+  }
+
+  updateThrowsDisplay() {
+    const tbody = this.element.querySelector(`#throwsBody${this.index}`);
+    tbody.innerHTML = '';
+
+    // Vorschläge anzeigen, wenn im Finish-Bereich
+    if (this.remainingScore <= 100 && this.remainingScore > 1) {
+      const suggestions = this.getFinishSuggestions();
+      if (suggestions.length > 0) {
+        const tr = document.createElement('tr');
+        tr.className = 'suggestions';
+        for (let i = 0; i < 3; i++) {
+          const td = document.createElement('td');
+          td.textContent = suggestions[i] || '';
+          tbody.appendChild(tr);
+          tr.appendChild(td);
+        }
+      }
+    }
+
+    // Aktuelle Runde anzeigen
+    if (this.currentRound.length > 0) {
+      const tr = document.createElement('tr');
+      for (let i = 0; i < 3; i++) {
+        const td = document.createElement('td');
+        if (i < this.currentRound.length) {
+          td.textContent = `${this.currentRound[i].sector}`;
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+
+    // Abgeschlossene Runden
+    this.rounds.forEach(round => {
+      const tr = document.createElement('tr');
+      round.forEach(throwData => {
+        const td = document.createElement('td');
+        td.textContent = `${throwData.sector}`;
+        tr.appendChild(td);
+      });
+      tbody.insertBefore(tr, tbody.firstChild); // Neue oben
+    });
+  }
+
+  getFinishSuggestions() {
+    const score = this.remainingScore;
+    const suggestions = [];
+
+    // Einfache Vorschläge: Mögliche Doubles für den letzten Wurf
+    const doubles = [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,50]; // Bull 50
+    for (let d of doubles) {
+      if (d === score) {
+        suggestions.push(`D${d === 50 ? 'BULL' : d/2}`);
+        break;
+      }
+    }
+
+    // Für 3 Würfe: Einfach nur den Double vorschlagen, wenn möglich
+    if (suggestions.length === 0 && score <= 40) {
+      suggestions.push('', '', `D${score === 50 ? 'BULL' : score/2}`);
+    }
+
+    return suggestions;
   }
 }
 
@@ -114,6 +191,11 @@ function submitThrow() {
 
   const player = players[activePlayerIndex];
   const newScore = player.remainingScore - throwData.points;
+
+  if (newScore === 1) {
+    alert('Auf 1 kann nicht beendet werden!');
+    return;
+  }
 
   if (newScore < 0) {
     alert('Überworfen! Bleib unter der Punktzahl.');
@@ -262,9 +344,24 @@ function handleScoliaMessage(msg) {
 function processThrow(player, sector, points, metadata = {}) {
   const newScore = player.remainingScore - points;
 
+  if (newScore === 1) {
+    // Auf 1 kann nicht beendet werden
+    return;
+  }
+
   if (newScore < 0) {
     // Überworfen
     return;
+  }
+
+  if (newScore === 0) {
+    if (sector.startsWith('D') || sector === 'BULL') {
+      alert(`${player.name} hat gewonnen!`);
+      // Spiel beenden
+    } else {
+      // Letzter Wurf muss Double oder Bull sein
+      return;
+    }
   }
 
   player.remainingScore = newScore;
