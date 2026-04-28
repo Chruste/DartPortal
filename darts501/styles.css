@@ -73,9 +73,11 @@ body {
   font-weight: bold;
 }
 
-.suggestions {
+.checkout-suggestions {
   color: #888;
   font-style: italic;
+  margin-bottom: 0.5em;
+  display: none;
 }
 
 /* Eingabebereich */

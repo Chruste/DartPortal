@@ -3,6 +3,172 @@
 const storageApiUrl = '/cloud-storage.php';
 const gameType = 'darts501';
 
+// PDC Checkout Table (ausgewählte Einträge)
+const pdcCheckouts = {
+  2: ['D1'],
+  3: ['1 D1'],
+  4: ['D2'],
+  5: ['1 D2', '3 D1'],
+  6: ['D3'],
+  7: ['3 D2', '5 D1'],
+  8: ['D4'],
+  9: ['1 D4', '5 D2', '7 D1'],
+  10: ['D5'],
+  11: ['3 D4', '7 D2', '9 D1'],
+  12: ['D6'],
+  13: ['5 D4', '9 D2', '11 D1'],
+  14: ['D7'],
+  15: ['7 D4', '11 D2', '13 D1'],
+  16: ['D8'],
+  17: ['1 D8', '9 D4', '13 D2', '15 D1'],
+  18: ['D9'],
+  19: ['3 D8', '11 D4', '15 D2', '17 D1'],
+  20: ['D10'],
+  21: ['5 D8', '13 D4', '17 D2', '19 D1'],
+  22: ['D11'],
+  23: ['7 D8', '15 D4', '19 D2'],
+  24: ['D12'],
+  25: ['1 D12', '9 D8', '17 D4'],
+  26: ['D13'],
+  27: ['3 D12', '11 D8', '19 D4'],
+  28: ['D14'],
+  29: ['5 D12', '13 D8'],
+  30: ['D15'],
+  31: ['7 D12', '15 D8'],
+  32: ['D16'],
+  33: ['1 D16', '9 D12', '17 D8'],
+  34: ['D17'],
+  35: ['3 D16', '11 D12', '19 D8'],
+  36: ['D18'],
+  37: ['5 D16', '13 D12'],
+  38: ['D19'],
+  39: ['7 D16', '15 D12'],
+  40: ['D20'],
+  41: ['1 D20', '9 D16'],
+  42: ['10 D16', '2 D20'],
+  43: ['3 D20', '11 D16'],
+  44: ['4 D20'],
+  45: ['5 D20', '13 D16'],
+  46: ['6 D20'],
+  47: ['7 D20', '15 D16'],
+  48: ['16 D16'],
+  49: ['9 D20', '17 D16'],
+  50: ['Bull', '10 D20', '18 D16'],
+  51: ['11 D20', '19 D16'],
+  52: ['12 D20', '20 D16'],  
+  53: ['13 D20'],
+  54: ['14 D20'],
+  55: ['15 D20'],
+  56: ['16 D20'],
+  57: ['17 D20'],
+  58: ['18 D20'],
+  59: ['19 D20'],
+  60: ['20 D20'],
+  61: ['T15 D8'],
+  62: ['T10 D16'],
+  63: ['T13 D12'],
+  64: ['T16 D8'],
+  65: ['T19 D4'],
+  66: ['T10 D18', 'T20 D3', 'T14 D12'],
+  67: ['T17 D8'],
+  68: ['T20 D4'],
+  69: ['T19 D6'],
+  70: ['T18 D8'],
+  71: ['T13 D16'],
+  72: ['T20 D6', 'T16 D12'],
+  73: ['T19 D8'],
+  74: ['T14 D16'],
+  75: ['T17 D12'],
+  76: ['T20 D8'],
+  77: ['T19 D10'],
+  78: ['T18 D12'],
+  79: ['T19 D11', 'T13 D20'],
+  80: ['T20 D10', 'T16 D16'],
+  81: ['T19 D12'],
+  82: ['T14 D20', 'Bull D16'],
+  83: ['T17 D16', 'T19 D13'],
+  84: ['T20 D12', 'T16 D18'],
+  85: ['T15 D20', 'T19 D14'],
+  86: ['T18 D16', 'T20 D13'],
+  87: ['T17 D18'],
+  88: ['T20 D14', 'T16 D20'],
+  89: ['T19 D16'],
+  90: ['T20 D15', 'T18 D18'],
+  91: ['T17 D20'],
+  92: ['T20 D16'],
+  93: ['T19 D18'],
+  94: ['T18 D20'],
+  95: ['T19 D19'],
+  96: ['T20 D18'],
+  97: ['T19 D20'],
+  98: ['T20 D19'],
+  99: ['T19 10 D16'],
+  100: ['T20 D20'],
+  101: ['T20 9 D16'],
+  102: ['T20 10 D16', 'T16 14 D20'],
+  103: ['T19 6 D20'],
+  104: ['T16 16 D20'],
+  105: ['T20 13 D16'],
+  106: ['T20 6 D20'],
+  107: ['T19 10 D20'],
+  108: ['T20 16 D16'],
+  109: ['T20 17 D16'],
+  110: ['T20 10 D20'],
+  111: ['T19 14 D20',],
+  112: ['T20 20 D16'],
+  113: ['T19 16 D20',],
+  114: ['T20 14 D20'],
+  115: ['T20 15 D20'],
+  116: ['T20 16 D20','T19 19 D20'],
+  117: ['T20 17 D20'],
+  118: ['T20 18 D20'],
+  119: ['T19 12 Bull'],
+  120: ['T20 20 D20'],
+  121: ['T20 11 Bull'],
+  122: ['T18 18 Bull'],
+  123: ['T19 16 Bull'],
+  124: ['T20 14 Bull'],
+  125: ['25 T20 D20'],
+  126: ['T19 19 Bull'],
+  127: ['T20 17 Bull'],
+  128: ['T20 18 Bull'],
+  129: ['19 T20 Bull', 'T20 T13 D15'],
+  130: ['T20 20 Bull'],
+  131: ['T20 T13 D16'],
+  132: ['25 T19 Bull'],
+  133: ['T20 T19 D8'],
+  134: ['T20 T14 D16', 'T17 T17 D16'],
+  135: ['25 T20 Bull'],
+  136: ['T20 T20 D8'],
+  137: ['T20 T19 D10'],
+  138: ['T20 T18 D12', 'T19 T19 D12'],
+  139: ['T19 T14 D20'],
+  140: ['T20 T20 D10'],
+  141: ['T20 T19 D12'],
+  142: ['T20 T14 D20'],
+  143: ['T20 T17 D16'],
+  144: ['T20 T20 D12'],
+  145: ['T20 T15 D20'],
+  146: ['T20 T18 D16'],
+  147: ['T20 T17 D18'],
+  148: ['T20 T20 D14'],
+  149: ['T20 T19 D16'],
+  150: ['T20 T20 D15', 'T20 T18 D18'],
+  151: ['T20 T17 D20'],
+  152: ['T20 T20 D16'],
+  153: ['T20 T19 D18'],
+  154: ['T20 T18 D20'],
+  155: ['T20 T19 D19'],
+  156: ['T20 T20 D18'],
+  157: ['T20 T19 D20'],
+  158: ['T20 T20 D19'],
+  160: ['T20 T20 D20'],
+  161: ['T20 T17 Bull'],
+  164: ['T20 T18 Bull'],
+  167: ['T20 T19 Bull'],
+  170: ['T20 T20 Bull']
+};
+
 let players = [];
 let activePlayerIndex = 0;
 let gameState = {
@@ -33,10 +199,11 @@ class Player {
     div.innerHTML = `
       <h3>${this.name}</h3>
       <div class="score">Verbleibend: <span class="remaining-score">${this.remainingScore}</span></div>
+      <div class="checkout-suggestions"></div>
       <div class="throws">
         <table>
           <thead>
-            <tr><th>1</th><th>2</th><th>3</th></tr>
+            <tr><th>Runde</th><th>1</th><th>2</th><th>3</th></tr>
           </thead>
           <tbody id="throwsBody${this.index}">
           </tbody>
@@ -51,6 +218,7 @@ class Player {
     remainingSpan.textContent = this.remainingScore;
     this.element.classList.toggle('active', activePlayerIndex === this.index);
     this.updateThrowsDisplay();
+    this.updateCheckoutSuggestions();
   }
 
   addThrow(sector, points) {
@@ -62,28 +230,42 @@ class Player {
     this.updateThrowsDisplay();
   }
 
+  updateCheckoutSuggestions() {
+    const suggestionsDiv = this.element.querySelector('.checkout-suggestions');
+    const dartsLeft = 3 - this.currentRound.length;
+    if (this.remainingScore <= 170 && this.remainingScore > 1 && dartsLeft >= 1) {
+      const suggestions = this.getCheckoutSuggestions(this.remainingScore, dartsLeft);
+      if (suggestions.length > 0) {
+        suggestionsDiv.textContent = 'Checkout: ' + suggestions.join(' oder ');
+        suggestionsDiv.style.display = 'block';
+      } else {
+        suggestionsDiv.textContent = '';
+        suggestionsDiv.style.display = 'none';
+      }
+    } else {
+      suggestionsDiv.textContent = '';
+      suggestionsDiv.style.display = 'none';
+    }
+  }
+
+  getCheckoutSuggestions(score, dartsLeft) {
+    const checkouts = pdcCheckouts[score];
+    if (!checkouts) return [];
+    // Filtere nach der Anzahl der Darts (Leerzeichen trennen die Würfe)
+    return checkouts.filter(c => c.split(' ').length <= dartsLeft);
+  }
+
   updateThrowsDisplay() {
     const tbody = this.element.querySelector(`#throwsBody${this.index}`);
     tbody.innerHTML = '';
 
-    // Vorschläge anzeigen, wenn im Finish-Bereich
-    if (this.remainingScore <= 100 && this.remainingScore > 1) {
-      const suggestions = this.getFinishSuggestions();
-      if (suggestions.length > 0) {
-        const tr = document.createElement('tr');
-        tr.className = 'suggestions';
-        for (let i = 0; i < 3; i++) {
-          const td = document.createElement('td');
-          td.textContent = suggestions[i] || '';
-          tbody.appendChild(tr);
-          tr.appendChild(td);
-        }
-      }
-    }
-
     // Aktuelle Runde anzeigen
     if (this.currentRound.length > 0) {
       const tr = document.createElement('tr');
+      const roundNum = this.rounds.length + 1;
+      const tdRound = document.createElement('td');
+      tdRound.textContent = roundNum;
+      tr.appendChild(tdRound);
       for (let i = 0; i < 3; i++) {
         const td = document.createElement('td');
         if (i < this.currentRound.length) {
@@ -95,8 +277,12 @@ class Player {
     }
 
     // Abgeschlossene Runden
-    this.rounds.forEach(round => {
+    this.rounds.forEach((round, index) => {
       const tr = document.createElement('tr');
+      const roundNum = this.rounds.length - index;
+      const tdRound = document.createElement('td');
+      tdRound.textContent = roundNum;
+      tr.appendChild(tdRound);
       round.forEach(throwData => {
         const td = document.createElement('td');
         td.textContent = `${throwData.sector}`;
@@ -104,27 +290,6 @@ class Player {
       });
       tbody.insertBefore(tr, tbody.firstChild); // Neue oben
     });
-  }
-
-  getFinishSuggestions() {
-    const score = this.remainingScore;
-    const suggestions = [];
-
-    // Einfache Vorschläge: Mögliche Doubles für den letzten Wurf
-    const doubles = [2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,50]; // Bull 50
-    for (let d of doubles) {
-      if (d === score) {
-        suggestions.push(`D${d === 50 ? 'BULL' : d/2}`);
-        break;
-      }
-    }
-
-    // Für 3 Würfe: Einfach nur den Double vorschlagen, wenn möglich
-    if (suggestions.length === 0 && score <= 40) {
-      suggestions.push('', '', `D${score === 50 ? 'BULL' : score/2}`);
-    }
-
-    return suggestions;
   }
 }
 
