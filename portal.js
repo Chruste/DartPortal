@@ -73,6 +73,12 @@ function applyPortalZoom(zoomLevel) {
   document.documentElement.style.zoom = String(normalizedZoom);
   window.localStorage.setItem(PORTAL_ZOOM_STORAGE_KEY, String(normalizedZoom));
 
+  // Topbar auf 100% halten indem der Zoom "rückgängig" gemacht wird
+  const topbar = document.querySelector('.topbar');
+  if (topbar) {
+    topbar.style.zoom = String(1 / normalizedZoom);
+  }
+
   const zoomPercent = Math.round(normalizedZoom * 100);
   const zoomOutBtn = document.getElementById('topbarZoomOutButton');
   const zoomResetBtn = document.getElementById('topbarZoomResetButton');
