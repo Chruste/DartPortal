@@ -13,6 +13,8 @@ let gameState = {
 let storageEnabled = false;
 let currentSessionId = null;
 let csrfToken = '';
+let scolia_ws = null;
+let archivedMode = false;
 
 class Player {
   constructor(name, index, remainingScore = 501) {
@@ -156,10 +158,13 @@ function updateUI() {
   players.forEach(p => p.updateDisplay());
 }
 
-// Event Listener
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   initGame();
+  setupEventListeners();
+  initScoliaWebSocket();
+}
 
+function setupEventListeners() {
   document.getElementById('submitThrowBtn').addEventListener('click', submitThrow);
   document.getElementById('throwSector').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') submitThrow();
@@ -175,7 +180,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('nextPlayerBtn').addEventListener('click', nextPlayer);
   document.getElementById('undoBtn').addEventListener('click', undoLastThrow);
-
-  // Speichern-Buttons (später implementieren)
   document.getElementById('newGameBtn').addEventListener('click', initGame);
-});
+}
+
+function initScoliaWebSocket() {
+  const statusEl = document.getElementById('status');
+  const { serialNumber, accessToken } = window.SCOLIA_CONFIG || {};
+
+  if (statusEl && serialNumber && accessToken) {
+    try {
+      scolia_ws = new WebSocket(
+        `wss://game.scoliadarts.com/api/v1/social?serialNumber=${serialNumber}&accessToken=${accessToken}`
+      );
+      scolia_ws.onopen = () => {
+        statusEl.textContent = 'Board-Status: Ready';
+        console.log('Scolia WebSocket verbunden');
+      };
+      scolia_ws.onclose = () => {
+        statusEl.textContent = 'Board-Status: Offline';
+        console.log('Scolia WebSocket getrennt');
+      };
+      scolia_ws.onerror = () => {
+        statusEl.textContent = 'Board-Status: Fehler';
+        console.error('Scolia WebSocket Fehler');
+      };
+      scolia_ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          handleScoliaMessage(msg);
+        } catch (err) {
+          console.error('Fehler beim Parsen von Scolia-Nachricht:', err);
+        }
+      };
+    } catch (err) {
+      console.error('WebSocket Fehler:', err);
+      if (statusEl) statusEl.textContent = 'Board-Status: Fehler';
+    }
+  } else {
+    if (statusEl) statusEl.textContent = 'Board-Status: (Keine Scolia-Config)';
+  }
+}
+
+function handleScoliaMessage(msg) {
+  if (archivedMode) return;
+
+  console.debug('Scolia message:', msg);
+
+  if (msg.type === 'THROW_DETECTED') {
+    const payload = msg.payload || {};
+    const sector = (payload.sector || '').toString().toLowerCase().toUpperCase();
+    const bounceout = Boolean(payload.bounceout);
+    const miss = bounceout || sector === 'NONE' || !sector;
+
+    console.debug('THROW_DETECTED', { sector, bounceout, miss, payload });
+
+    const player = players[activePlayerIndex];
+    if (player) {
+      if (miss) {
+        processThrow(player, 'Miss', 0, {
+          eventType: 'throw_detected',
+          source: 'scolia_ws',
+          detectedAt: payload.detectionTime || new Date().toISOString(),
+          payload
+        });
+      } else {
+        // Versuche zu parsen: "D20", "T20", "20", etc.
+        const throwData = parseThrow(sector);
+        if (throwData) {
+          processThrow(player, throwData.sector, throwData.points, {
+            eventType: 'throw_detected',
+            source: 'scolia_ws',
+            detectedAt: payload.detectionTime || new Date().toISOString(),
+            payload
+          });
+        }
+      }
+    }
+  }
+}
+
+function processThrow(player, sector, points, metadata = {}) {
+  const newScore = player.remainingScore - points;
+
+  if (newScore < 0) {
+    // Überworfen
+    return;
+  }
+
+  player.remainingScore = newScore;
+  player.addThrow(sector, points);
+  player.updateDisplay();
+
+  document.getElementById('throwSector').value = '';
+  nextPlayer();
+}
+
+// Event Listener (wird durch initApp aufgerufen)
+// document.addEventListener('DOMContentLoaded', initApp) wird in index.php gemacht

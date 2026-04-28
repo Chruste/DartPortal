@@ -108,4 +108,23 @@ include __DIR__ . '/../header.php';
   </div>
 
   <script src="<?php echo htmlspecialchars(portal_asset_url('/darts501/script.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+  <script>
+    window.darts501Config = {
+      userId: <?= json_encode(isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null); ?>,
+      username: <?= json_encode((string) ($username ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+      displayName: <?= json_encode((string) ($username ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
+      csrfToken: <?= json_encode((string) ($_SESSION['csrf_token'] ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+    };
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      fetch('/scolia-config.php')
+        .then(r => r.json())
+        .then(data => {
+          window.SCOLIA_CONFIG = { serialNumber: data.serialNumber || '', accessToken: data.accessToken || '' };
+          initApp();
+        })
+        .catch(() => { window.SCOLIA_CONFIG = { serialNumber: '', accessToken: '' }; initApp(); });
+    });
+  </script>
 <?php include __DIR__ . '/../footer.php'; ?>
