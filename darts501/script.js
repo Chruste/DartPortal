@@ -202,6 +202,10 @@ class Player {
     this.remainingScore = remainingScore;
     this.currentRound = [];
     this.rounds = [];
+    this.portalUserId = null;
+    this.participantRole = 'guest';
+    this.invitationStatus = 'accepted';
+    this.invitedByUserId = null;
     this.element = this.createElement();
   }
 
@@ -457,7 +461,12 @@ function buildPlayerState(player) {
   return {
     index: player.index,
     name: player.name,
+    portalUserId: player.portalUserId || null,
+    participantRole: player.participantRole || 'guest',
+    invitationStatus: player.invitationStatus || 'accepted',
+    invitedByUserId: player.invitedByUserId || null,
     remainingScore: player.remainingScore,
+    currentRemainingScore: player.remainingScore,
     currentRound: [...player.currentRound],
     rounds: JSON.parse(JSON.stringify(player.rounds))
   };
@@ -467,7 +476,15 @@ function collectGameState() {
   return {
     gameType: appConfig.gameType || 'darts501',
     activePlayerIndex,
-    players: players.map((p, idx) => buildPlayerState(p))
+    players: players.map((p, idx) => {
+      const playerState = buildPlayerState(p);
+      // First player created by current user is the owner
+      if (idx === 0 && isAuthenticatedUser && !playerState.portalUserId) {
+        playerState.portalUserId = appConfig.userId;
+        playerState.participantRole = 'owner';
+      }
+      return playerState;
+    })
   };
 }
 
@@ -488,8 +505,16 @@ function loadGameState(state = {}) {
   } else {
     savedPlayers.forEach(savedPlayer => {
       const playerName = (savedPlayer.name || '').toString().trim() || `Spieler ${savedPlayer.index + 1}`;
-      const remainingScore = Number(savedPlayer.remainingScore) || 501;
+      const remainingScore = Number(savedPlayer.remainingScore || savedPlayer.currentRemainingScore) || 501;
       const player = new Player(playerName, savedPlayer.index, remainingScore);
+      
+      // Restore portal user data
+      const restoredPortalUserId = Number.parseInt(String(savedPlayer.portalUserId ?? ''), 10);
+      const restoredInvitedByUserId = Number.parseInt(String(savedPlayer.invitedByUserId ?? ''), 10);
+      player.portalUserId = Number.isFinite(restoredPortalUserId) ? restoredPortalUserId : null;
+      player.participantRole = (savedPlayer.participantRole || 'guest').toString().trim() || 'guest';
+      player.invitationStatus = (savedPlayer.invitationStatus || 'accepted').toString().trim() || 'accepted';
+      player.invitedByUserId = Number.isFinite(restoredInvitedByUserId) ? restoredInvitedByUserId : null;
       
       // Restore rounds
       if (Array.isArray(savedPlayer.rounds)) {
