@@ -376,39 +376,23 @@ function submitThrow() {
   const newScore = player.remainingScore - throwData.points;
   const isThirdThrow = player.currentRound.length === 2;
 
-  // Spezielle Regel für den 3. Wurf: Muss auf 0 oder 2 enden
-  if (isThirdThrow) {
-    if (newScore !== 0 && newScore !== 2) {
-      alert('3. Wurf ungültig! Mit dem 3. Wurf musst du auf 0 oder 2 Punkte kommen.');
-      // Runde als busted markieren und speichern
-      player.currentRound.push({ sector: throwData.sector, points: throwData.points });
-      player.markCurrentRoundAsBusted();
-      // Punkte zurücksetzen
-      player.updateDisplay();
-      document.getElementById('throwSector').value = '';
-      nextPlayer();
-      return;
-    }
-    if (newScore === 0 && !(throwData.sector.startsWith('D') || throwData.sector === 'BULL')) {
-      alert('Letzter Wurf muss Double oder Bull sein!');
-      return;
-    }
-  } else {
-    // Für 1. und 2. Wurf: Normale Regeln
-    if (newScore === 1) {
-      alert('Auf 1 kann nicht beendet werden!');
-      return;
-    }
+  // Überworfen: newScore < 0 oder newScore === 1
+  if (newScore < 0 || newScore === 1) {
+    alert('Überworfen! Runde wird nicht gezählt.');
+    // Runde als busted markieren und speichern
+    player.currentRound.push({ sector: throwData.sector, points: throwData.points });
+    player.markCurrentRoundAsBusted();
+    // Punkte bleiben gleich
+    player.updateDisplay();
+    document.getElementById('throwSector').value = '';
+    nextPlayer();
+    return;
+  }
 
-    if (newScore < 0) {
-      alert('Überworfen! Bleib unter der Punktzahl.');
-      // Runde als busted markieren und speichern
-      player.currentRound.push({ sector: throwData.sector, points: throwData.points });
-      player.markCurrentRoundAsBusted();
-      // Punkte zurücksetzen
-      player.updateDisplay();
-      document.getElementById('throwSector').value = '';
-      nextPlayer();
+  // Checkout: Muss mit Double oder Bull enden
+  if (newScore === 0) {
+    if (!(throwData.sector.startsWith('D') || throwData.sector === 'BULL')) {
+      alert('Letzter Wurf muss Double oder Bull sein!');
       return;
     }
   }
