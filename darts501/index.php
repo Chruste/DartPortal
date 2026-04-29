@@ -2,12 +2,14 @@
 require __DIR__ . '/../session_bootstrap.php';
 $pageTitle = 'Klassisches 501 Darts';
 $username  = $_SESSION['username'] ?? null;
+$userId = $_SESSION['user_id'] ?? null;
 $isAuthenticated = isset($_SESSION['user_id']);
+$csrfToken = $_SESSION['csrf_token'] ?? '';
 $extraHead = '<link rel="stylesheet" href="' . htmlspecialchars(portal_asset_url('/darts501/styles.css'), ENT_QUOTES, 'UTF-8') . '">';
 include __DIR__ . '/../header.php';
 ?>
   <!-- Haupt-App -->
-  <div id="appContainer">
+  <div id="appContainer" data-user-id="<?php echo $userId ? (int)$userId : ''; ?>" data-username="<?php echo htmlspecialchars($username ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-csrf-token="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
     <header>
       <img src="img/headline.png" alt="Klassisches 501 Darts">
     </header>
