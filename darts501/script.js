@@ -812,18 +812,14 @@ async function restorePersistedActiveSave() {
 // ============ End Storage Functions ============
 
 function initApp() {
-  // Get config from PHP data attributes
-  const container = document.getElementById('appContainer');
-  if (container) {
-    const userId = container.getAttribute('data-user-id');
-    const username = container.getAttribute('data-username');
-    const csrfToken = container.getAttribute('data-csrf-token');
-    
-    appConfig.userId = userId ? Number(userId) : null;
-    appConfig.username = username || null;
-    appConfig.csrfToken = csrfToken || '';
-    isAuthenticatedUser = Boolean(appConfig.userId);
-  }
+  // Get config from window.darts501Config (set by index.php)
+  const darts501Config = window.darts501Config || {};
+  
+  appConfig.userId = darts501Config.userId || null;
+  appConfig.username = darts501Config.username || null;
+  appConfig.csrfToken = darts501Config.csrfToken || '';
+  appConfig.gameType = 'darts501';
+  isAuthenticatedUser = Boolean(appConfig.userId);
 
   initGame();
   setupEventListeners();

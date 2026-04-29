@@ -9,7 +9,7 @@ $extraHead = '<link rel="stylesheet" href="' . htmlspecialchars(portal_asset_url
 include __DIR__ . '/../header.php';
 ?>
   <!-- Haupt-App -->
-  <div id="appContainer" data-user-id="<?php echo $userId ? (int)$userId : ''; ?>" data-username="<?php echo htmlspecialchars($username ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-csrf-token="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+  <div id="appContainer">
     <header>
       <img src="img/headline.png" alt="Klassisches 501 Darts">
     </header>
