@@ -224,10 +224,19 @@ class Player {
   addThrow(sector, points) {
     this.currentRound.push({ sector, points });
     if (this.currentRound.length === 3) {
-      this.rounds.unshift(this.currentRound); // Neue Runde oben hinzufügen
+      // Runde speichern mit busted-Flag (wird ggf. später gesetzt)
+      this.rounds.unshift({ throws: [...this.currentRound], busted: false });
       this.currentRound = [];
     }
     this.updateThrowsDisplay();
+  }
+
+  markCurrentRoundAsBusted() {
+    // Markiere die aktuelle unvollständige Runde (wird separat behandelt)
+    if (this.currentRound.length > 0) {
+      this.rounds.unshift({ throws: [...this.currentRound], busted: true });
+      this.currentRound = [];
+    }
   }
 
   updateCheckoutSuggestions() {
@@ -278,12 +287,20 @@ class Player {
 
     // Abgeschlossene Runden in umgekehrter Reihenfolge (neueste zuerst)
     for (let i = 0; i < this.rounds.length; i++) {
-      const round = this.rounds[i];
+      const roundObj = this.rounds[i];
+      const round = roundObj.throws || roundObj; // Kompatibilität mit alten Daten
+      const isBusted = roundObj.busted || false;
+      
       const tr = document.createElement('tr');
+      if (isBusted) {
+        tr.classList.add('busted');
+      }
+      
       const roundNum = this.rounds.length - i;
       const tdRound = document.createElement('td');
       tdRound.textContent = roundNum;
       tr.appendChild(tdRound);
+      
       round.forEach(throwData => {
         const td = document.createElement('td');
         td.textContent = `${throwData.sector}`;
@@ -357,23 +374,41 @@ function submitThrow() {
 
   const player = players[activePlayerIndex];
   const newScore = player.remainingScore - throwData.points;
+  const isThirdThrow = player.currentRound.length === 2;
 
-  if (newScore === 1) {
-    alert('Auf 1 kann nicht beendet werden!');
-    return;
-  }
-
-  if (newScore < 0) {
-    alert('Überworfen! Bleib unter der Punktzahl.');
-    return;
-  }
-
-  if (newScore === 0) {
-    if (throwData.sector.startsWith('D') || throwData.sector === 'BULL') {
-      alert(`${player.name} hat gewonnen!`);
-      // Spiel beenden
-    } else {
+  // Spezielle Regel für den 3. Wurf: Muss auf 0 oder 2 enden
+  if (isThirdThrow) {
+    if (newScore !== 0 && newScore !== 2) {
+      alert('3. Wurf ungültig! Mit dem 3. Wurf musst du auf 0 oder 2 Punkte kommen.');
+      // Runde als busted markieren und speichern
+      player.currentRound.push({ sector: throwData.sector, points: throwData.points });
+      player.markCurrentRoundAsBusted();
+      // Punkte zurücksetzen
+      player.updateDisplay();
+      document.getElementById('throwSector').value = '';
+      nextPlayer();
+      return;
+    }
+    if (newScore === 0 && !(throwData.sector.startsWith('D') || throwData.sector === 'BULL')) {
       alert('Letzter Wurf muss Double oder Bull sein!');
+      return;
+    }
+  } else {
+    // Für 1. und 2. Wurf: Normale Regeln
+    if (newScore === 1) {
+      alert('Auf 1 kann nicht beendet werden!');
+      return;
+    }
+
+    if (newScore < 0) {
+      alert('Überworfen! Bleib unter der Punktzahl.');
+      // Runde als busted markieren und speichern
+      player.currentRound.push({ sector: throwData.sector, points: throwData.points });
+      player.markCurrentRoundAsBusted();
+      // Punkte zurücksetzen
+      player.updateDisplay();
+      document.getElementById('throwSector').value = '';
+      nextPlayer();
       return;
     }
   }
@@ -383,7 +418,15 @@ function submitThrow() {
   player.updateDisplay();
 
   document.getElementById('throwSector').value = '';
-  nextPlayer();
+
+  // Nach 3. Wurf zum nächsten Spieler
+  if (isThirdThrow) {
+    if (newScore === 0) {
+      alert(`${player.name} hat gewonnen!`);
+      // Spiel beenden
+    }
+    nextPlayer();
+  }
 }
 
 function quickThrow(multiplier) {
