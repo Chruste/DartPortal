@@ -74,6 +74,10 @@ body {
   border: 1px solid #333;
   text-align: center;
   width: 25%;
+  min-width: 25%;
+  max-width: 25%;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .throws th {
