@@ -259,7 +259,7 @@ class Player {
     const tbody = this.element.querySelector(`#throwsBody${this.index}`);
     tbody.innerHTML = '';
 
-    // Aktuelle Runde anzeigen
+    // Aktuelle Runde anzeigen (oben)
     if (this.currentRound.length > 0) {
       const tr = document.createElement('tr');
       const roundNum = this.rounds.length + 1;
@@ -276,10 +276,11 @@ class Player {
       tbody.appendChild(tr);
     }
 
-    // Abgeschlossene Runden
-    this.rounds.forEach((round, index) => {
+    // Abgeschlossene Runden in umgekehrter Reihenfolge (neueste zuerst)
+    for (let i = 0; i < this.rounds.length; i++) {
+      const round = this.rounds[i];
       const tr = document.createElement('tr');
-      const roundNum = this.rounds.length - index;
+      const roundNum = this.rounds.length - i;
       const tdRound = document.createElement('td');
       tdRound.textContent = roundNum;
       tr.appendChild(tdRound);
@@ -288,8 +289,8 @@ class Player {
         td.textContent = `${throwData.sector}`;
         tr.appendChild(td);
       });
-      tbody.insertBefore(tr, tbody.firstChild); // Neue oben
-    });
+      tbody.appendChild(tr);
+    }
   }
 }
 

@@ -27,9 +27,10 @@ body {
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid #555;
   border-radius: 8px;
-  padding: 1em;
+  padding: 0.75em 0.5em;
   min-width: 200px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .player-card.active {
@@ -54,8 +55,10 @@ body {
 
 .throws {
   text-align: left;
-  max-height: 17em;
-  overflow-y: auto;
+  height: 17em;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .throws table {
@@ -63,6 +66,7 @@ body {
   border-collapse: collapse;
   margin-top: 0.5em;
   table-layout: fixed;
+  box-sizing: border-box;
 }
 
 .throws th, .throws td {
