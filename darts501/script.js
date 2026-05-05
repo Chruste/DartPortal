@@ -332,7 +332,14 @@ function initGame() {
   players = [];
   activePlayerIndex = 0;
   document.getElementById('playersContainer').innerHTML = '';
-  addPlayer('Spieler 1');
+  const player = new Player('Spieler 1', 0);
+  // Mark first player as owner if authenticated
+  if (isAuthenticatedUser && appConfig.userId) {
+    player.portalUserId = appConfig.userId;
+    player.participantRole = 'owner';
+  }
+  players.push(player);
+  document.getElementById('playersContainer').appendChild(player.element);
   updateUI();
 }
 
@@ -477,13 +484,13 @@ function collectGameState() {
     gameType: appConfig.gameType || 'darts501',
     activePlayerIndex,
     players: players.map((p, idx) => {
-      const playerState = buildPlayerState(p);
-      // First player created by current user is the owner
-      if (idx === 0 && isAuthenticatedUser && !playerState.portalUserId) {
-        playerState.portalUserId = appConfig.userId;
-        playerState.participantRole = 'owner';
+      const state = buildPlayerState(p);
+      // Ensure first player is marked as owner when saving
+      if (idx === 0 && isAuthenticatedUser && appConfig.userId) {
+        state.portalUserId = appConfig.userId;
+        state.participantRole = 'owner';
       }
-      return playerState;
+      return state;
     })
   };
 }
@@ -563,6 +570,9 @@ async function enableStorage() {
   setSaveControlsBusy(true);
 
   try {
+    const gameState = collectGameState();
+    console.log('Sending game state to server:', gameState);
+    
     const data = await fetchStorageJson(storageApiUrl, {
       method: 'POST',
       headers: {
@@ -573,7 +583,7 @@ async function enableStorage() {
         csrfToken: appConfig.csrfToken || '',
         gameType: appConfig.gameType || 'darts501',
         saveName: getDefaultSaveName(),
-        state: collectGameState(),
+        state: gameState,
       }),
     });
 
@@ -587,6 +597,7 @@ async function enableStorage() {
     await refreshSavedGamesAfterMutation();
     setStorageInfo(data.message || 'Speichern aktiviert.');
   } catch (error) {
+    console.error('Error details:', error);
     setStorageInfo(error.message || 'Speichern konnte nicht aktiviert werden.', true);
   } finally {
     setSaveControlsBusy(false);
