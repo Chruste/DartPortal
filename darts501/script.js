@@ -187,6 +187,7 @@ let activeSaveId = null;
 let activeSaveLabel = '';
 let activeSaveIsOwner = false;
 let savedGamesCache = [];
+let storageSaveChain = Promise.resolve();
 let isAuthenticatedUser = false;
 let appConfig = {
   userId: null,
@@ -401,7 +402,7 @@ function submitThrow() {
   const isThirdThrow = player.currentRound.length === 2;
 
   // Überworfen: newScore < 0 oder newScore === 1
-  if (newScore < 0 || newScore === 1) {
+  if (newScore < 0 || newScore === 1 || (newScore === 0 && (!(throwData.sector.startsWith('D') || throwData.sector === 'BULL')))) {
     alert('Überworfen! Runde wird nicht gezählt.');
     // Runde als busted markieren und speichern
     player.currentRound.push({ sector: throwData.sector, points: throwData.points });
@@ -409,16 +410,23 @@ function submitThrow() {
     // Punkte bleiben gleich
     player.updateDisplay();
     document.getElementById('throwSector').value = '';
-    nextPlayer();
+    recordStateChange({
+    eventType: 'throw',
+    source: 'ui',
+    playerIndex: player.index,
+    playerUserId: Number.isFinite(Number(player.portalUserId)) ? Number(player.portalUserId) : null,
+    playerName: player.name,
+    targetLabel: throwData.sector,
+    sectorResult: throwData.sector,
+    scoreDelta: throwData.points,
+    scoreAfter: player.remainingScore,
+    detectedAt: new Date().toISOString(),
+    payload: {
+      busted: true,
+      roundNumber: player.rounds.length + 1,
+      },
+    });
     return;
-  }
-
-  // Checkout: Muss mit Double oder Bull enden
-  if (newScore === 0) {
-    if (!(throwData.sector.startsWith('D') || throwData.sector === 'BULL')) {
-      alert('Letzter Wurf muss Double oder Bull sein!');
-      return;
-    }
   }
 
   player.remainingScore = newScore;
@@ -426,6 +434,22 @@ function submitThrow() {
   player.updateDisplay();
 
   document.getElementById('throwSector').value = '';
+  recordStateChange({
+    eventType: 'throw',
+    source: 'ui',
+    playerIndex: player.index,
+    playerUserId: Number.isFinite(Number(player.portalUserId)) ? Number(player.portalUserId) : null,
+    playerName: player.name,
+    targetLabel: throwData.sector,
+    sectorResult: throwData.sector,
+    scoreDelta: throwData.points,
+    scoreAfter: player.remainingScore,
+    detectedAt: new Date().toISOString(),
+    payload: {
+      busted: false,
+      roundNumber: player.rounds.length + 1,
+    },
+  });
 
   // Nach 3. Wurf zum nächsten Spieler
   if (isThirdThrow) {
@@ -569,6 +593,66 @@ async function fetchStorageJson(url, options = {}) {
     console.error('Storage API error:', error);
     throw error;
   }
+}
+
+function recordStateChange(event = {}) {
+  if (archivedMode || !isAuthenticatedUser || !storageEnabled || !activeSaveId) {
+    return;
+  }
+
+  const saveId = Number(activeSaveId);
+  if (!saveId) return;
+
+  const stateSnapshot = collectGameState();
+  const eventSnapshot = {
+    eventType: event.eventType || 'state_update',
+    source: event.source || 'ui',
+    playerIndex: Number.isFinite(Number(event.playerIndex)) ? Number(event.playerIndex) : null,
+    playerUserId: Number.isFinite(Number(event.playerUserId)) ? Number(event.playerUserId) : null,
+    playerName: event.playerName || '',
+    targetLabel: event.targetLabel || '',
+    sectorResult: event.sectorResult || '',
+    scoreDelta: Number.isFinite(Number(event.scoreDelta)) ? Number(event.scoreDelta) : 0,
+    scoreAfter: Number.isFinite(Number(event.scoreAfter)) ? Number(event.scoreAfter) : 0,
+    detectedAt: event.detectedAt || new Date().toISOString(),
+    payload: event.payload && typeof event.payload === 'object' ? event.payload : {},
+  };
+
+  storageSaveChain = storageSaveChain
+    .catch(() => undefined)
+    .then(async () => {
+      if (!storageEnabled || archivedMode || Number(activeSaveId) !== saveId) {
+        return;
+      }
+
+      const data = await fetchStorageJson(storageApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update',
+          csrfToken: appConfig.csrfToken || '',
+          gameType: appConfig.gameType || 'darts501',
+          saveId,
+          state: stateSnapshot,
+          event: eventSnapshot,
+        }),
+      });
+
+      activeSaveLabel = data.save?.saveName || activeSaveLabel;
+      upsertSaveCacheEntry({
+        id: saveId,
+        saveName: activeSaveLabel,
+        updatedAt: new Date().toLocaleString('de-DE'),
+        participantSummary: data.save?.participantSummary || '',
+      });
+      await refreshSavedGamesAfterMutation();
+      setStorageInfo();
+    })
+    .catch(error => {
+      setStorageInfo(error.message || 'Automatisches Speichern fehlgeschlagen.', true);
+    });
 }
 
 async function enableStorage() {
