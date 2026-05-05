@@ -48,10 +48,21 @@ function portal_cloud_storage_config(string $gameType): array
         throw new InvalidArgumentException('Ungueltiger Spieltyp.');
     }
 
-    return $map[$normalized];
+    return ['gameType' => $normalized] + $map[$normalized];
 }
 
-    return ['gameType' => $normalized] + $map[$normalized];
+function portal_cloud_participant_db_field(string $field): string
+{
+    switch ($field) {
+        case 'currentTargetIndex':
+            return 'current_target_index';
+        case 'currentTotalScore':
+            return 'current_total_score';
+        case 'currentRemainingScore':
+            return 'current_remaining_score';
+        default:
+            return $field;
+    }
 }
 
 /**
@@ -323,7 +334,7 @@ function portal_cloud_sync_participants(mysqli $db, string $table, int $sessionI
 
     foreach ($config['participantFields'] ?? [] as $field) {
         if (in_array($field, ['currentTargetIndex', 'currentTotalScore', 'currentRemainingScore'])) {
-            $fields[] = $field;
+            $fields[] = portal_cloud_participant_db_field($field);
             $values[] = '?';
             $bindTypes .= 'i';
         }
@@ -360,7 +371,7 @@ function portal_cloud_sync_participants(mysqli $db, string $table, int $sessionI
 
     foreach ($config['participantFields'] ?? [] as $field) {
         if (in_array($field, ['currentTargetIndex', 'currentTotalScore', 'currentRemainingScore'])) {
-            $updateFields[] = "{$field} = ?";
+            $updateFields[] = portal_cloud_participant_db_field($field) . ' = ?';
             $updateBindTypes .= 'i';
         }
     }
@@ -606,7 +617,7 @@ function portal_cloud_fetch_pending_invitation(mysqli $db, array $config, int $s
 
     foreach ($config['participantFields'] ?? [] as $field) {
         if (in_array($field, ['currentTargetIndex', 'currentTotalScore', 'currentRemainingScore'])) {
-            $fieldList .= ", p.{$field}";
+            $fieldList .= ', p.' . portal_cloud_participant_db_field($field);
         }
     }
 
@@ -645,7 +656,7 @@ function portal_cloud_fetch_participant_by_user(mysqli $db, string $table, int $
 
     foreach ($config['participantFields'] ?? [] as $field) {
         if (in_array($field, ['currentTargetIndex', 'currentTotalScore', 'currentRemainingScore'])) {
-            $fieldList .= ", {$field}";
+            $fieldList .= ', ' . portal_cloud_participant_db_field($field);
         }
     }
 
@@ -1575,7 +1586,7 @@ try {
 
                 foreach ($config['participantFields'] ?? [] as $field) {
                     if (in_array($field, ['currentTargetIndex', 'currentTotalScore', 'currentRemainingScore'])) {
-                        $updateFields[] = "{$field} = 0";
+                        $updateFields[] = portal_cloud_participant_db_field($field) . ' = 0';
                     }
                 }
 
@@ -1609,7 +1620,7 @@ try {
 
                 foreach ($config['participantFields'] ?? [] as $field) {
                     if (in_array($field, ['currentTargetIndex', 'currentTotalScore', 'currentRemainingScore'])) {
-                        $fields[] = $field;
+                        $fields[] = portal_cloud_participant_db_field($field);
                         $values[] = '0';
                     }
                 }

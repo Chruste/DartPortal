@@ -548,15 +548,22 @@ function loadGameState(state = {}) {
 async function fetchStorageJson(url, options = {}) {
   try {
     const response = await fetch(url, options);
-    const data = await response.json();
-    
+    const text = await response.text();
+    let data;
+
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (parseError) {
+      data = { message: text || `HTTP ${response.status}`, raw: text };
+    }
+
     if (!response.ok) {
       const error = new Error(data.message || `HTTP ${response.status}`);
       error.status = response.status;
       error.data = data;
       throw error;
     }
-    
+
     return data;
   } catch (error) {
     console.error('Storage API error:', error);
