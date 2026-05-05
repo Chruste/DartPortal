@@ -48,6 +48,9 @@ function portal_cloud_storage_config(string $gameType): array
         throw new InvalidArgumentException('Ungueltiger Spieltyp.');
     }
 
+    return $map[$normalized];
+}
+
     return ['gameType' => $normalized] + $map[$normalized];
 }
 
@@ -1780,5 +1783,10 @@ try {
     portal_json_response(['success' => false, 'message' => $exception->getMessage()], 400);
 } catch (Throwable $exception) {
     portal_log_error('Cloud Storage Fehler', $exception);
-    portal_json_response(['success' => false, 'message' => 'Spielstand konnte nicht verarbeitet werden.'], 500);
+    // Return more detailed error in development
+    $errorMsg = 'Spielstand konnte nicht verarbeitet werden.';
+    if (php_sapi_name() !== 'cli' && !empty($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
+        $errorMsg = $exception->getMessage();
+    }
+    portal_json_response(['success' => false, 'message' => $errorMsg, 'error_detail' => get_class($exception)], 500);
 }
