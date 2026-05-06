@@ -187,6 +187,15 @@ let activeSaveId = null;
 let activeSaveLabel = '';
 let activeSaveIsOwner = false;
 let savedGamesCache = [];
+let savedGamesCurrentPage = 1;
+let savedGamesTotalCount = 0;
+let savedGamesFilterTimer = null;
+const SAVED_GAMES_PAGE_SIZE = 10;
+let savedGamesFilters = {
+  updatedAt: '',
+  saveName: '',
+  participants: '',
+};
 let storageSaveChain = Promise.resolve();
 let isAuthenticatedUser = false;
 let appConfig = {
@@ -847,43 +856,356 @@ function removeSaveCacheEntry(saveId) {
 
 async function refreshSavedGamesAfterMutation() {
   try {
-    const data = await fetchStorageJson(
-      `${storageApiUrl}?action=list&gameType=${encodeURIComponent(appConfig.gameType || 'darts501')}`
-    );
-    savedGamesCache = Array.isArray(data.saves) ? data.saves : [];
+    await refreshSavedGamesList(savedGamesCurrentPage);
   } catch (error) {
     console.error('Error refreshing saved games:', error);
   }
 }
 
 function renderSavedGames() {
-  const tbody = document.getElementById('savedGamesBody');
-  if (!tbody) return;
+  const tableBody = document.getElementById('savedGamesBody');
+  if (!tableBody) return;
 
-  tbody.innerHTML = '';
+  tableBody.innerHTML = '';
 
-  if (savedGamesCache.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4">Keine Speicherstände vorhanden.</td></tr>';
+  if (!savedGamesCache.length) {
+    const row = document.createElement('tr');
+    row.className = 'saved-games-empty-row';
+    const cell = document.createElement('td');
+    cell.className = 'saved-games-empty-cell';
+    cell.colSpan = 4;
+    cell.textContent = 'Keine Speicherstände vorhanden.';
+    row.appendChild(cell);
+    tableBody.appendChild(row);
+    updateSavedGamesPagination();
     return;
   }
 
   savedGamesCache.forEach(save => {
-    const tr = document.createElement('tr');
-    if (Number(activeSaveId) === Number(save.id)) {
-      tr.classList.add('active-save-row');
-    }
+    const row = document.createElement('tr');
+    row.className = 'saved-games-row';
+    row.classList.toggle('active-save-row', Number(save.id) === Number(activeSaveId));
 
-    tr.innerHTML = `
-      <td>${(save.saveName || '').substring(0, 50)}</td>
-      <td>${new Date(save.updated_at).toLocaleString('de-DE')}</td>
-      <td>${(save.participant_summary || '').substring(0, 50)}</td>
-      <td>
-        <button onclick="loadSavedGame(${save.id})">Laden</button>
-        <button onclick="deleteSavedGame(${save.id})">Löschen</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
+    const updatedAtCell = document.createElement('td');
+    updatedAtCell.setAttribute('data-label', 'Letzte Änderung');
+    updatedAtCell.textContent = save.updatedAt || '';
+
+    const saveNameCell = document.createElement('td');
+    saveNameCell.setAttribute('data-label', 'Speicherstand');
+    const saveNameInput = document.createElement('input');
+    saveNameInput.type = 'text';
+    saveNameInput.className = 'saved-games-name-input';
+    saveNameInput.maxLength = 160;
+    saveNameInput.value = save.saveName || getDefaultSaveName();
+    saveNameInput.disabled = Boolean(save.isArchived || !save.isOwner);
+    saveNameInput.title = !save.isOwner
+      ? 'Nur der Besitzer kann den Speicherstand umbenennen'
+      : (save.isArchived ? 'Archivierte Speicherstände sind schreibgeschützt' : 'Speicherstandsname ändern');
+    saveNameInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveNameInput.blur();
+      }
+    });
+    saveNameInput.addEventListener('change', () => {
+      const nextName = saveNameInput.value.trim() || getDefaultSaveName();
+      if (nextName === (save.saveName || getDefaultSaveName())) {
+        saveNameInput.value = nextName;
+        return;
+      }
+      void renameSavedGame(save.id, nextName);
+    });
+    saveNameCell.appendChild(saveNameInput);
+
+    const summaryCell = document.createElement('td');
+    summaryCell.setAttribute('data-label', 'Teilnehmende');
+    summaryCell.textContent = save.participantSummary || '';
+
+    const actionCell = document.createElement('td');
+    actionCell.setAttribute('data-label', 'Aktionen');
+    const actionGroup = document.createElement('div');
+    actionGroup.className = 'saved-games-action-group';
+
+    const loadBtn = document.createElement('button');
+    loadBtn.type = 'button';
+    loadBtn.className = 'saved-games-load-btn';
+    loadBtn.textContent = '📂';
+    loadBtn.title = 'Cloud-Spielstand laden';
+    loadBtn.setAttribute('aria-label', loadBtn.title);
+    loadBtn.onclick = () => {
+      void loadSavedGame(save.id);
+    };
+    actionGroup.appendChild(loadBtn);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'saved-games-copy-btn';
+    copyBtn.textContent = '📄';
+    copyBtn.title = 'Kopie als neuen Cloud-Spielstand anlegen und direkt öffnen';
+    copyBtn.setAttribute('aria-label', copyBtn.title);
+    copyBtn.onclick = () => {
+      void copySavedGame(save.id);
+    };
+    actionGroup.appendChild(copyBtn);
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.type = 'button';
+    archiveBtn.className = 'saved-games-archive-btn';
+    archiveBtn.textContent = save.isArchived ? '♻️' : '🗄️';
+    archiveBtn.disabled = !save.isOwner;
+    archiveBtn.title = save.isOwner
+      ? (save.isArchived ? 'Schreibschutz aufheben und Speicherstand reaktivieren' : 'Speicherstand archivieren und schreibschützen')
+      : 'Nur der Besitzer kann diesen Speicherstand archivieren';
+    archiveBtn.setAttribute('aria-label', archiveBtn.title);
+    archiveBtn.onclick = () => {
+      void toggleSaveArchive(save.id, !save.isArchived);
+    };
+    actionGroup.appendChild(archiveBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'saved-games-delete-btn';
+    deleteBtn.textContent = '🗑️';
+    deleteBtn.disabled = !save.isOwner;
+    deleteBtn.title = save.isOwner ? 'Speicherstand löschen' : 'Nur der Besitzer kann diesen Speicherstand löschen';
+    deleteBtn.setAttribute('aria-label', deleteBtn.title);
+    deleteBtn.onclick = () => {
+      void deleteSavedGame(save.id);
+    };
+    actionGroup.appendChild(deleteBtn);
+
+    actionCell.appendChild(actionGroup);
+
+    row.appendChild(saveNameCell);
+    row.appendChild(updatedAtCell);
+    row.appendChild(summaryCell);
+    row.appendChild(actionCell);
+    tableBody.appendChild(row);
   });
+
+  updateSavedGamesPagination();
+}
+
+function getSavedGamesPanel() {
+  return document.getElementById('savedGamesPanel');
+}
+
+function setSavedGamesPanelOpen(shouldOpen) {
+  const panel = getSavedGamesPanel();
+  if (!panel) return false;
+
+  panel.hidden = !shouldOpen;
+  panel.classList.toggle('is-open', shouldOpen);
+  panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+  updateSavedGamesPanelButtonState(shouldOpen);
+  return shouldOpen;
+}
+
+function updateSavedGamesPanelButtonState(isOpen) {
+  const toggleBtn = document.getElementById('loadGamesBtn');
+  if (!toggleBtn) return;
+
+  toggleBtn.textContent = isOpen ? '... einklappen' : 'Speicherstände...';
+}
+
+function syncSavedGamesFilterInputs() {
+  const updatedAtInput = document.getElementById('savedGamesFilterUpdatedAt');
+  const saveNameInput = document.getElementById('savedGamesFilterSaveName');
+  const participantsInput = document.getElementById('savedGamesFilterParticipants');
+
+  if (updatedAtInput) updatedAtInput.value = savedGamesFilters.updatedAt;
+  if (saveNameInput) saveNameInput.value = savedGamesFilters.saveName;
+  if (participantsInput) participantsInput.value = savedGamesFilters.participants;
+}
+
+function updateSavedGamesPagination() {
+  const countInfo = document.getElementById('savedGamesCountInfo');
+  const prevBtn = document.getElementById('savedGamesPrevBtn');
+  const nextBtn = document.getElementById('savedGamesNextBtn');
+  const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+
+  if (countInfo) {
+    if (savedGamesTotalCount === 0) {
+      countInfo.textContent = '0 Speicherstände';
+    } else {
+      const start = ((savedGamesCurrentPage - 1) * SAVED_GAMES_PAGE_SIZE) + 1;
+      const end = Math.min(savedGamesTotalCount, start + Math.max(savedGamesCache.length - 1, 0));
+      countInfo.textContent = `${start}-${end} von ${savedGamesTotalCount} Speicherständen`;
+    }
+  }
+
+  if (prevBtn) prevBtn.disabled = savedGamesCurrentPage <= 1;
+  if (nextBtn) nextBtn.disabled = savedGamesCurrentPage >= totalPages || savedGamesTotalCount === 0;
+}
+
+async function refreshSavedGamesList(page = savedGamesCurrentPage) {
+  const normalizedPage = Number.isFinite(Number(page)) && page > 0 ? page : 1;
+  const query = new URLSearchParams({
+    action: 'list',
+    gameType: appConfig.gameType || 'darts501',
+    page: String(normalizedPage),
+    pageSize: String(SAVED_GAMES_PAGE_SIZE),
+    filterUpdatedAt: savedGamesFilters.updatedAt || '',
+    filterSaveName: savedGamesFilters.saveName || '',
+    filterParticipants: savedGamesFilters.participants || '',
+  });
+
+  const data = await fetchStorageJson(`${storageApiUrl}?${query.toString()}`);
+  savedGamesCache = Array.isArray(data.saves) ? data.saves : [];
+  savedGamesTotalCount = Number.isFinite(Number(data.totalCount)) ? Number(data.totalCount) : 0;
+  savedGamesCurrentPage = Number.isFinite(Number(data.page)) && data.page > 0 ? Number(data.page) : normalizedPage;
+  renderSavedGames();
+}
+
+function bindSavedGamesControls() {
+  const panel = getSavedGamesPanel();
+  if (!panel || panel.dataset.bound === 'true') return;
+
+  panel.dataset.bound = 'true';
+  panel.hidden = false;
+  panel.classList.remove('is-open');
+  panel.setAttribute('aria-hidden', 'true');
+
+  const loadGamesBtn = document.getElementById('loadGamesBtn');
+  if (loadGamesBtn) {
+    loadGamesBtn.setAttribute('aria-controls', 'savedGamesPanel');
+  }
+  updateSavedGamesPanelButtonState(false);
+
+  const scheduleRefresh = () => {
+    savedGamesFilters = {
+      updatedAt: (document.getElementById('savedGamesFilterUpdatedAt')?.value || '').trim(),
+      saveName: (document.getElementById('savedGamesFilterSaveName')?.value || '').trim(),
+      participants: (document.getElementById('savedGamesFilterParticipants')?.value || '').trim(),
+    };
+
+    window.clearTimeout(savedGamesFilterTimer);
+    savedGamesFilterTimer = window.setTimeout(() => {
+      void refreshSavedGamesList(1).catch(error => {
+        setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+      });
+    }, 200);
+  };
+
+  ['savedGamesFilterUpdatedAt', 'savedGamesFilterSaveName', 'savedGamesFilterParticipants'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener('input', scheduleRefresh);
+    }
+  });
+
+  const clearBtn = document.getElementById('clearSavedGamesFiltersBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      savedGamesFilters = { updatedAt: '', saveName: '', participants: '' };
+      syncSavedGamesFilterInputs();
+      void refreshSavedGamesList(1).catch(error => {
+        setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+      });
+    });
+  }
+
+  const prevBtn = document.getElementById('savedGamesPrevBtn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (savedGamesCurrentPage > 1) {
+        void refreshSavedGamesList(savedGamesCurrentPage - 1).catch(error => {
+          setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+        });
+      }
+    });
+  }
+
+  const nextBtn = document.getElementById('savedGamesNextBtn');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(Math.max(savedGamesTotalCount, 1) / SAVED_GAMES_PAGE_SIZE));
+      if (savedGamesCurrentPage < totalPages) {
+        void refreshSavedGamesList(savedGamesCurrentPage + 1).catch(error => {
+          setStorageInfo(error.message || 'Speicherstände konnten nicht geladen werden.', true);
+        });
+      }
+    });
+  }
+}
+
+async function renameSavedGame(saveId, saveName) {
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'rename',
+        csrfToken: appConfig.csrfToken || '',
+        gameType: appConfig.gameType || 'darts501',
+        saveId,
+        saveName,
+      }),
+    });
+
+    await refreshSavedGamesList(savedGamesCurrentPage);
+    setStorageInfo(data.message || 'Speicherstandsname gespeichert.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speichern konnte nicht umbenannt werden.', true);
+  }
+}
+
+async function copySavedGame(saveId) {
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'copy',
+        csrfToken: appConfig.csrfToken || '',
+        gameType: appConfig.gameType || 'darts501',
+        saveId,
+      }),
+    });
+
+    storageEnabled = true;
+    activeSaveId = Number(data.save?.id || 0) || null;
+    activeSaveLabel = data.save?.saveName || '';
+    activeSaveIsOwner = data.save?.isOwner !== false;
+    syncPersistedActiveSave();
+    updateStorageToggleButton();
+    upsertSaveCacheEntry(data.save);
+    await refreshSavedGamesList(1);
+    loadGameState(data.save?.state || {});
+    setArchiveMode(Boolean(data.save?.isArchived));
+    setStorageInfo(data.message || 'Speicherstand kopiert und geladen.');
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht kopiert werden.', true);
+  }
+}
+
+async function toggleSaveArchive(saveId, shouldArchive) {
+  try {
+    const data = await fetchStorageJson(storageApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: shouldArchive ? 'archive' : 'reactivate',
+        csrfToken: appConfig.csrfToken || '',
+        gameType: appConfig.gameType || 'darts501',
+        saveId,
+      }),
+    });
+
+    if (Number(activeSaveId) === Number(saveId)) {
+      setArchiveMode(shouldArchive);
+    }
+    await refreshSavedGamesList(savedGamesCurrentPage);
+    setStorageInfo(data.message || (shouldArchive ? 'Speicherstand archiviert.' : 'Speicherstand reaktiviert.'));
+  } catch (error) {
+    setStorageInfo(error.message || 'Speicherstand konnte nicht archiviert werden.', true);
+  }
 }
 
 function syncPersistedActiveSave() {
@@ -904,29 +1226,20 @@ function getPersistedActiveSaveId() {
 }
 
 async function toggleSavedGamesPanel() {
-  const panel = document.getElementById('savedGamesPanel');
+  const panel = getSavedGamesPanel();
   if (!panel) return;
 
-  const isOpen = panel.classList.contains('is-open');
+  const shouldOpen = !panel.classList.contains('is-open');
+  setSavedGamesPanelOpen(shouldOpen);
 
-  if (!isOpen) {
-    panel.hidden = false;
-    panel.classList.add('is-open');
-    updateSavedGamesPanelButtonState(true);
+  if (shouldOpen) {
+    syncSavedGamesFilterInputs();
     try {
-      const data = await fetchStorageJson(
-        `${storageApiUrl}?action=list&gameType=${encodeURIComponent(appConfig.gameType || 'darts501')}`
-      );
-      savedGamesCache = Array.isArray(data.saves) ? data.saves : [];
-      renderSavedGames();
+      await refreshSavedGamesList(1);
     } catch (error) {
       console.error('Error loading saved games:', error);
       setStorageInfo('Speicherstände konnten nicht geladen werden.', true);
     }
-  } else {
-    panel.classList.remove('is-open');
-    panel.hidden = true;
-    updateSavedGamesPanelButtonState(false);
   }
 }
 
