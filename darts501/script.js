@@ -908,9 +908,11 @@ async function toggleSavedGamesPanel() {
   if (!panel) return;
 
   const isOpen = panel.classList.contains('is-open');
-  
+
   if (!isOpen) {
+    panel.hidden = false;
     panel.classList.add('is-open');
+    updateSavedGamesPanelButtonState(true);
     try {
       const data = await fetchStorageJson(
         `${storageApiUrl}?action=list&gameType=${encodeURIComponent(appConfig.gameType || 'darts501')}`
@@ -923,7 +925,16 @@ async function toggleSavedGamesPanel() {
     }
   } else {
     panel.classList.remove('is-open');
+    panel.hidden = true;
+    updateSavedGamesPanelButtonState(false);
   }
+}
+
+function updateSavedGamesPanelButtonState(isOpen) {
+  const toggleBtn = document.getElementById('loadGamesBtn');
+  if (!toggleBtn) return;
+
+  toggleBtn.textContent = isOpen ? '... einklappen' : 'Speicherstände...';
 }
 
 async function restorePersistedActiveSave() {
@@ -963,7 +974,9 @@ function initApp() {
 
   if (loadGamesBtn) {
     loadGamesBtn.addEventListener('click', toggleSavedGamesPanel);
+    loadGamesBtn.setAttribute('aria-controls', 'savedGamesPanel');
   }
+  updateSavedGamesPanelButtonState(false);
 
   if (newGameBtn) {
     newGameBtn.addEventListener('click', () => {
