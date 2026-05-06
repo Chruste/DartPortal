@@ -41,6 +41,10 @@ function portal_cloud_storage_config(string $gameType): array
             'events' => 'darts501_events',
             'defaultSaveName' => 'Klassisches 501 Darts',
             'participantFields' => ['currentRemainingScore'],
+            'eventFieldMap' => [
+                'targetLabel' => 'throw_label',
+                'scoreAfter' => 'remaining_after',
+            ],
         ],
     ];
 
@@ -63,6 +67,15 @@ function portal_cloud_participant_db_field(string $field): string
         default:
             return $field;
     }
+}
+
+function portal_cloud_event_db_field(string $field, array $config): string
+{
+    if (!empty($config['eventFieldMap'][$field])) {
+        return $config['eventFieldMap'][$field];
+    }
+
+    return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $field));
 }
 
 /**
@@ -1149,6 +1162,11 @@ try {
             $participantLookup = portal_cloud_sync_participants($mysqli_user, $config['participants'], $saveId, $meta['participants'], $config);
 
             if ($sourceEventCount > 0) {
+                $eventLabelField = portal_cloud_event_db_field('targetLabel', $config);
+                $eventSectorResultField = portal_cloud_event_db_field('sectorResult', $config);
+                $eventScoreDeltaField = portal_cloud_event_db_field('scoreDelta', $config);
+                $eventScoreAfterField = portal_cloud_event_db_field('scoreAfter', $config);
+
                 $eventSelectStmt = $mysqli_user->prepare(
                     "SELECT
                         e.player_user_id,
@@ -1158,10 +1176,10 @@ try {
                         e.event_source,
                         e.player_index,
                         e.player_name,
-                        e.target_label,
-                        e.sector_result,
-                        e.score_delta,
-                        e.score_after,
+                        e.{$eventLabelField} AS target_label,
+                        e.{$eventSectorResultField} AS sector_result,
+                        e.{$eventScoreDeltaField} AS score_delta,
+                        e.{$eventScoreAfterField} AS score_after,
                         e.detected_at,
                         e.payload_json,
                         p.seat_no
@@ -1178,6 +1196,11 @@ try {
                 $eventSelectStmt->execute();
                 $eventResult = $eventSelectStmt->get_result();
 
+                $eventLabelField = portal_cloud_event_db_field('targetLabel', $config);
+                $eventSectorResultField = portal_cloud_event_db_field('sectorResult', $config);
+                $eventScoreDeltaField = portal_cloud_event_db_field('scoreDelta', $config);
+                $eventScoreAfterField = portal_cloud_event_db_field('scoreAfter', $config);
+
                 $eventInsertStmt = $mysqli_user->prepare(
                     "INSERT INTO {$config['events']} (
                         session_id,
@@ -1189,10 +1212,10 @@ try {
                         event_source,
                         player_index,
                         player_name,
-                        target_label,
-                        sector_result,
-                        score_delta,
-                        score_after,
+                        {$eventLabelField},
+                        {$eventSectorResultField},
+                        {$eventScoreDeltaField},
+                        {$eventScoreAfterField},
                         detected_at,
                         payload_json
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -1303,6 +1326,11 @@ try {
                 $normalizedEvent = portal_cloud_normalize_event($event, $participantLookup, $userId);
                 $eventNo = $eventCount + 1;
 
+                $dbTargetLabelField = portal_cloud_event_db_field('targetLabel', $config);
+                $dbSectorResultField = portal_cloud_event_db_field('sectorResult', $config);
+                $dbScoreDeltaField = portal_cloud_event_db_field('scoreDelta', $config);
+                $dbScoreAfterField = portal_cloud_event_db_field('scoreAfter', $config);
+
                 $eventStmt = $mysqli_user->prepare(
                     "INSERT INTO {$config['events']} (
                         session_id,
@@ -1314,10 +1342,10 @@ try {
                         event_source,
                         player_index,
                         player_name,
-                        target_label,
-                        sector_result,
-                        score_delta,
-                        score_after,
+                        {$dbTargetLabelField},
+                        {$dbSectorResultField},
+                        {$dbScoreDeltaField},
+                        {$dbScoreAfterField},
                         detected_at,
                         payload_json
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
