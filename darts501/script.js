@@ -967,8 +967,8 @@ function initApp() {
 
   if (newGameBtn) {
     newGameBtn.addEventListener('click', () => {
-      if (storageEnabled && activeSaveId) {
-        if (!window.confirm('Aktueller Spielstand ist gespeichert. Wirklich ein neues Spiel starten?')) {
+      if (!storageEnabled || !activeSaveId) {
+        if (!window.confirm('Aktuelles Spiel ist nicht gespeichert. Wirklich ein neues Spiel starten?')) {
           return;
         }
       }
@@ -1001,7 +1001,6 @@ function setupEventListeners() {
 
   document.getElementById('nextPlayerBtn').addEventListener('click', nextPlayer);
   document.getElementById('undoBtn').addEventListener('click', undoLastThrow);
-  document.getElementById('newGameBtn').addEventListener('click', initGame);
 }
 
 function initScoliaWebSocket() {
