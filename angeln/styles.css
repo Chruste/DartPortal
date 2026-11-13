@@ -1,0 +1,89 @@
+/* Angeln game page, based on the portal's Shanghai scorecard layout. */
+body {
+  margin: 0;
+  padding: 0;
+  background: #000 url('img/background.png') no-repeat bottom center;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+#appContainer { padding-bottom: 170px; }
+#appContainer > header { margin: .5em 0; }
+.game-title { margin: .35em 0; color: #fff; font-size: clamp(2rem, 7vw, 4rem); font-weight: 800; letter-spacing: .04em; text-shadow: 0 3px 14px rgba(0,0,0,.8); }
+#status { margin: .5em 0; }
+
+.save-controls, .invite-controls, .saved-games-panel { width: min(960px, calc(100% - 20px)); margin: .75em auto 1em; }
+.save-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5em; }
+.save-controls button, .invite-controls button, .saved-games-panel button { background: #333; color: #fff; border: 1px solid #555; padding: 8px 12px; cursor: pointer; }
+.save-state-info { flex-basis: 100%; color: #ddd; }
+.save-state-info.error, .invite-state-info.error { color: #ff8d8d; }
+#toggleStorageBtn.storage-cloud-mode { background: #146c2e; border-color: #69d88d; }
+#toggleStorageBtn.storage-local-mode { background: #8b0000; border-color: #f55; }
+.invite-controls { box-sizing: border-box; padding: .8em; border: 1px solid #3f3f3f; background: rgba(16,16,16,.88); text-align: left; }
+.invite-controls__header { display: flex; gap: .5em; }
+.invite-state-info { margin-top: .6em; color: #ddd; }
+.invite-table, .saved-games-table { width: 100%; border-collapse: collapse; }
+.invite-table th, .invite-table td, .saved-games-table th, .saved-games-table td { border: 1px solid #555; padding: 7px; }
+.saved-games-panel[hidden], .invite-panel[hidden] { display: none; }
+.saved-games-filter-row input, .saved-games-name-input { box-sizing: border-box; width: 100%; padding: 6px; background: #222; color: #fff; border: 1px solid #555; }
+.saved-games-action-group { display: flex; justify-content: center; gap: 4px; }
+.saved-games-action-group button { padding: 5px 8px; }
+.saved-games-pagination { display: flex; justify-content: space-between; align-items: center; margin: .5em 0; }
+.saved-games-pagination-buttons { display: flex; gap: .5em; }
+
+#manualInput input { background: #222; color: #fff; border: 1px solid #555; padding: 7px; }
+#manualButtons button, #manualInput button, #controlButtons button, .playerActivateBtn, .playerDeleteBtn, .playerConfirmDeleteBtn {
+  background: #333; color: #fff; border: 1px solid #555; margin: 2px; padding: 7px 10px; cursor: pointer;
+}
+#manualButtons button:disabled, #controlButtons button:disabled, button:disabled { opacity: .55; cursor: not-allowed; }
+#controlButtons { display: flex; justify-content: space-between; align-items: center; width: min(700px, calc(100% - 16px)); margin: .8em auto; gap: .4em; }
+.left-buttons, .center-buttons, .right-buttons { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; }
+#controlButtons #manualPlayerBtn { background: #8b0000; border-color: #f55; }
+#tablesContainer { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 1em; }
+#tablesContainer > .player-card { width: fit-content; max-width: 100%; }
+#tablesContainer .tableArea { display: flex; justify-content: center; }
+#tablesContainer .tableArea.inactive { opacity: .5; }
+table { border-collapse: collapse; table-layout: fixed; margin: 1em auto; display: inline-table; vertical-align: top; }
+th, td { border: 1px solid #fff; padding: 5px 7px; text-align: center; box-sizing: border-box; }
+.player-card table { width: 390px; max-width: calc(100vw - 20px); }
+.player-name { font-size: 1.4em; font-weight: bold; }
+.player-card th:first-child, .player-card td:first-child { width: 52px; }
+.player-card th:nth-child(2), .player-card td:nth-child(2),
+.player-card th:nth-child(3), .player-card td:nth-child(3),
+.player-card th:nth-child(4), .player-card td:nth-child(4) { width: 74px; }
+.player-card th:nth-child(5), .player-card td:nth-child(5) { width: 110px; }
+.player-card th, .player-card td { padding: 4px 3px; }
+.player-card tbody tr.current-row td { font-size: 1.45em; font-weight: bold; height: 44px; }
+.player-card tbody tr.hit td, #playerOverviewTable td:last-child, .player-card tfoot { color: #ffd700; }
+.player-card tbody tr.failed-catch td { color: #ff7777; }
+.player-card tfoot { font-size: 1.45em; font-weight: bold; }
+.hit-input { width: 100%; box-sizing: border-box; background: #222; color: #fff; border: 1px solid #666; text-align: center; font: inherit; }
+
+#playerOverviewWrapper { position: fixed; left: 0; right: 0; bottom: 0; z-index: 49; padding: .35em 1em .55em; background: rgba(0,0,0,.92); border-top: 1px solid #444; box-shadow: 0 -6px 18px rgba(0,0,0,.45); }
+#playerOverviewWrapper.collapsed #playerOverviewTable { display: none; }
+#playerOverviewWrapper h3 { margin: .2em; }
+#playerOverviewTable { width: 300px; margin: .3em auto 0; }
+#playerOverviewTable th:first-child, #playerOverviewTable td:first-child { width: 70%; }
+#playerOverviewTable tbody td { font-size: 1.5em; font-weight: bold; }
+#playerOverviewTable tbody td:last-child { color: #ffd700; }
+.overviewToggleBtn { position: absolute; top: 6px; right: 8px; background: #444; color: #fff; border: 1px solid #555; cursor: pointer; }
+
+#controlsFooterWrapper { position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; padding: .55em 1em; background: rgba(0,0,0,.92); border-top: 1px solid #333; }
+#controlsFooterContent { display: flex; flex-direction: column; align-items: center; gap: .25em; }
+#controlsFooterContent #controlButtons { margin: .2em auto; }
+#controlsFooterWrapper.collapsed #controlsFooterContent { display: none; }
+.controlsToggleBtn { position: absolute; top: 5px; right: 8px; background: #444; color: #fff; border: 1px solid #555; cursor: pointer; }
+
+@media (max-width: 700px) {
+  #appContainer > header img { width: 82%; }
+  #controlButtons { flex-direction: column; }
+  .saved-games-table, .saved-games-table thead, .saved-games-table tbody, .saved-games-table tr, .saved-games-table th, .saved-games-table td { display: block; width: 100%; box-sizing: border-box; }
+  .saved-games-table thead > tr:first-child { display: none; }
+  .saved-games-filter-row { margin-bottom: .6em; }
+  .saved-games-table tbody { display: grid; gap: .6em; }
+  .saved-games-row { padding: .5em; border: 1px solid #444; }
+  .saved-games-row td { border: 0; text-align: left; }
+  .saved-games-row td::before { content: attr(data-label) ': '; color: #bbb; font-weight: bold; }
+  .saved-games-pagination { flex-direction: column; gap: .5em; }
+}

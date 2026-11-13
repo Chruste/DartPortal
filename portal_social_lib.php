@@ -485,6 +485,13 @@ function portal_game_invitation_sources(): array
             'sessions' => 'shanghai42_sessions',
             'participants' => 'shanghai42_session_participants',
         ],
+        [
+            'gameType' => 'angeln',
+            'gameLabel' => 'Angeln',
+            'gamePath' => '/angeln/',
+            'sessions' => 'angeln_sessions',
+            'participants' => 'angeln_session_participants',
+        ],
     ];
 }
 

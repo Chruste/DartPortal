@@ -35,6 +35,13 @@ function portal_cloud_storage_config(string $gameType): array
             'defaultSaveName' => 'Shanghai 42',
             'participantFields' => ['currentTargetIndex', 'currentTotalScore'],
         ],
+        'angeln' => [
+            'sessions' => 'angeln_sessions',
+            'participants' => 'angeln_session_participants',
+            'events' => 'angeln_events',
+            'defaultSaveName' => 'Angeln',
+            'participantFields' => ['currentTargetIndex', 'currentTotalScore'],
+        ],
         'darts501' => [
             'sessions' => 'darts501_sessions',
             'participants' => 'darts501_session_participants',
@@ -848,6 +855,37 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $action = strtolower(trim((string) ($_GET['action'] ?? 'list')));
         $config = portal_cloud_storage_config((string) ($_GET['gameType'] ?? ''));
+
+        if ($action === 'invitations') {
+            $stmt = $mysqli_user->prepare(
+                "SELECT s.id, s.save_name, s.participant_summary, s.updated_at, s.owner_user_id
+                 FROM {$config['sessions']} s
+                 INNER JOIN {$config['participants']} p ON p.session_id = s.id
+                 WHERE p.portal_user_id = ? AND p.invitation_status = 'pending'
+                   AND p.is_active = 1 AND s.is_deleted = 0
+                 ORDER BY s.updated_at DESC, s.id DESC"
+            );
+            if (!$stmt) {
+                throw new RuntimeException('Einladungen konnten nicht geladen werden.');
+            }
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $invitations = [];
+            while ($result && ($row = $result->fetch_assoc())) {
+                $invitations[] = [
+                    'id' => (int) $row['id'],
+                    'saveName' => (string) ($row['save_name'] ?? portal_cloud_default_save_name($config['gameType'])),
+                    'updatedAt' => portal_format_datetime((string) ($row['updated_at'] ?? '')),
+                    'participantSummary' => portal_cloud_resolve_participant_summary($row),
+                    'isInvitation' => true,
+                    'isArchived' => false,
+                    'isOwner' => false,
+                ];
+            }
+            $stmt->close();
+            portal_json_response(['success' => true, 'invitations' => $invitations]);
+        }
 
         if ($action === 'list') {
             $page = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int) $_GET['page']) : 1;

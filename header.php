@@ -40,6 +40,7 @@ function portal_nav_link_attrs(string $targetPath, string $currentPath): string
         <li><a href="/index.php" <?= portal_nav_link_attrs('/index.php', $currentPath); ?>>Home</a></li>
         <li><a href="/shanghai21/index.php" <?= portal_nav_link_attrs('/shanghai21/index.php', $currentPath); ?>>Shanghai 21</a></li>
         <li><a href="/shanghai42/index.php" <?= portal_nav_link_attrs('/shanghai42/index.php', $currentPath); ?>>Shanghai 42</a></li>
+        <li><a href="/angeln/index.php" <?= portal_nav_link_attrs('/angeln/index.php', $currentPath); ?>>Angeln</a></li>
         <li><a href="/dartball/index.php" <?= portal_nav_link_attrs('/dartball/index.php', $currentPath); ?>>Dartball</a></li>
         <li><a href="/turnierplaner/turnierplaner.php" <?= portal_nav_link_attrs('/turnierplaner/turnierplaner.php', $currentPath); ?>>Turnierplaner</a></li>
         <li><a href="/profil/profil.php" <?= portal_nav_link_attrs('/profil/profil.php', $currentPath); ?>>Profil und Freunde</a></li>
