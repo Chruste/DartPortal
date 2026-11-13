@@ -227,6 +227,7 @@ class AngelnPlayer {
       row.cells[4].textContent = this.fishRegion(round);
       row.cells[4].classList.add('bait-region-cell');
       row.cells[5].textContent = result.points === '' ? '' : String(result.points);
+      row.cells[5].classList.toggle('no-catch-points', result.caught === false);
       row.classList.toggle('hit', result.caught === true);
       row.classList.toggle('failed-catch', result.caught === false);
     }
