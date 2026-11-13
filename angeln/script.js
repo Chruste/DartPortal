@@ -89,7 +89,7 @@ class AngelnPlayer {
     const table = document.createElement('table');
     table.id = `playerTable${this.index}`;
     const colgroup = document.createElement('colgroup');
-    [48, 70, 70, 70, 180, 72].forEach(width => {
+    [55, 70, 70, 70, 165, 70].forEach(width => {
       const column = document.createElement('col');
       column.style.width = `${width}px`;
       colgroup.appendChild(column);
