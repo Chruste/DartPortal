@@ -98,7 +98,7 @@ class AngelnPlayer {
     nameRow.appendChild(nameCell);
     thead.appendChild(nameRow);
     const headings = document.createElement('tr');
-    ['Runde', 'Dart 1', 'Dart 2', 'Dart 3', 'Fisch', 'Punkte'].forEach(text => {
+    ['Runde', 'Dart 1', 'Dart 2', 'Dart 3', 'Köder', 'Punkte'].forEach(text => {
       const th = document.createElement('th');
       th.textContent = text;
       headings.appendChild(th);
@@ -119,6 +119,7 @@ class AngelnPlayer {
     tfoot.appendChild(total);
     table.appendChild(tfoot);
     this.totalCell = total.lastElementChild;
+    this.totalRow = total;
     this.table = table;
     this.render();
     const area = document.createElement('div');
@@ -143,6 +144,26 @@ class AngelnPlayer {
   highlight() {
     this.tbody.querySelectorAll('tr').forEach((row, i) => row.classList.toggle('current-row', i === Math.floor(this.currentIndex / 3) && this.currentIndex < 21));
     this.table.classList.toggle('highlight-complete', this.currentIndex >= 21);
+    this.totalRow.classList.toggle('completed-total-row', this.currentIndex >= 21);
+  }
+
+  fishRegion(round) {
+    const darts = this.darts.slice(round * 3, round * 3 + 2).filter(Boolean);
+    if (!darts.length) return '';
+
+    const surface = new Set([9, 12, 5, 20, 1, 18, 4]);
+    const ground = new Set([16, 7, 19, 3, 17, 2, 15]);
+    const regions = darts.map(dart => {
+      if (dart.bull || dart.label === 'Miss') return 'Mittelwasser';
+      const match = dart.label.match(/^[SDT]?\s*(\d+)$/i);
+      if (!match) return 'Mittelwasser';
+      const field = Number(match[1]);
+      if (surface.has(field)) return 'Oberfläche';
+      if (ground.has(field)) return 'Grund';
+      return 'Mittelwasser';
+    });
+
+    return regions.every(region => region === regions[0]) ? regions[0] : 'Mittelwasser';
   }
 
   roundResult(round) {
@@ -192,7 +213,7 @@ class AngelnPlayer {
         const dart = this.darts[start + dartIndex];
         row.cells[cellIndex].textContent = dart ? (dart.bull ? String(dart.points) : dart.label) : '';
       });
-      row.cells[4].textContent = result.status;
+      row.cells[4].textContent = this.fishRegion(round);
       row.cells[5].textContent = result.points === '' ? '' : String(result.points);
       row.classList.toggle('hit', result.caught === true);
       row.classList.toggle('failed-catch', result.caught === false);
