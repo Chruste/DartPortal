@@ -88,6 +88,13 @@ class AngelnPlayer {
   makeTable() {
     const table = document.createElement('table');
     table.id = `playerTable${this.index}`;
+    const colgroup = document.createElement('colgroup');
+    [48, 70, 70, 70, 180, 72].forEach(width => {
+      const column = document.createElement('col');
+      column.style.width = `${width}px`;
+      colgroup.appendChild(column);
+    });
+    table.appendChild(colgroup);
     const thead = document.createElement('thead');
     const nameRow = document.createElement('tr');
     const nameCell = document.createElement('th');
@@ -148,13 +155,13 @@ class AngelnPlayer {
   }
 
   fishRegion(round) {
-    const darts = this.darts.slice(round * 3, round * 3 + 2).filter(Boolean);
+    const darts = this.darts.slice(round * 3, round * 3 + 2).filter(dart => dart && dart.label !== 'Miss');
     if (!darts.length) return '';
 
     const surface = new Set([9, 12, 5, 20, 1, 18, 4]);
     const ground = new Set([16, 7, 19, 3, 17, 2, 15]);
     const regions = darts.map(dart => {
-      if (dart.bull || dart.label === 'Miss') return 'Mittelwasser';
+      if (dart.bull) return 'Mittelwasser';
       const match = dart.label.match(/^[SDT]?\s*(\d+)$/i);
       if (!match) return 'Mittelwasser';
       const field = Number(match[1]);
@@ -214,6 +221,7 @@ class AngelnPlayer {
         row.cells[cellIndex].textContent = dart ? (dart.bull ? String(dart.points) : dart.label) : '';
       });
       row.cells[4].textContent = this.fishRegion(round);
+      row.cells[4].classList.add('bait-region-cell');
       row.cells[5].textContent = result.points === '' ? '' : String(result.points);
       row.classList.toggle('hit', result.caught === true);
       row.classList.toggle('failed-catch', result.caught === false);
