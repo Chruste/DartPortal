@@ -155,7 +155,11 @@ class AngelnPlayer {
   }
 
   fishRegion(round) {
-    const darts = this.darts.slice(round * 3, round * 3 + 2).filter(dart => dart && dart.label !== 'Miss');
+    const firstTwoDarts = this.darts.slice(round * 3, round * 3 + 2);
+    if (firstTwoDarts.length === 2 && firstTwoDarts.every(dart => dart?.label === 'Miss')) return 'Dynamit-Angeln';
+    if (firstTwoDarts.length === 2 && firstTwoDarts.every(dart => dart?.label === 'T 20')) return '🦈 BIG FISH!';
+
+    const darts = firstTwoDarts.filter(dart => dart && dart.label !== 'Miss');
     if (!darts.length) return '';
 
     const surface = new Set([9, 12, 5, 20, 1, 18, 4]);
