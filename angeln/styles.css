@@ -60,6 +60,7 @@ th, td { border: 1px solid #fff; padding: 5px 7px; text-align: center; box-sizin
 .player-card col:nth-child(6) { width: 72px; }
 .player-card th:nth-child(5), .player-card td:nth-child(5) { white-space: nowrap; }
 .player-card th, .player-card td { padding: 4px 3px; }
+.player-card tbody td { height: 38px; }
 .player-card tbody tr.current-row td { font-size: 1.45em; font-weight: bold; height: 44px; }
 .player-card tbody tr.current-row td.bait-region-cell { font-weight: normal; }
 .player-card td.no-catch-points { text-decoration: line-through; }
