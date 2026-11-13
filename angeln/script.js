@@ -91,14 +91,14 @@ class AngelnPlayer {
     const thead = document.createElement('thead');
     const nameRow = document.createElement('tr');
     const nameCell = document.createElement('th');
-    nameCell.colSpan = 5;
+    nameCell.colSpan = 6;
     nameCell.id = `playerNameCell${this.index}`;
     nameCell.className = 'player-name';
     nameCell.textContent = this.name;
     nameRow.appendChild(nameCell);
     thead.appendChild(nameRow);
     const headings = document.createElement('tr');
-    ['Runde', 'Dart 1', 'Dart 2', 'Dart 3', 'Fisch / Länge'].forEach(text => {
+    ['Runde', 'Dart 1', 'Dart 2', 'Dart 3', 'Fisch', 'Punkte'].forEach(text => {
       const th = document.createElement('th');
       th.textContent = text;
       headings.appendChild(th);
@@ -109,13 +109,13 @@ class AngelnPlayer {
     for (let round = 0; round < ROUNDS; round += 1) {
       const row = document.createElement('tr');
       row.dataset.round = String(round);
-      row.innerHTML = `<td>${round + 1}</td><td></td><td></td><td></td><td></td>`;
+      row.innerHTML = `<td>${round + 1}</td><td></td><td></td><td></td><td></td><td></td>`;
       this.tbody.appendChild(row);
     }
     table.appendChild(this.tbody);
     const tfoot = document.createElement('tfoot');
     const total = document.createElement('tr');
-    total.innerHTML = '<td colspan="4">Gesamtlänge</td><td class="total-cell">0 cm</td>';
+    total.innerHTML = '<td colspan="5">Gesamt</td><td class="total-cell">0</td>';
     tfoot.appendChild(total);
     table.appendChild(tfoot);
     this.totalCell = total.lastElementChild;
@@ -150,11 +150,11 @@ class AngelnPlayer {
     const first = this.darts[start];
     const second = this.darts[start + 1];
     const third = this.darts[start + 2];
-    if (!first && !second && !third) return { base: 0, caught: null, display: '' };
+    if (!first && !second && !third) return { base: 0, caught: null, status: '', points: '' };
     const base = (first?.points || 0) + (second?.points || 0);
-    if (!third) return { base, caught: null, display: `${base} cm (am Haken)` };
-    if (!third.bull) return { base: 0, caught: false, display: `Verloren (${base} cm)` };
-    return { base, length: base + third.points, caught: true, display: `${base + third.points} cm` };
+    if (!third) return { base, caught: null, status: 'am Haken', points: base };
+    if (!third.bull) return { base, caught: false, status: 'verloren', points: base };
+    return { base, length: base + third.points, caught: true, status: 'gefangen', points: base + third.points };
   }
 
   recompute() {
@@ -180,21 +180,24 @@ class AngelnPlayer {
       if (triple) { triple.disabled = thirdDart || archivedMode; triple.title = thirdDart ? 'Beim dritten Dart muss ein Bull getroffen werden.' : 'Triple'; }
       const single = document.getElementById('btnSingle');
       const double = document.getElementById('btnDouble');
-      if (single) single.textContent = thirdDart ? 'Single Bull' : 'Single';
-      if (double) double.textContent = thirdDart ? 'Double Bull' : 'Double';
+      if (single) single.textContent = 'Single';
+      if (double) double.textContent = 'Double';
+      if (triple) triple.style.display = thirdDart ? 'none' : '';
     }
     for (let round = 0; round < ROUNDS; round += 1) {
       const start = round * 3;
       const result = this.roundResult(round);
       const row = this.tbody.children[round];
-      row.cells[1].textContent = this.darts[start]?.label || '';
-      row.cells[2].textContent = this.darts[start + 1]?.label || '';
-      row.cells[3].textContent = this.darts[start + 2]?.label || '';
-      row.cells[4].textContent = result.display;
+      [1, 2, 3].forEach((cellIndex, dartIndex) => {
+        const dart = this.darts[start + dartIndex];
+        row.cells[cellIndex].textContent = dart ? (dart.bull ? String(dart.points) : dart.label) : '';
+      });
+      row.cells[4].textContent = result.status;
+      row.cells[5].textContent = result.points === '' ? '' : String(result.points);
       row.classList.toggle('hit', result.caught === true);
       row.classList.toggle('failed-catch', result.caught === false);
     }
-    this.totalCell.textContent = `${this.totalScore} cm`;
+    this.totalCell.textContent = String(this.totalScore);
     this.highlight();
   }
 
@@ -362,7 +365,7 @@ function formatLocalDateTime(value) { const date = new Date(value); return Numbe
 function setStorageInfo(message = '', isError = false) { const el = document.getElementById('saveStateInfo'); if (!el) return; el.textContent = message || (storageEnabled ? `Cloud-Spiel aktiv: ${activeSaveLabel}` : 'Lokales Spiel aktiv. Noch nicht in der Cloud gespeichert.'); el.classList.toggle('error', isError); }
 function setInviteInfo(message = '', isError = false) { const el = document.getElementById('inviteStateInfo'); if (el) { el.textContent = message || 'Aktiviere einen Cloud-Spielstand, um Freunde einzuladen.'; el.classList.toggle('error', isError); } }
 function setBusy(busy) { document.querySelectorAll('#newGameBtn,#toggleStorageBtn,#loadGamesBtn,#toggleInvitePanelBtn,#refreshInviteCandidatesBtn').forEach(btn => { if (btn) btn.disabled = busy; }); }
-function updateStorageToggleButton() { const btn = document.getElementById('toggleStorageBtn'); if (!btn) return; btn.textContent = storageEnabled ? 'Cloud-Spiel' : 'Lokales Spiel'; btn.classList.toggle('storage-cloud-mode', storageEnabled); btn.classList.toggle('storage-local-mode', !storageEnabled); }
+function updateStorageToggleButton() { const btn = document.getElementById('toggleStorageBtn'); if (!btn) return; btn.textContent = storageEnabled && activeSaveId ? 'Cloud Spiel' : 'Lokales Spiel'; btn.title = storageEnabled && activeSaveId ? 'Wechselt zum lokalen Spiel. Der aktuelle Spielstand bleibt in der Cloud bestehen.' : 'Neuen Cloud Spielstand mit den aktuellen Ergebnissen anlegen.'; btn.setAttribute('aria-label', btn.title); btn.classList.toggle('storage-cloud-mode', storageEnabled && Boolean(activeSaveId)); btn.classList.toggle('storage-local-mode', !(storageEnabled && activeSaveId)); }
 function setArchiveMode(archived) { archivedMode = Boolean(archived && activeSaveId); updateAllActivateBtns(); updateGameInteractionState(); updateUndoButtonVisibility(); }
 function updateGameInteractionState() { const locked = Boolean(archivedMode); ['manualSector','manualSubmit','btnMiss','btnSingle','btnDouble','btnTriple','addPlayerButton','editButton','saveButton','autoPlayerBtn','manualPlayerBtn'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = locked; }); }
 function updateUndoButtonVisibility() { const btn = document.getElementById('undoButton'); if (!btn) return; const active = getActivePlayer(); const can = Boolean(!archivedMode && editingPlayerIndex === null && active?.currentIndex > 0); btn.style.visibility = can ? 'visible' : 'hidden'; btn.style.pointerEvents = can ? 'auto' : 'none'; btn.disabled = !can; }
@@ -374,7 +377,7 @@ function ensureOverviewTable() {
   const title = document.createElement('h3'); title.id = 'playerOverviewTitle'; title.textContent = 'Spielerliste';
   const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'overviewToggleBtn'; toggle.textContent = collapsed ? '▲' : '▼'; toggle.title = 'Spielerliste ein-/ausklappen';
   toggle.onclick = () => { wrapper.classList.toggle('collapsed'); const isCollapsed = wrapper.classList.contains('collapsed'); localStorage.setItem('angelnOverviewCollapsed', String(isCollapsed)); toggle.textContent = isCollapsed ? '▲' : '▼'; updateFooterLayout(); };
-  const table = document.createElement('table'); table.id = 'playerOverviewTable'; table.innerHTML = '<thead><tr><th>Name</th><th>Gesamtlänge</th></tr></thead>';
+  const table = document.createElement('table'); table.id = 'playerOverviewTable'; table.innerHTML = '<thead><tr><th>Name</th><th>Punkte</th></tr></thead>';
   overviewTableBody = document.createElement('tbody'); table.appendChild(overviewTableBody); wrapper.append(toggle, title, table);
   document.getElementById('tablesContainer').insertAdjacentElement('afterend', wrapper);
   window.addEventListener('resize', updateFooterLayout);
@@ -383,7 +386,7 @@ function updateOverviewTable() {
   ensureOverviewTable(); overviewTableBody.replaceChildren();
   const totals = new Map();
   getPlayerIds().forEach(id => { const p = players[id]; totals.set(p.name.trim() || 'Spieler', (totals.get(p.name.trim() || 'Spieler') || 0) + p.totalScore); });
-  totals.forEach((length, name) => { const row = document.createElement('tr'); const nameCell = document.createElement('td'); const totalCell = document.createElement('td'); nameCell.textContent = name; totalCell.textContent = `${length} cm`; row.append(nameCell, totalCell); overviewTableBody.appendChild(row); });
+  totals.forEach((points, name) => { const row = document.createElement('tr'); const nameCell = document.createElement('td'); const totalCell = document.createElement('td'); nameCell.textContent = name; totalCell.textContent = String(points); row.append(nameCell, totalCell); overviewTableBody.appendChild(row); });
   updateFooterLayout();
 }
 function updateFooterLayout() {
@@ -414,7 +417,7 @@ function syncPersistedActiveSave() { if (APP.isAuthenticated && storageEnabled &
 function getPersistedActiveSaveId() { try { const parsed = JSON.parse(localStorage.getItem(getActiveSaveStorageKey()) || '{}'); return Number(parsed.saveId) || null; } catch { return null; } }
 function upsertSave(save) { if (!save?.id) return; const entry = { id: Number(save.id), saveName: save.saveName || 'Angeln', updatedAt: save.updatedAt || '', participantSummary: save.participantSummary || '', isArchived: Boolean(save.isArchived), isOwner: save.isOwner !== false }; const i = savedGamesCache.findIndex(item => item.id === entry.id); if (i >= 0) savedGamesCache[i] = { ...savedGamesCache[i], ...entry }; else if (!entry.isInvitation) savedGamesCache.unshift(entry); renderSavedGames(); }
 function removeSave(saveId) { savedGamesCache = savedGamesCache.filter(save => save.id !== Number(saveId)); renderSavedGames(); }
-function openSavedPanel(open) { const panel = document.getElementById('savedGamesPanel'); panel.hidden = !open; panel.classList.toggle('is-open', open); const btn = document.getElementById('loadGamesBtn'); btn.textContent = open ? 'Speicherstände schließen' : 'Speicherstände...'; if (open) void refreshSavedGamesList(1).catch(error => setStorageInfo(error.message, true)); }
+function openSavedPanel(open) { const panel = document.getElementById('savedGamesPanel'); panel.hidden = !open; panel.classList.toggle('is-open', open); const btn = document.getElementById('loadGamesBtn'); btn.textContent = open ? '... einklappen' : 'Speicherstände...'; if (open) void refreshSavedGamesList(1).catch(error => setStorageInfo(error.message, true)); }
 function renderSavedGames() {
   const body = document.getElementById('savedGamesBody'); if (!body) return; body.replaceChildren();
   if (!savedGamesCache.length) { const row = body.insertRow(); const cell = row.insertCell(); cell.colSpan = 4; cell.textContent = 'Keine Speicherstände vorhanden.'; return; }
