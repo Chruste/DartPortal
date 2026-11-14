@@ -30,6 +30,11 @@ const assets = [
   '/shanghai42/img/icon.png',
   '/shanghai42/img/icon-192.png',
   '/shanghai42/img/icon-512.png',
+  '/angeln/index.php',
+  '/angeln/styles.css',
+  '/angeln/script.js',
+  '/angeln/img/headline.png',
+  '/angeln/img/background.png',
   '/dartball/index.php',
   '/dartball/styles.css',
   '/dartball/img/headline.png',
@@ -84,7 +89,8 @@ function isAuthDynamicRoute(requestUrl) {
     || requestUrl.pathname === '/save-profile.php'
     || requestUrl.pathname === '/friend-search.php'
     || requestUrl.pathname === '/friend-action.php'
-    || requestUrl.pathname === '/shanghai-storage.php';
+    || requestUrl.pathname === '/shanghai-storage.php'
+    || requestUrl.pathname === '/cloud-storage.php';
 }
 
 function isVersionSensitiveAsset(request) {

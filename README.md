@@ -34,13 +34,15 @@ Die Anwendung besteht aus klassischem **PHP + MySQL + Vanilla JS/CSS** ohne Buil
 ├── header.php / footer.php    # Gemeinsames Layout
 ├── portal.js / portal.css     # Globale UI / SW-Registrierung
 ├── sw.js                      # Service Worker / Asset-Cache
-├── shanghai-storage.php       # Cloud-Speicher API für Shanghai
+├── cloud-storage.php          # Cloud-Speicher API (generisch für alle Spiele)
+├── shanghai-storage.php       # Wrapper für Backward-Kompatibilität zu cloud-storage.php
 ├── scolia-config.php          # Laden von Scolia-Zugangsdaten
 ├── save-scolia-config.php     # Speichern von Scolia-Zugangsdaten
 ├── profil/                    # Profil- und Freunde-Bereich
 ├── shanghai21/                # Shanghai 21
 ├── shanghai42/                # Shanghai 42
 ├── dartball/                  # Dartball
+├── darts501/                  # 501 Darts
 ├── turnierplaner/             # Turnierplaner
 └── migrations/                # SQL-Migrationen
 ```
@@ -81,6 +83,7 @@ Die SQL-Dateien im Ordner `migrations/` in sinnvoller (chronologischer) Reihenfo
 | `20260404_friendships.sql` | Freundschaftsbeziehungen | 2 |
 | `20260407_shanghai_saved_games.sql` | Cloud-Spielstände für Shanghai 21/42 | 2 |
 | `20260408_shanghai_archive_state.sql` | Archiv-/Schreibschutzstatus von Spielständen | 2 |
+| `20260428_darts501_saved_games.sql` | Neues Spiel Darts 501 | 2 |
 
 ### 4. Konfiguration setzen
 Entweder über echte Umgebungsvariablen **oder** über eine Secret-Datei.
@@ -173,7 +176,7 @@ return [
 
 ## Spiele / Speicherstände
 
-Die Spiel-Module (`shanghai21/`, `shanghai42/`) unterstützen:
+Die Spiel-Module unterstützen:
 
 **Lokales Spiel** im Browser (beim Aktualisieren der Seite oder Schließen des Browsers sind die bisherigen Spieldaten weg)
 
@@ -185,7 +188,11 @@ Die Spiel-Module (`shanghai21/`, `shanghai42/`) unterstützen:
 
 Die zugehörige Server-API liegt in:
 
-- `shanghai-storage.php`
+- `cloud-storage.php` — Generische Multiplayer-Speicher-API für Spielstände
+  - Unterstützt Shanghai 21, Shanghai 42 und klassisches 501 Darts
+  - Verwaltet Sessions, Participants, Events
+  - Handling von Freundes-Einladungen
+- `shanghai-storage.php` — Wrapper für Backward-Kompatibilität (leitet zu cloud-storage.php)
 
 Scolia-Zugangsdaten werden pro Benutzer geladen/gespeichert über:
 
