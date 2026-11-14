@@ -7,7 +7,7 @@ $extraHead = '<link rel="stylesheet" href="' . htmlspecialchars(portal_asset_url
 include __DIR__ . '/../header.php';
 ?>
 <div id="appContainer">
-  <header><h2 class="game-title">Angeln</h2></header>
+  <header><img src="img/headline.png" alt="Angeln"></header>
   <?php if ($isAuthenticated): ?>
     <div id="status">Board-Status: –</div>
     <div id="saveControls" class="save-controls">
