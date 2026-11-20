@@ -25,26 +25,47 @@ const STORAGE_API = '/cloud-storage.php';
 const ROUNDS = 7;
 const DARTS_PER_ROUND = 3;
 const SCROLL_POSITION_STORAGE_KEY = 'angeln:scroll-position';
+let isRestoringScrollPosition = false;
 
 function persistScrollPosition() {
+  if (isRestoringScrollPosition) return;
   sessionStorage.setItem(SCROLL_POSITION_STORAGE_KEY, String(window.scrollY || window.pageYOffset || 0));
 }
 
-function restoreScrollPosition() {
-  const targetY = Number.parseInt(sessionStorage.getItem(SCROLL_POSITION_STORAGE_KEY) || '0', 10);
-  if (!Number.isFinite(targetY) || targetY <= 0) return;
+function getPersistedScrollPosition() {
+  const parsedValue = Number.parseInt(String(sessionStorage.getItem(SCROLL_POSITION_STORAGE_KEY) ?? ''), 10);
+  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
+}
 
+function restoreScrollPosition() {
+  if (isRestoringScrollPosition) return;
+
+  const targetY = getPersistedScrollPosition();
+  if (targetY <= 0) return;
+
+  isRestoringScrollPosition = true;
   let attempts = 0;
+  const maxAttempts = 12;
+
   const applyScroll = () => {
     window.scrollTo({ top: targetY, behavior: 'auto' });
     attempts += 1;
+
     const currentY = window.scrollY || window.pageYOffset || 0;
     const reachedTarget = Math.abs(currentY - targetY) <= 2;
     const documentHeight = Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
     const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
     const noMoreScrollableSpace = targetY >= Math.max(documentHeight - viewportHeight, 0);
-    if (!reachedTarget && !noMoreScrollableSpace && attempts < 12) window.requestAnimationFrame(applyScroll);
+
+    if (reachedTarget || noMoreScrollableSpace || attempts >= maxAttempts) {
+      isRestoringScrollPosition = false;
+      sessionStorage.setItem(SCROLL_POSITION_STORAGE_KEY, String(currentY));
+      return;
+    }
+
+    window.requestAnimationFrame(applyScroll);
   };
+
   window.requestAnimationFrame(applyScroll);
 }
 
@@ -53,6 +74,7 @@ function initScrollPositionPersistence() {
   window.__angelnScrollPersistenceInitialized = true;
   window.addEventListener('scroll', persistScrollPosition, { passive: true });
   window.addEventListener('beforeunload', persistScrollPosition);
+  window.addEventListener('pageshow', restoreScrollPosition);
 }
 
 function normalizeHit(raw, type = null) {
@@ -697,7 +719,7 @@ function handleMessage(msg) {
   const miss = payload.bounceout || !payload.sector || String(payload.sector).toLowerCase() === 'none';
   getActivePlayer()?.processThrow(miss ? 'Miss' : payload.sector, miss ? 'miss' : null, { eventType: 'throw_detected', source: 'scolia_ws', detectedAt: payload.detectionTime || new Date().toISOString(), payload });
 }
-function initApp() {
+async function initApp() {
   if (window.__angelnInitialized) return; window.__angelnInitialized = true;
   initScrollPositionPersistence();
   ensureControlsFooter(); bindControls(); bindStorageControls();
@@ -706,7 +728,12 @@ function initApp() {
     try { const ws = new WebSocket(`wss://game.scoliadarts.com/api/v1/social?serialNumber=${encodeURIComponent(config.serialNumber)}&accessToken=${encodeURIComponent(config.accessToken)}`); ws.onopen = () => document.getElementById('status').textContent = 'Board-Status: Ready'; ws.onclose = () => document.getElementById('status').textContent = 'Board-Status: Offline'; ws.onerror = () => document.getElementById('status').textContent = 'Board-Status: Fehler'; ws.onmessage = ({ data }) => { try { handleMessage(JSON.parse(data)); } catch (error) { console.error('Ungültige Scolia-Nachricht', error); } }; } catch { document.getElementById('status').textContent = 'Board-Status: Fehler'; }
   } else if (document.getElementById('status')) document.getElementById('status').textContent = 'Board-Status: Nicht verbunden';
   addPlayer(); updateOverviewTable(); updateAutoPlayerSwitchBtn(); updateUndoButtonVisibility(); updateStorageToggleButton(); setStorageInfo();
-  if (APP.isAuthenticated) { void refreshSavedGamesList(1).catch(error => setStorageInfo(error.message, true)); const saveId = getPersistedActiveSaveId(); if (saveId) void loadSavedGame(saveId, { skipDiscardConfirm: true }); }
-  restoreScrollPosition();
+  if (APP.isAuthenticated) {
+    void refreshSavedGamesList(1).catch(error => setStorageInfo(error.message, true));
+    const saveId = getPersistedActiveSaveId();
+    if (saveId) await loadSavedGame(saveId, { skipDiscardConfirm: true });
+  }
+
+  window.requestAnimationFrame(() => window.requestAnimationFrame(restoreScrollPosition));
 }
 window.initApp = initApp;
