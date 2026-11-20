@@ -417,7 +417,7 @@ function ensureOverviewTable() {
   const title = document.createElement('h3'); title.id = 'playerOverviewTitle'; title.textContent = 'Spielerliste';
   const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'overviewToggleBtn'; toggle.textContent = collapsed ? '▲' : '▼'; toggle.title = 'Spielerliste ein-/ausklappen';
   toggle.onclick = () => { wrapper.classList.toggle('collapsed'); const isCollapsed = wrapper.classList.contains('collapsed'); localStorage.setItem('angelnOverviewCollapsed', String(isCollapsed)); toggle.textContent = isCollapsed ? '▲' : '▼'; updateFooterLayout(); };
-  const table = document.createElement('table'); table.id = 'playerOverviewTable'; table.innerHTML = '<thead><tr><th>Name</th><th>Punkte</th></tr></thead>';
+  const table = document.createElement('table'); table.id = 'playerOverviewTable'; table.innerHTML = '<thead><tr><th>Name</th><th class="lost-overview-header">Entwischt</th><th>Punkte</th></tr></thead>';
   overviewTableBody = document.createElement('tbody'); table.appendChild(overviewTableBody); wrapper.append(toggle, title, table);
   document.getElementById('tablesContainer').insertAdjacentElement('afterend', wrapper);
   window.addEventListener('resize', updateFooterLayout);
@@ -425,8 +425,26 @@ function ensureOverviewTable() {
 function updateOverviewTable() {
   ensureOverviewTable(); overviewTableBody.replaceChildren();
   const totals = new Map();
-  getPlayerIds().forEach(id => { const p = players[id]; totals.set(p.name.trim() || 'Spieler', (totals.get(p.name.trim() || 'Spieler') || 0) + p.totalScore); });
-  totals.forEach((points, name) => { const row = document.createElement('tr'); const nameCell = document.createElement('td'); const totalCell = document.createElement('td'); nameCell.textContent = name; totalCell.textContent = String(points); row.append(nameCell, totalCell); overviewTableBody.appendChild(row); });
+  getPlayerIds().forEach(id => {
+    const p = players[id];
+    const name = p.name.trim() || 'Spieler';
+    const current = totals.get(name) || { points: 0, lost: 0 };
+    current.points += p.totalScore;
+    current.lost += p.lostScore;
+    totals.set(name, current);
+  });
+  totals.forEach((values, name) => {
+    const row = document.createElement('tr');
+    const nameCell = document.createElement('td');
+    const lostCell = document.createElement('td');
+    const totalCell = document.createElement('td');
+    nameCell.textContent = name;
+    lostCell.textContent = String(values.lost);
+    lostCell.className = 'lost-overview-cell';
+    totalCell.textContent = String(values.points);
+    row.append(nameCell, lostCell, totalCell);
+    overviewTableBody.appendChild(row);
+  });
   updateFooterLayout();
 }
 function updateFooterLayout() {
