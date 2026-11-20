@@ -55,6 +55,7 @@ class AngelnPlayer {
     this.currentIndex = 0;
     this.darts = Array.from({ length: ROUNDS * DARTS_PER_ROUND }, () => null);
     this.totalScore = 0;
+    this.lostScore = 0;
     this.container = document.createElement('div');
     this.container.className = 'player-card';
     this.container.appendChild(this.makeActivationControls());
@@ -122,10 +123,11 @@ class AngelnPlayer {
     table.appendChild(this.tbody);
     const tfoot = document.createElement('tfoot');
     const total = document.createElement('tr');
-    total.innerHTML = '<td colspan="5">Gesamt</td><td class="total-cell">0</td>';
+    total.innerHTML = '<td colspan="3" class="lost-label-cell">Entwischt:</td><td class="lost-total-cell lost-points-cell">0</td><td class="grand-total-label-cell">Gesamt:</td><td class="total-cell">0</td>';
     tfoot.appendChild(total);
     table.appendChild(tfoot);
-    this.totalCell = total.lastElementChild;
+    this.lostTotalCell = total.querySelector('.lost-total-cell');
+    this.totalCell = total.querySelector('.total-cell');
     this.totalRow = total;
     this.table = table;
     this.render();
@@ -191,11 +193,14 @@ class AngelnPlayer {
 
   recompute() {
     let total = 0;
+    let lostTotal = 0;
     for (let round = 0; round < ROUNDS; round += 1) {
       const result = this.roundResult(round);
       if (result.caught === true) total += result.length;
+      if (result.caught === false) lostTotal += result.base;
     }
     this.totalScore = total;
+    this.lostScore = lostTotal;
     const firstEmpty = this.darts.findIndex(dart => dart === null);
     this.currentIndex = firstEmpty === -1 ? this.darts.length : firstEmpty;
     this.render();
@@ -231,6 +236,7 @@ class AngelnPlayer {
       row.classList.toggle('hit', result.caught === true);
       row.classList.toggle('failed-catch', result.caught === false);
     }
+    this.lostTotalCell.textContent = String(this.lostScore);
     this.totalCell.textContent = String(this.totalScore);
     this.highlight();
   }
