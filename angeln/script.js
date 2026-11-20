@@ -24,6 +24,36 @@ const APP = window.SHANGHAI_APP || {};
 const STORAGE_API = '/cloud-storage.php';
 const ROUNDS = 7;
 const DARTS_PER_ROUND = 3;
+const SCROLL_POSITION_STORAGE_KEY = 'angeln:scroll-position';
+
+function persistScrollPosition() {
+  sessionStorage.setItem(SCROLL_POSITION_STORAGE_KEY, String(window.scrollY || window.pageYOffset || 0));
+}
+
+function restoreScrollPosition() {
+  const targetY = Number.parseInt(sessionStorage.getItem(SCROLL_POSITION_STORAGE_KEY) || '0', 10);
+  if (!Number.isFinite(targetY) || targetY <= 0) return;
+
+  let attempts = 0;
+  const applyScroll = () => {
+    window.scrollTo({ top: targetY, behavior: 'auto' });
+    attempts += 1;
+    const currentY = window.scrollY || window.pageYOffset || 0;
+    const reachedTarget = Math.abs(currentY - targetY) <= 2;
+    const documentHeight = Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
+    const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const noMoreScrollableSpace = targetY >= Math.max(documentHeight - viewportHeight, 0);
+    if (!reachedTarget && !noMoreScrollableSpace && attempts < 12) window.requestAnimationFrame(applyScroll);
+  };
+  window.requestAnimationFrame(applyScroll);
+}
+
+function initScrollPositionPersistence() {
+  if (window.__angelnScrollPersistenceInitialized) return;
+  window.__angelnScrollPersistenceInitialized = true;
+  window.addEventListener('scroll', persistScrollPosition, { passive: true });
+  window.addEventListener('beforeunload', persistScrollPosition);
+}
 
 function normalizeHit(raw, type = null) {
   const value = String(raw ?? '').trim().toUpperCase().replace(/\s+/g, '');
@@ -669,6 +699,7 @@ function handleMessage(msg) {
 }
 function initApp() {
   if (window.__angelnInitialized) return; window.__angelnInitialized = true;
+  initScrollPositionPersistence();
   ensureControlsFooter(); bindControls(); bindStorageControls();
   const config = window.SCOLIA_CONFIG || {};
   if (config.serialNumber && config.accessToken && document.getElementById('status')) {
@@ -676,5 +707,6 @@ function initApp() {
   } else if (document.getElementById('status')) document.getElementById('status').textContent = 'Board-Status: Nicht verbunden';
   addPlayer(); updateOverviewTable(); updateAutoPlayerSwitchBtn(); updateUndoButtonVisibility(); updateStorageToggleButton(); setStorageInfo();
   if (APP.isAuthenticated) { void refreshSavedGamesList(1).catch(error => setStorageInfo(error.message, true)); const saveId = getPersistedActiveSaveId(); if (saveId) void loadSavedGame(saveId, { skipDiscardConfirm: true }); }
+  restoreScrollPosition();
 }
 window.initApp = initApp;
