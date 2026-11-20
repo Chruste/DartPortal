@@ -1,1 +1,89 @@
-/* Dartball – Platzhalter */
+#dartballApp {
+  --orange: #f28c28;
+  --blue: #2585e8;
+  --panel: rgba(15, 18, 24, .94);
+  color: #f6f7fb;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0 16px 28px;
+  font-family: Arial, sans-serif;
+}
+#dartballApp * { box-sizing: border-box; }
+.dartball-heading { margin: 10px auto 16px; }
+.dartball-heading img { display: block; width: min(60%, 460px); max-height: 100px; object-fit: contain; margin: auto; }
+.dartball-storage { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px auto 14px; }
+.dartball-storage button, .dartball-saved button, .dartball-play button { color: #fff; background: #303741; border: 1px solid #59616e; border-radius: 6px; padding: 9px 13px; font: inherit; cursor: pointer; }
+.dartball-storage button:hover, .dartball-play button:hover { background: #46505d; }
+#saveStateInfo { flex-basis: 100%; color: #ccc; font-size: .9rem; }
+#saveStateInfo.error { color: #ff8585; }
+.dartball-saved { max-width: 760px; margin: 0 auto 16px; padding: 12px; background: var(--panel); text-align: left; }
+.dartball-saved[hidden] { display: none; }
+.dartball-saved > div { display: flex; gap: 8px; }
+.dartball-saved input, .throw-controls input { min-width: 0; color: white; background: #14171c; border: 1px solid #555e69; border-radius: 5px; padding: 10px; font: inherit; }
+.dartball-saved input { flex: 1; }
+#savedGamesList { list-style: none; padding: 0; margin: 10px 0 0; }
+#savedGamesList li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #3e444d; }
+#savedGamesList .save-actions { display: flex; gap: 5px; }
+.scoreboard { height: clamp(190px, 30vh, 310px); min-height: 190px; display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: stretch; background: linear-gradient(110deg, #12151b, #1d222b, #12151b); border: 1px solid #464d58; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 35px #0007; }
+.team-score, .match-clock { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; padding: 14px; }
+.team-score { color: #fff; }
+.team-score span { font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 800; letter-spacing: .08em; }
+.team-score strong { font-size: clamp(4rem, 11vw, 8rem); line-height: .96; text-shadow: 0 4px 15px #0008; }
+.team-score small { color: #e2e5e9; font-size: clamp(.72rem, 1vw, 1rem); }
+.team-orange { background: linear-gradient(140deg, #bc5b12aa, #ed861d66); }
+.team-blue { background: linear-gradient(220deg, #075ab7aa, #2788ea66); }
+.match-clock { border-inline: 1px solid #ffffff20; text-align: center; }
+#halfLabel { font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 700; }
+#clock { font-variant-numeric: tabular-nums; font-size: clamp(3.2rem, 8vw, 6.5rem); font-weight: 900; line-height: 1.05; }
+#matchStatus { color: #d3d8df; font-size: clamp(.75rem, 1.2vw, 1rem); }
+.dartball-play { display: grid; grid-template-columns: minmax(320px, .82fr) minmax(380px, 1.18fr); gap: 16px; margin-top: 16px; min-height: 390px; }
+.target-panel, .ticker-panel { min-width: 0; background: var(--panel); border: 1px solid #414954; border-radius: 12px; box-shadow: 0 8px 25px #0005; }
+.target-panel { display: flex; flex-direction: column; align-items: center; padding: clamp(16px, 2vw, 28px); text-align: center; }
+.round-info { display: flex; justify-content: space-between; width: 100%; gap: 8px; color: #d4dae2; font-size: .9rem; }
+#activeTeamLabel { font-weight: 800; }
+.target-caption { margin-top: 25px; color: #aeb8c5; font-size: .85rem; letter-spacing: .14em; }
+.target { min-height: 1.1em; margin: 4px 0; font-size: clamp(3.3rem, 7vw, 6.4rem); line-height: 1.1; font-weight: 900; overflow-wrap: anywhere; }
+.target-hint { color: #d5d9de; min-height: 1.5em; }
+.action-status { min-height: 2.8em; margin-top: 12px; color: #e5e9ee; font-size: .92rem; }
+.throw-controls { width: 100%; margin-top: 10px; text-align: left; }
+.throw-controls label { display: block; margin-bottom: 5px; color: #c6cdd6; font-size: .85rem; }
+.throw-controls > div:first-of-type { display: flex; gap: 7px; }
+.throw-controls input { flex: 1; width: 100%; }
+.throw-controls .quick-hits { display: flex; gap: 7px; margin-top: 8px; }
+.quick-hits button { flex: 1; padding-inline: 6px !important; }
+.undo-button { width: 100%; margin-top: 8px; }
+.match-controls { width: 100%; display: flex; gap: 8px; margin-top: auto; padding-top: 14px; }
+.match-controls button { flex: 1; }
+#startNextHalfBtn { background: #185f35; border-color: #51b579; }
+.ticker-panel { display: flex; flex-direction: column; max-height: min(66vh, 680px); overflow: hidden; }
+.possession-banner { flex: 0 0 auto; padding: 22px 18px; font-size: clamp(1.3rem, 2.4vw, 2rem); font-weight: 900; text-align: center; border-bottom: 1px solid #ffffff25; background: #333a45; }
+.possession-banner.orange { background: linear-gradient(100deg, #a54b0d, #e77a16); }
+.possession-banner.blue { background: linear-gradient(100deg, #084889, #1879d6); }
+.event-ticker { overflow-y: auto; list-style: none; padding: 0 18px; margin: 0; text-align: left; }
+.event-ticker li { padding: 13px 4px; border-bottom: 1px solid #ffffff1a; color: #e2e5e9; line-height: 1.4; }
+.event-ticker li strong { color: white; }
+.event-ticker li .event-time { float: right; color: #9da7b4; font-size: .8rem; }
+.event-ticker li.goal-orange { border-left: 4px solid var(--orange); padding-left: 10px; }
+.event-ticker li.goal-blue { border-left: 4px solid var(--blue); padding-left: 10px; }
+.event-ticker .ticker-empty { color: #9da7b4; text-align: center; }
+.rules-note { margin: 16px 2px 0; padding: 12px 14px; border-left: 3px solid #778493; background: #11151bbd; color: #c8cdd5; line-height: 1.45; font-size: .88rem; }
+button:disabled { opacity: .48; cursor: not-allowed; }
+@media (max-width: 780px) {
+  #dartballApp { padding-inline: 8px; }
+  .dartball-heading img { width: min(78%, 400px); }
+  .scoreboard { height: 190px; grid-template-columns: 1fr 1.05fr 1fr; }
+  .team-score, .match-clock { padding: 8px 4px; }
+  .team-score strong { font-size: clamp(3.2rem, 13vw, 5rem); }
+  .team-score small { max-width: 100px; line-height: 1.2; }
+  .dartball-play { grid-template-columns: 1fr; min-height: 0; }
+  .target-panel { min-height: 390px; }
+  .ticker-panel { min-height: 300px; max-height: 55vh; }
+}
+@media (max-width: 420px) {
+  .scoreboard { height: 170px; }
+  .team-score span { font-size: .78rem; }
+  .team-score strong { font-size: 3rem; }
+  #clock { font-size: 2.8rem; }
+  #halfLabel { font-size: .92rem; }
+  .throw-controls > div:first-of-type { flex-wrap: wrap; }
+}
