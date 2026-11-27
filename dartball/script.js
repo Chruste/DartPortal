@@ -77,6 +77,11 @@
     if (state.possession !== state.activeTeam) return state.ballField === 'bull' ? 'Bull' : fieldName(state.ballField);
     return goalName(goalFor(state.activeTeam));
   }
+  function targetHitCodes() {
+    if (state.possession === state.activeTeam) return [`D${goalFor(state.activeTeam)}`];
+    if (state.ballField === 'bull') return ['25', 'Bull'];
+    return [`S${state.ballField}`, `D${state.ballField}`, `T${state.ballField}`];
+  }
   function targetHint() {
     if (state.possession !== state.activeTeam) return state.ballField === 'bull' ? 'Ball aufnehmen: Single Bull oder Bull' : `Ball übernehmen: Single, Double oder Triple ${state.ballField}`;
     return `Tor für ${teamName(state.activeTeam)} · ${goalName(goalFor(state.activeTeam))}`;
@@ -611,6 +616,7 @@
   function addBoardRing(svg, ring, ringIndex) {
     const innerRadius = ring.radii[0];
     const outerRadius = ring.radii[1];
+    const targetCodes = new Set(targetHitCodes());
     DARTBOARD_ORDER.forEach((field, index) => {
       const centerAngle = sectorCenterAngle(index);
       const startAngle = centerAngle - 9;
@@ -618,7 +624,7 @@
       const hitTeam = state.activeTeam === TEAM.ORANGE ? 'team-orange-target' : 'team-blue-target';
       const path = svgElement('path', {
         d: sectorPath(innerRadius, outerRadius, startAngle, endAngle),
-        class: `board-wedge ${ring.classes[index % 2]}${ring.multiplier + field === targetLabel() ? ` target-highlight ${hitTeam}` : ''}`,
+        class: `board-wedge ${ring.classes[index % 2]}${targetCodes.has(ring.multiplier + field) ? ` target-highlight ${hitTeam}` : ''}`,
         tabindex: '0', role: 'button',
         'aria-label': `${ring.label} ${field}`,
         'data-hit': ring.multiplier + field,
@@ -651,8 +657,8 @@
     svg.appendChild(surface);
 
     const activeTeamClass = state.activeTeam === TEAM.ORANGE ? 'team-orange-target' : 'team-blue-target';
-    const outerBullClass = targetLabel() === 'Bull' ? ` target-highlight ${activeTeamClass}` : '';
-    const bullClass = targetLabel() === 'D25' ? ` target-highlight ${activeTeamClass}` : '';
+    const outerBullClass = targetCodes.has('25') ? ` target-highlight ${activeTeamClass}` : '';
+    const bullClass = targetCodes.has('Bull') ? ` target-highlight ${activeTeamClass}` : '';
     const outerBull = svgElement('circle', { cx: 250, cy: 250, r: 42, class: `board-outer-bull${outerBullClass}`, tabindex: '0', role: 'button', 'aria-label': 'Single Bull 25', 'data-hit': '25' });
     outerBull.appendChild(svgElement('title')).textContent = 'Single Bull · 25';
     svg.appendChild(outerBull);
