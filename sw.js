@@ -37,6 +37,7 @@ const assets = [
   '/angeln/img/background.png',
   '/dartball/index.php',
   '/dartball/styles.css',
+  '/dartball/script.js',
   '/dartball/img/headline.png',
   '/dartball/img/background.png',
   '/dartball/img/icon-1024.png',

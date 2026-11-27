@@ -42,6 +42,13 @@ function portal_cloud_storage_config(string $gameType): array
             'defaultSaveName' => 'Angeln',
             'participantFields' => ['currentTargetIndex', 'currentTotalScore'],
         ],
+        'dartball' => [
+            'sessions' => 'dartball_sessions',
+            'participants' => 'dartball_session_participants',
+            'events' => 'dartball_events',
+            'defaultSaveName' => 'Dartball',
+            'participantFields' => ['currentTargetIndex', 'currentTotalScore'],
+        ],
         'darts501' => [
             'sessions' => 'darts501_sessions',
             'participants' => 'darts501_session_participants',

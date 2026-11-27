@@ -16,7 +16,7 @@ Die Anwendung besteht aus klassischem **PHP + MySQL + Vanilla JS/CSS** ohne Buil
 - **Lokale und Cloud-Speicherstände** für die Shanghai-Spiele
 - **Archivieren / Schreibschutz** für gespeicherte Spielstände
 - **Profil & Freunde** inklusive Freundschaftsverwaltung
-- **Dartball** als weiteres Spielmodul (aktuell noch Platzhalter)
+- **Dartball** mit Halbzeiten, Ballbesitz, Toren und Cloud-Spielständen
 - **Turnierplaner** als separates Tool (aktuell noch Platzhalter)
 - **PWA-/Service-Worker-Cache** für schnellere Ladezeiten
 
@@ -84,6 +84,8 @@ Die SQL-Dateien im Ordner `migrations/` in sinnvoller (chronologischer) Reihenfo
 | `20260407_shanghai_saved_games.sql` | Cloud-Spielstände für Shanghai 21/42 | 2 |
 | `20260408_shanghai_archive_state.sql` | Archiv-/Schreibschutzstatus von Spielständen | 2 |
 | `20260428_darts501_saved_games.sql` | Neues Spiel Darts 501 | 2 |
+| `20261113_angeln_saved_games.sql` | Cloud-Spielstände für Angeln | 2 |
+| `20261120_dartball_saved_games.sql` | Cloud-Spielstände für Dartball | 2 |
 
 ### 4. Konfiguration setzen
 Entweder über echte Umgebungsvariablen **oder** über eine Secret-Datei.
@@ -189,7 +191,7 @@ Die Spiel-Module unterstützen:
 Die zugehörige Server-API liegt in:
 
 - `cloud-storage.php` — Generische Multiplayer-Speicher-API für Spielstände
-  - Unterstützt Shanghai 21, Shanghai 42 und klassisches 501 Darts
+  - Unterstützt Shanghai 21, Shanghai 42, Angeln, Dartball und klassisches 501 Darts
   - Verwaltet Sessions, Participants, Events
   - Handling von Freundes-Einladungen
 - `shanghai-storage.php` — Wrapper für Backward-Kompatibilität (leitet zu cloud-storage.php)
