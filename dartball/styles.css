@@ -31,8 +31,9 @@
 .team-score span { font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 800; letter-spacing: .08em; }
 .team-score strong { font-size: clamp(4rem, 11vw, 8rem); line-height: .96; text-shadow: 0 4px 15px #0008; }
 .team-score small { color: #e2e5e9; font-size: clamp(.72rem, 1vw, 1rem); }
-.team-orange { background: linear-gradient(140deg, #bc5b12aa, #ed861d66); }
-.team-blue { background: linear-gradient(220deg, #075ab7aa, #2788ea66); }
+.team-orange, .team-blue { background: transparent; transition: background .2s ease, box-shadow .2s ease; }
+.team-score.team-active.team-orange { background: linear-gradient(140deg, #bc5b12dd, #ed861d99); box-shadow: inset 0 0 30px #ff9a2c55; }
+.team-score.team-active.team-blue { background: linear-gradient(220deg, #075ab7dd, #2788eaaa); box-shadow: inset 0 0 30px #2788ea55; }
 .match-clock { border-inline: 1px solid #ffffff20; text-align: center; }
 #halfLabel { font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 700; }
 #clock { font-variant-numeric: tabular-nums; font-size: clamp(3.2rem, 8vw, 6.5rem); font-weight: 900; line-height: 1.05; }

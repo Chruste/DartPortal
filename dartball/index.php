@@ -22,9 +22,9 @@ include __DIR__ . '/../header.php';
   </section>
   <?php endif; ?>
   <section class="scoreboard" aria-label="Spielstand">
-    <div class="team-score team-orange"><span>TEAM ORANGE</span><strong id="orangeScore">0</strong><small>Rechtes Tor · Doppel 6</small></div>
+    <div id="orangeScorePanel" class="team-score team-orange"><span>TEAM ORANGE</span><strong id="orangeScore">0</strong><small id="orangeGoalLabel">Rechtes Tor · Doppel 6</small></div>
     <div class="match-clock"><span id="halfLabel">Halbzeit 1</span><strong id="clock">04:30</strong><span id="matchStatus">Anstoß: Mittelkreis</span></div>
-    <div class="team-score team-blue"><span>TEAM BLAU</span><strong id="blueScore">0</strong><small>Linkes Tor · Doppel 11</small></div>
+    <div id="blueScorePanel" class="team-score team-blue"><span>TEAM BLAU</span><strong id="blueScore">0</strong><small id="blueGoalLabel">Linkes Tor · Doppel 11</small></div>
   </section>
   <section class="dartball-play">
     <aside class="target-panel">

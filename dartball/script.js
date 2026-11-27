@@ -130,6 +130,12 @@
   function render() {
     $('orangeScore').textContent = String(state.scores.orange);
     $('blueScore').textContent = String(state.scores.blue);
+    const orangeGoal = goalFor(TEAM.ORANGE);
+    const blueGoal = goalFor(TEAM.BLUE);
+    $('orangeGoalLabel').textContent = `${orangeGoal === 6 ? 'Rechtes' : 'Linkes'} Tor · ${goalName(orangeGoal)}`;
+    $('blueGoalLabel').textContent = `${blueGoal === 6 ? 'Rechtes' : 'Linkes'} Tor · ${goalName(blueGoal)}`;
+    $('orangeScorePanel').classList.toggle('team-active', state.activeTeam === TEAM.ORANGE);
+    $('blueScorePanel').classList.toggle('team-active', state.activeTeam === TEAM.BLUE);
     $('halfLabel').textContent = state.half === 1 ? 'Halbzeit 1' : 'Halbzeit 2';
     $('activeTeamLabel').textContent = `${teamName(state.activeTeam)} am Zug`;
     $('activeTeamLabel').style.color = state.activeTeam === TEAM.ORANGE ? '#ffad5c' : '#70b7ff';
