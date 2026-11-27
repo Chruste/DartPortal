@@ -96,7 +96,8 @@
 
   function addHistory(text, type = 'event', team = null) {
     state.eventNo += 1;
-    state.history.unshift({ no: state.eventNo, text, type, team, at: new Date().toISOString() });
+    const entryTeam = team || state.activeTeam;
+    state.history.unshift({ no: state.eventNo, text, type, team: entryTeam, at: new Date().toISOString() });
     state.history = state.history.slice(0, 200);
   }
 
@@ -168,7 +169,10 @@
     } else {
       state.history.forEach(entry => {
         const row = document.createElement('li');
-        if (entry.type === 'goal') row.classList.add(entry.team === TEAM.ORANGE ? 'goal-orange' : 'goal-blue');
+        const entryTeam = entry.team || (typeof entry.playerIndex === 'number' ? (entry.playerIndex === 0 ? TEAM.ORANGE : TEAM.BLUE) : null);
+        if (entryTeam === TEAM.ORANGE) row.classList.add('team-orange-event');
+        if (entryTeam === TEAM.BLUE) row.classList.add('team-blue-event');
+        if (entry.type === 'goal') row.classList.add(entryTeam === TEAM.ORANGE ? 'goal-orange' : 'goal-blue');
         const text = document.createElement('span'); text.textContent = entry.text; row.appendChild(text);
         const time = document.createElement('span'); time.className = 'event-time';
         const date = new Date(entry.at); time.textContent = Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); row.appendChild(time);

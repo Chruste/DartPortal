@@ -47,7 +47,7 @@
 .custom-time-adjust input { width: 58px; padding: 3px; border: 1px solid #59616e; border-radius: 4px; color: white; background: #14171c; font: inherit; }
 .custom-time-adjust button { padding: 3px 6px; font-size: .68rem; }
 #matchStatus { color: #d3d8df; font-size: clamp(.75rem, 1.2vw, 1rem); }
-.dartball-play { display: grid; grid-template-columns: minmax(320px, .82fr) minmax(380px, 1.18fr); gap: 16px; margin-top: 16px; min-height: 390px; }
+.dartball-play { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; min-height: 390px; }
 .target-panel, .ticker-panel { min-width: 0; background: var(--panel); border: 1px solid #414954; border-radius: 12px; box-shadow: 0 8px 25px #0005; }
 .target-panel { display: flex; flex-direction: column; align-items: center; padding: clamp(16px, 2vw, 28px); text-align: center; }
 .round-info { display: flex; justify-content: space-between; width: 100%; gap: 8px; color: #d4dae2; font-size: .9rem; }
@@ -66,16 +66,18 @@
 .match-controls { width: 100%; display: flex; gap: 8px; margin-top: auto; padding-top: 14px; }
 .match-controls button { flex: 1; }
 #startNextHalfBtn { background: #185f35; border-color: #51b579; }
-.ticker-panel { display: flex; flex-direction: column; max-height: min(66vh, 680px); overflow: hidden; }
-.possession-banner { flex: 0 0 auto; padding: 22px 18px; font-size: clamp(1.3rem, 2.4vw, 2rem); font-weight: 900; text-align: center; border-bottom: 1px solid #ffffff25; background: #333a45; }
+.ticker-panel { display: flex; flex-direction: column; min-height: 390px; max-height: min(66vh, 680px); overflow: hidden; }
+.possession-banner { flex: 0 0 auto; padding: 18px 14px; font-size: clamp(1.1rem, 1.8vw, 1.6rem); font-weight: 900; text-align: center; border-bottom: 1px solid #ffffff25; background: #333a45; }
 .possession-banner.orange { background: linear-gradient(100deg, #a54b0d, #e77a16); }
 .possession-banner.blue { background: linear-gradient(100deg, #084889, #1879d6); }
-.event-ticker { overflow-y: auto; list-style: none; padding: 0 18px; margin: 0; text-align: left; }
-.event-ticker li { padding: 13px 4px; border-bottom: 1px solid #ffffff1a; color: #e2e5e9; line-height: 1.4; }
+.event-ticker { overflow-y: auto; list-style: none; padding: 0 10px; margin: 0; text-align: left; }
+.event-ticker li { padding: 12px 10px; margin: 8px 0; border: 1px solid #ffffff25; border-left: 6px solid #788391; border-radius: 7px; color: #eef1f5; background: #202630; line-height: 1.5; font-size: clamp(.9rem, 1vw, 1.05rem); overflow-wrap: anywhere; }
 .event-ticker li strong { color: white; }
-.event-ticker li .event-time { float: right; color: #9da7b4; font-size: .8rem; }
-.event-ticker li.goal-orange { border-left: 4px solid var(--orange); padding-left: 10px; }
-.event-ticker li.goal-blue { border-left: 4px solid var(--blue); padding-left: 10px; }
+.event-ticker li .event-time { display: block; margin-top: 4px; color: #c1c9d4; font-size: .76rem; }
+.event-ticker li.team-orange-event { border-left-color: var(--orange); background: linear-gradient(90deg, #7d3b1366, #202630 70%); }
+.event-ticker li.team-blue-event { border-left-color: var(--blue); background: linear-gradient(90deg, #124a8066, #202630 70%); }
+.event-ticker li.goal-orange { border-color: #ef9b4e; }
+.event-ticker li.goal-blue { border-color: #55a9ff; }
 .event-ticker .ticker-empty { color: #9da7b4; text-align: center; }
 .rules-note { margin: 16px 2px 0; padding: 12px 14px; border-left: 3px solid #778493; background: #11151bbd; color: #c8cdd5; line-height: 1.45; font-size: .88rem; }
 button:disabled { opacity: .48; cursor: not-allowed; }
@@ -86,9 +88,14 @@ button:disabled { opacity: .48; cursor: not-allowed; }
   .team-score, .match-clock { padding: 8px 4px; }
   .team-score strong { font-size: clamp(3.2rem, 13vw, 5rem); }
   .team-score small { max-width: 100px; line-height: 1.2; }
-  .dartball-play { grid-template-columns: 1fr; min-height: 0; }
-  .target-panel { min-height: 390px; }
-  .ticker-panel { min-height: 300px; max-height: 55vh; }
+  .dartball-play { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; min-height: 360px; }
+  .target-panel { min-height: 360px; padding: 14px; }
+  .ticker-panel { min-height: 360px; max-height: 55vh; }
+}
+@media (max-width: 520px) {
+  .dartball-play { grid-template-columns: 1fr; }
+  .target-panel { min-height: 360px; }
+  .ticker-panel { min-height: 250px; max-height: 45vh; }
 }
 @media (max-width: 420px) {
   .scoreboard { height: 170px; }
