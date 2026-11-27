@@ -575,8 +575,8 @@
     const rings = [
       { radii: [196, 224], multiplier: 'D', label: 'Double', classes: ['board-red', 'board-green'] },
       { radii: [132, 196], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
-      { radii: [108, 132], multiplier: 'T', label: 'Triple', classes: ['board-red', 'board-green'] },
-      { radii: [42, 108], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
+      { radii: [96, 132], multiplier: 'T', label: 'Triple', classes: ['board-red', 'board-green'] },
+      { radii: [42, 96], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
     ];
     rings.forEach((ring, index) => addBoardRing(surface, ring, index));
     svg.appendChild(surface);
