@@ -57,22 +57,20 @@
 .target-hint { color: #d5d9de; min-height: 1.5em; }
 .action-status { min-height: 2.8em; margin-top: 12px; color: #e5e9ee; font-size: .92rem; }
 .throw-controls { width: min(100%, 620px); margin-top: 10px; text-align: center; }
-.number-multiplier { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 8px auto 0; color: #c6cdd6; font-size: .82rem; }
-.number-multiplier select { padding: 5px 8px; border: 1px solid #59616e; border-radius: 5px; color: #fff; background: #222a33; font: inherit; }
-.dartboard-input { position: relative; width: min(100%, 560px); aspect-ratio: 1; margin: 0 auto; padding: 5%; border-radius: 50%; background: radial-gradient(circle, #101419 0 34%, #d5d9dc 34.5% 36%, #171a1f 36.5% 48%, #bf2424 48.5% 50.5%, #111 51% 62%, #1a7b48 62.5% 64.5%, #111 65% 77%, #d5d9dc 77.5% 79%, #171a1f 79.5%); box-shadow: inset 0 0 0 4px #aab0b6, 0 8px 20px #0008; }
-.dartboard-sectors { position: absolute; inset: 3%; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); gap: 2px; }
-.dartboard-sectors[data-multiplier="T"] .dart-hit--single { background: #26734a; border-color: #8ad1a7; }
-.dartboard-sectors[data-multiplier="T"] .dart-hit--double { background: #222a33; border-color: #68717b; }
-.dart-hit { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 0; border: 1px solid #68717b; border-radius: 50%; color: #fff; background: #222a33; font-size: clamp(.64rem, 1.15vw, .95rem); font-weight: 800; cursor: pointer; text-shadow: 0 1px 2px #000; }
-.dart-hit:hover:not(:disabled) { filter: brightness(1.35); transform: scale(1.06); }
-.dart-hit--single { background: #225f42; border-color: #75b992; }
-.dart-hit--double { background: #a22525; border-color: #e48686; }
-.dart-hit--triple { background: #26734a; border-color: #8ad1a7; }
-.dartboard-center { position: absolute; inset: 35%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; align-items: stretch; justify-items: stretch; }
-.dartboard-center .dart-hit { font-size: clamp(.58rem, .95vw, .8rem); }
-.dart-hit--outer-bull { background: #19824e; border-color: #7de0aa; }
-.dart-hit--bull { background: #be2525; border-color: #ffaaaa; }
-.dart-hit--miss { grid-column: 1 / -1; border-radius: 5px; background: #353b45; }
+.dartboard-input { width: min(100%, 560px); aspect-ratio: 1; margin: 0 auto; overflow: hidden; border-radius: 50%; background: #15191e; box-shadow: 0 8px 24px #0009; }
+.dartboard-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.board-back { fill: #101317; stroke: #c8cdd2; stroke-width: 5; }
+.board-wedge { stroke: #080a0c; stroke-width: 1.8; cursor: pointer; transition: filter .12s, opacity .12s; }
+.board-wedge:hover:not(.is-disabled), .board-outer-bull:hover:not(.is-disabled), .board-bull:hover:not(.is-disabled) { filter: brightness(1.45); }
+.board-black { fill: #16191d; }
+.board-cream { fill: #ddd6c9; }
+.board-red { fill: #bd292d; }
+.board-green { fill: #16834f; }
+.board-outer-bull { fill: #16834f; stroke: #0a0c0e; stroke-width: 2; cursor: pointer; }
+.board-bull { fill: #bd292d; stroke: #080a0c; stroke-width: 2; cursor: pointer; }
+.board-number { fill: #f7f5ef; font: 800 17px Arial, sans-serif; pointer-events: none; paint-order: stroke; stroke: #090b0d; stroke-width: 3px; stroke-linejoin: round; }
+.dartboard-svg [data-hit].is-disabled { opacity: .48; cursor: not-allowed; pointer-events: none; }
+.miss-hit { display: block; width: min(100%, 560px); margin: 8px auto 0; padding: 8px; border: 1px solid #69727e; border-radius: 6px; color: white; background: #353b45; font: inherit; font-weight: 700; cursor: pointer; }
 .undo-button { width: 100%; margin-top: 8px; }
 .match-controls { width: 100%; display: flex; gap: 8px; margin-top: auto; padding-top: 14px; }
 .match-controls button { flex: 1; }
@@ -114,7 +112,5 @@ button:disabled { opacity: .48; cursor: not-allowed; }
   .team-score strong { font-size: 3rem; }
   #clock { font-size: 2.8rem; }
   #halfLabel { font-size: .92rem; }
-  .dartboard-input { width: min(100%, 420px); }
-  .dart-hit { font-size: clamp(.55rem, 2.4vw, .85rem); }
-  .dartboard-center .dart-hit { font-size: clamp(.48rem, 1.9vw, .7rem); }
+  .dartboard-input, .miss-hit { width: min(100%, 420px); }
 }

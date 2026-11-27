@@ -19,6 +19,7 @@
   let storageEnabled = false;
   let archived = false;
   const DARTBOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+  const SVG_NS = 'http://www.w3.org/2000/svg';
 
   function initialState() {
     return {
@@ -186,8 +187,12 @@
     document.querySelectorAll('[data-time-adjust]').forEach(button => { button.disabled = archived || !['playing', 'ready'].includes(state.status); });
     $('applyTimeAdjustBtn').disabled = archived || !['playing', 'ready'].includes(state.status);
     const throwsDisabled = archived || state.timeout || state.status === 'half-time' || state.status === 'finished';
-    document.querySelectorAll('.dartboard-input button').forEach(button => { button.disabled = throwsDisabled; });
-    $('numberMultiplier').disabled = throwsDisabled;
+    document.querySelectorAll('.dartboard-svg [data-hit]').forEach(field => {
+      field.classList.toggle('is-disabled', throwsDisabled);
+      field.setAttribute('aria-disabled', String(throwsDisabled));
+      field.setAttribute('tabindex', throwsDisabled ? '-1' : '0');
+    });
+    document.querySelector('.miss-hit').disabled = throwsDisabled;
     $('undoBtn').disabled = archived || undoStack.length === 0;
     $('resetBtn').disabled = archived;
     updateClock();
@@ -509,41 +514,102 @@
     }
   }
 
-  function buildDartboard() {
-    const sectors = $('dartboardSectors');
-    sectors.replaceChildren();
+  function svgElement(tag, attributes = {}) {
+    const element = document.createElementNS(SVG_NS, tag);
+    Object.entries(attributes).forEach(([name, value]) => element.setAttribute(name, String(value)));
+    return element;
+  }
+
+  function polarPoint(radius, angleDegrees) {
+    const angle = angleDegrees * Math.PI / 180;
+    return { x: 250 + radius * Math.sin(angle), y: 250 - radius * Math.cos(angle) };
+  }
+  function sectorCenterAngle(index) { return index * 18; }
+
+  function sectorPath(innerRadius, outerRadius, startAngle, endAngle) {
+    const outerStart = polarPoint(outerRadius, startAngle);
+    const outerEnd = polarPoint(outerRadius, endAngle);
+    const innerEnd = polarPoint(innerRadius, endAngle);
+    const innerStart = polarPoint(innerRadius, startAngle);
+    return [
+      `M ${outerStart.x} ${outerStart.y}`,
+      `A ${outerRadius} ${outerRadius} 0 0 1 ${outerEnd.x} ${outerEnd.y}`,
+      `L ${innerEnd.x} ${innerEnd.y}`,
+      `A ${innerRadius} ${innerRadius} 0 0 0 ${innerStart.x} ${innerStart.y}`,
+      'Z',
+    ].join(' ');
+  }
+
+  function addBoardRing(svg, ring, ringIndex) {
+    const innerRadius = ring.radii[0];
+    const outerRadius = ring.radii[1];
     DARTBOARD_ORDER.forEach((field, index) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `dart-hit dart-hit--${index % 2 === 0 ? 'double' : 'single'}`;
-      button.textContent = String(field);
-      button.setAttribute('aria-label', `Single ${field} (klicken), Triple ${field} (Shift-Klick), Double ${field} (Alt-Klick oder Rechtsklick)`);
-      button.title = `${field}: Klick = Single · Shift-Klick = Triple · Alt-/Rechtsklick = Double`;
-      button.dataset.sector = String(field);
-      sectors.appendChild(button);
+      const centerAngle = sectorCenterAngle(index);
+      const startAngle = centerAngle - 9;
+      const endAngle = centerAngle + 9;
+      const path = svgElement('path', {
+        d: sectorPath(innerRadius, outerRadius, startAngle, endAngle),
+        class: `board-wedge ${ring.classes[index % 2]}`,
+        tabindex: '0', role: 'button',
+        'aria-label': `${ring.label} ${field}`,
+        'data-hit': ring.multiplier + field,
+        'data-field': field,
+        'data-ring': ringIndex,
+      });
+      path.appendChild(svgElement('title')).textContent = `${ring.label} ${field}`;
+      svg.appendChild(path);
+    });
+  }
+
+  function buildDartboard() {
+    const svg = $('dartboardSvg');
+    svg.replaceChildren();
+    const defs = svgElement('defs');
+    const clip = svgElement('clipPath', { id: 'boardCircleClip' });
+    clip.appendChild(svgElement('circle', { cx: 250, cy: 250, r: 238 }));
+    defs.appendChild(clip);
+    svg.appendChild(defs);
+
+    const surface = svgElement('g', { 'clip-path': 'url(#boardCircleClip)' });
+    surface.appendChild(svgElement('circle', { cx: 250, cy: 250, r: 238, class: 'board-back' }));
+    const rings = [
+      { radii: [214, 224], multiplier: 'D', label: 'Double', classes: ['board-red', 'board-green'] },
+      { radii: [142, 214], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
+      { radii: [132, 142], multiplier: 'T', label: 'Triple', classes: ['board-red', 'board-green'] },
+      { radii: [42, 132], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
+    ];
+    rings.forEach((ring, index) => addBoardRing(surface, ring, index));
+    svg.appendChild(surface);
+
+    const outerBull = svgElement('circle', { cx: 250, cy: 250, r: 42, class: 'board-outer-bull', tabindex: '0', role: 'button', 'aria-label': 'Single Bull 25', 'data-hit': '25' });
+    outerBull.appendChild(svgElement('title')).textContent = 'Single Bull · 25';
+    svg.appendChild(outerBull);
+    const bull = svgElement('circle', { cx: 250, cy: 250, r: 18, class: 'board-bull', tabindex: '0', role: 'button', 'aria-label': 'Bull 50', 'data-hit': 'Bull' });
+    bull.appendChild(svgElement('title')).textContent = 'Bull · 50';
+    svg.appendChild(bull);
+
+    DARTBOARD_ORDER.forEach((field, index) => {
+      const point = polarPoint(232, sectorCenterAngle(index));
+      const label = svgElement('text', { x: point.x, y: point.y, class: 'board-number', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'data-number': 'true' });
+      label.textContent = String(field);
+      svg.appendChild(label);
     });
   }
 
   function bind() {
     buildDartboard();
-    $('numberMultiplier').addEventListener('change', event => {
-      $('dartboardSectors').dataset.multiplier = event.target.value;
+    $('dartboardSvg').addEventListener('click', event => {
+      if (event.target.matches('[data-number]')) return;
+      const field = event.target.closest('[data-hit]');
+      if (field && !field.classList.contains('is-disabled')) processThrow(field.dataset.hit);
     });
-    $('dartboardSectors').dataset.multiplier = $('numberMultiplier').value;
-    $('dartboardSectors').addEventListener('click', event => {
-      const button = event.target.closest('button[data-sector]');
-      if (!button || button.disabled) return;
-      const field = button.dataset.sector;
-      const multiplier = event.shiftKey ? 'T' : event.altKey ? 'D' : $('dartboardSectors').dataset.multiplier;
-      processThrow(`${multiplier}${field}`);
+    $('dartboardSvg').addEventListener('keydown', event => {
+      if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-hit]')) {
+        event.preventDefault();
+        processThrow(event.target.dataset.hit);
+      }
     });
-    $('dartboardSectors').addEventListener('contextmenu', event => {
-      const button = event.target.closest('button[data-sector]');
-      if (!button) return;
-      event.preventDefault();
-      processThrow(`D${button.dataset.sector}`);
-    });
-    document.querySelectorAll('.dartboard-center [data-hit]').forEach(button => button.addEventListener('click', () => processThrow(button.dataset.hit)));
+    document.querySelector('.miss-hit').addEventListener('click', () => processThrow('Miss'));
     $('undoBtn').addEventListener('click', undo);
     $('timeoutBtn').addEventListener('click', toggleTimeout);
     document.querySelectorAll('[data-time-adjust]').forEach(button => button.addEventListener('click', () => adjustTime(Number(button.dataset.timeAdjust))));
