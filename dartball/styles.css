@@ -47,7 +47,7 @@
 .custom-time-adjust input { width: 58px; padding: 3px; border: 1px solid #59616e; border-radius: 4px; color: white; background: #14171c; font: inherit; }
 .custom-time-adjust button { padding: 3px 6px; font-size: .68rem; }
 #matchStatus { color: #d3d8df; font-size: clamp(.75rem, 1.2vw, 1rem); }
-.dartball-play { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; min-height: 390px; align-items: stretch; }
+.dartball-play { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; height: min(66vh, 680px); min-height: 390px; align-items: stretch; }
 .target-panel, .ticker-panel { min-width: 0; background: var(--panel); border: 1px solid #414954; border-radius: 12px; box-shadow: 0 8px 25px #0005; }
 .target-panel { display: flex; flex-direction: column; align-items: center; padding: clamp(16px, 2vw, 28px); text-align: center; }
 .round-info { display: flex; justify-content: space-between; width: 100%; gap: 8px; color: #d4dae2; font-size: .9rem; }
@@ -83,7 +83,7 @@
 .match-controls { width: 100%; display: flex; gap: 8px; margin-top: auto; padding-top: 14px; }
 .match-controls button { flex: 1; }
 #startNextHalfBtn { background: #185f35; border-color: #51b579; }
-.ticker-panel { display: flex; flex-direction: column; align-self: stretch; min-height: 100%; max-height: none; overflow: hidden; }
+.ticker-panel { display: flex; flex-direction: column; align-self: stretch; height: 100%; min-height: 0; overflow: hidden; }
 .possession-banner { flex: 0 0 auto; padding: 18px 14px; font-size: clamp(1.1rem, 1.8vw, 1.6rem); font-weight: 900; text-align: center; border-bottom: 1px solid #ffffff25; background: #333a45; }
 .possession-banner.orange { background: linear-gradient(100deg, #a54b0d, #e77a16); }
 .possession-banner.blue { background: linear-gradient(100deg, #084889, #1879d6); }
@@ -105,14 +105,14 @@ button:disabled { opacity: .48; cursor: not-allowed; }
   .team-score, .match-clock { padding: 8px 4px; }
   .team-score strong { font-size: clamp(3.2rem, 13vw, 5rem); }
   .team-score small { max-width: 100px; line-height: 1.2; }
-  .dartball-play { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; min-height: 360px; }
+  .dartball-play { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; height: min(66vh, 680px); min-height: 360px; }
   .target-panel { min-height: 360px; padding: 14px; }
   .ticker-panel { min-height: 360px; max-height: 55vh; }
 }
 @media (max-width: 520px) {
-  .dartball-play { grid-template-columns: 1fr; }
+  .dartball-play { grid-template-columns: 1fr; height: auto; }
   .target-panel { min-height: 360px; }
-  .ticker-panel { min-height: 250px; max-height: 45vh; }
+  .ticker-panel { height: 320px; min-height: 0; }
 }
 @media (max-width: 420px) {
   .scoreboard { height: 170px; }
