@@ -573,10 +573,10 @@
     const surface = svgElement('g', { 'clip-path': 'url(#boardCircleClip)' });
     surface.appendChild(svgElement('circle', { cx: 250, cy: 250, r: 238, class: 'board-back' }));
     const rings = [
-      { radii: [214, 224], multiplier: 'D', label: 'Double', classes: ['board-red', 'board-green'] },
-      { radii: [142, 214], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
-      { radii: [132, 142], multiplier: 'T', label: 'Triple', classes: ['board-red', 'board-green'] },
-      { radii: [42, 132], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
+      { radii: [196, 224], multiplier: 'D', label: 'Double', classes: ['board-red', 'board-green'] },
+      { radii: [132, 196], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
+      { radii: [108, 132], multiplier: 'T', label: 'Triple', classes: ['board-red', 'board-green'] },
+      { radii: [42, 108], multiplier: 'S', label: 'Single', classes: ['board-black', 'board-cream'] },
     ];
     rings.forEach((ring, index) => addBoardRing(surface, ring, index));
     svg.appendChild(surface);
