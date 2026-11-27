@@ -8,6 +8,7 @@ include __DIR__ . '/../header.php';
 ?>
 <div id="dartballApp" class="dartball-app">
   <header class="dartball-heading"><img src="img/headline.png" alt="Dartball"></header>
+  <div id="status" class="dartball-board-status">Board-Status: Verbinde…</div>
   <?php if ($isAuthenticated): ?>
   <section class="dartball-storage" aria-label="Spielstände">
     <button id="newGameBtn" type="button">Neues Spiel</button>
@@ -58,4 +59,12 @@ include __DIR__ . '/../header.php';
   };
 </script>
 <script src="<?= htmlspecialchars(portal_asset_url('/dartball/script.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    fetch('/scolia-config.php', { cache: 'no-store' })
+      .then(response => response.json())
+      .then(data => { window.SCOLIA_CONFIG = { serialNumber: data.serialNumber || '', accessToken: data.accessToken || '' }; initDartballScolia(); })
+      .catch(() => { window.SCOLIA_CONFIG = { serialNumber: '', accessToken: '' }; initDartballScolia(); });
+  });
+</script>
 <?php include __DIR__ . '/../footer.php'; ?>

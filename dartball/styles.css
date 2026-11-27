@@ -9,7 +9,8 @@
   font-family: Arial, sans-serif;
 }
 #dartballApp * { box-sizing: border-box; }
-.dartball-heading { margin: 10px auto 16px; }
+.dartball-heading { margin: 10px auto 10px; }
+.dartball-board-status { margin: 0 auto 10px; color: #d3dae3; font-size: .9rem; font-weight: 700; }
 .dartball-heading img { display: block; width: min(60%, 460px); max-height: 100px; object-fit: contain; margin: auto; }
 .dartball-storage { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px auto 14px; }
 .dartball-storage button, .dartball-saved button, .dartball-play button { color: #fff; background: #303741; border: 1px solid #59616e; border-radius: 6px; padding: 9px 13px; font: inherit; cursor: pointer; }

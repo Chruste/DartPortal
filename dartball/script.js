@@ -6,6 +6,8 @@
   const HALF_MS = 4 * 60 * 1000 + 30 * 1000;
   const STORAGE_KEY = 'dartball:local-state';
   const TEAM = { ORANGE: 'orange', BLUE: 'blue' };
+  let scoliaSocket = null;
+  let lastScoliaDetection = '';
   const $ = id => document.getElementById(id);
   let state;
   let undoStack = [];
@@ -95,6 +97,7 @@
   }
 
   function secondsLeft() {
+    if (state.status === 'half-time' || state.status === 'finished') return 0;
     const startedAt = state.halfStartedAt || state.halfStartTimes?.[state.half];
     if (state.status !== 'playing' || !startedAt) return HALF_MS / 1000;
     const started = Date.parse(startedAt);
@@ -174,13 +177,14 @@
     }
   }
 
-  function processThrow(raw) {
-    if (archived || ['half-time', 'finished'].includes(state.status)) return;
+  function processThrow(raw, eventMeta = {}) {
+    if (archived || ['half-time', 'finished'].includes(state.status)) return false;
     const hit = parseHit(raw);
-    if (!hit) { setStatus('Ungültiger Wurf. Beispiele: S20, D6, T19, Bull, 25 oder Miss.', true); $('throwInput').focus(); return; }
-    if (state.status === 'playing' && secondsLeft() <= 0) { endHalf(); return; }
+    if (!hit) { setStatus('Ungültiger Wurf. Beispiele: S20, D6, T19, Bull, 25 oder Miss.', true); $('throwInput').focus(); return false; }
+    if (state.status === 'playing' && secondsLeft() <= 0) { endHalf(); return false; }
     snapshot();
     const team = state.activeTeam;
+    const normalizedSector = hit.kind === 'miss' ? 'Miss' : hit.label;
     const dart = state.dartInTurn + 1;
     let eventText = `${teamName(team)} · Dart ${dart}: ${hit.label}.`;
 
@@ -217,8 +221,8 @@
           advanceDart();
           if (state.status === 'ready') startClockIfNeeded();
           render();
-          void persist('goal');
-          return;
+          void persist('goal', { ...eventMeta, sectorResult: eventMeta.sectorResult || normalizedSector });
+          return true;
         }
         state.ballField = hit.kind === 'bull' ? 'bull' : hit.field;
         eventText += ` Ball liegt jetzt auf ${fieldName(state.ballField)}; ${teamName(team)} bleibt im Ballbesitz.`;
@@ -233,7 +237,8 @@
     advanceDart();
     setStatus(state.possession === team ? `${teamName(team)} ist am Ball.` : state.possession ? `Ballbesitz ${teamName(state.possession)}.` : `Ball liegt auf ${fieldName(state.ballField)}.`);
     render();
-    void persist('throw');
+    void persist('throw', { ...eventMeta, sectorResult: eventMeta.sectorResult || normalizedSector });
+    return true;
   }
 
   function advanceDart() {
@@ -293,15 +298,25 @@
   function stateForSave() { return { ...state, players: [{ index: 0, name: 'Team Orange' }, { index: 1, name: 'Team Blau' }] }; }
   function saveIdKey() { return `dartball:last-save:${APP.userId || 'guest'}`; }
 
-  function persist(eventType) {
+  function persist(eventType, eventMeta = {}) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) { /* storage may be disabled */ }
     if (!APP.isAuthenticated || !storageEnabled || !activeSaveId || archived) return Promise.resolve();
     const id = activeSaveId;
     const stateCopy = stateForSave();
     const eventNo = state.eventNo;
+    const activeTeam = state.activeTeam;
+    const eventSnapshot = {
+      eventNo, eventType, source: eventMeta.source || 'ui',
+      playerIndex: activeTeam === TEAM.ORANGE ? 0 : 1,
+      playerName: teamName(activeTeam), targetLabel: targetLabel(),
+      sectorResult: eventMeta.sectorResult || '', scoreDelta: 0,
+      scoreAfter: state.scores[activeTeam],
+      detectedAt: eventMeta.detectedAt || new Date().toISOString(),
+      payload: { ...(eventMeta.payload || {}), half: state.half, possession: state.possession, ballField: state.ballField },
+    };
     persistQueue = persistQueue.catch(() => undefined).then(async () => {
       if (!storageEnabled || activeSaveId !== id) return;
-      const result = await fetchJson(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', csrfToken: APP.csrfToken, gameType: 'dartball', saveId: id, state: stateCopy, event: { eventNo, eventType, source: 'ui', playerIndex: state.activeTeam === TEAM.ORANGE ? 0 : 1, playerName: teamName(state.activeTeam), targetLabel: targetLabel(), sectorResult: '', scoreDelta: 0, scoreAfter: state.scores[state.activeTeam], detectedAt: new Date().toISOString(), payload: { half: state.half, possession: state.possession, ballField: state.ballField } } }) });
+      const result = await fetchJson(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'update', csrfToken: APP.csrfToken, gameType: 'dartball', saveId: id, state: stateCopy, event: eventSnapshot }) });
       if (result.save) setSaveInfo(`Cloud-Spiel aktiv: ${result.save.saveName || 'Dartball'}`);
     }).catch(error => setSaveInfo(`Cloud-Speichern fehlgeschlagen: ${error.message}`, true));
     return persistQueue;
@@ -389,6 +404,45 @@
     } catch (error) { setSaveInfo(error.message, true); }
   }
 
+  function handleScoliaMessage(message) {
+    if (!message || typeof message !== 'object' || message.type !== 'THROW_DETECTED' || archived) return;
+    const payload = message.payload && typeof message.payload === 'object' ? message.payload : {};
+    const detectionId = String(payload.detectionTime || payload.detectionId || '');
+    if (detectionId && detectionId === lastScoliaDetection) return;
+    if (detectionId) lastScoliaDetection = detectionId;
+    const sector = String(payload.sector || '').trim().toUpperCase();
+    const isMiss = Boolean(payload.bounceout) || !sector || ['NONE', 'MISS', '0'].includes(sector);
+    const result = processThrow(isMiss ? 'Miss' : sector, {
+      eventType: 'throw_detected', source: 'scolia_ws', sectorResult: isMiss ? 'Miss' : sector,
+      detectionId, detectedAt: payload.detectionTime || new Date().toISOString(), payload,
+    });
+    if (result === false && !archived) setStatus(`Scolia-Wurf ignoriert (Spiel pausiert oder ungültiges Feld): ${sector || 'Miss'}`, true);
+  }
+
+  function initDartballScolia() {
+    const status = $('status');
+    const { serialNumber, accessToken } = window.SCOLIA_CONFIG || {};
+    if (!serialNumber || !accessToken) {
+      if (status) status.textContent = 'Board-Status: Keine Scolia-Konfiguration';
+      return;
+    }
+    try {
+      const url = `wss://game.scoliadarts.com/api/v1/social?serialNumber=${encodeURIComponent(serialNumber)}&accessToken=${encodeURIComponent(accessToken)}`;
+      scoliaSocket = new WebSocket(url);
+      if (status) status.textContent = 'Board-Status: Verbinde…';
+      scoliaSocket.onopen = () => { if (status) status.textContent = 'Board-Status: Ready'; };
+      scoliaSocket.onclose = () => { if (status) status.textContent = 'Board-Status: Offline'; };
+      scoliaSocket.onerror = () => { if (status) status.textContent = 'Board-Status: Fehler'; };
+      scoliaSocket.onmessage = event => {
+        try { handleScoliaMessage(JSON.parse(event.data)); }
+        catch (error) { console.error('Ungültige Scolia-Nachricht', error); }
+      };
+    } catch (error) {
+      console.error('Scolia WebSocket konnte nicht gestartet werden.', error);
+      if (status) status.textContent = 'Board-Status: Fehler';
+    }
+  }
+
   function bind() {
     $('throwBtn').addEventListener('click', () => { const input = $('throwInput'); if (!input.value.trim()) return; processThrow(input.value); input.value = ''; input.focus(); });
     $('throwInput').addEventListener('keydown', event => { if (event.key === 'Enter') $('throwBtn').click(); });
@@ -424,5 +478,6 @@
     timerHandle = window.setInterval(() => { updateClock(); }, 250);
     void initializeStorage();
   }
+  window.initDartballScolia = initDartballScolia;
   document.addEventListener('DOMContentLoaded', init, { once: true });
 })();
