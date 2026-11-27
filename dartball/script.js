@@ -230,6 +230,7 @@
     if (state.status === 'playing' && secondsLeft() <= 0) { endHalf(); return false; }
     snapshot();
     const team = state.activeTeam;
+    const manualThrow = eventMeta.source !== 'scolia_ws';
     const normalizedSector = hit.kind === 'miss' ? 'Miss' : hit.label;
     const dart = state.dartInTurn + 1;
     let eventText = `${teamName(team)} · Dart ${dart}: ${hit.label}.`;
@@ -264,7 +265,7 @@
           state.possession = null;
           state.ballField = 'bull';
           setStatus(`${ownGoal ? 'Eigentor' : 'Tor'} für ${teamName(scorer)}! Ball zurück am Mittelkreis.`);
-          advanceDart();
+          advanceDart(manualThrow);
           if (state.status === 'ready') startClockIfNeeded();
           render();
           void persist('goal', { ...eventMeta, sectorResult: eventMeta.sectorResult || normalizedSector });
@@ -280,7 +281,7 @@
     addHistory(eventText);
     if (state.status === 'ready' && state.possession === team) startClockIfNeeded();
     if (secondsLeft() <= 0 && state.status === 'playing') { endHalf(); return; }
-    advanceDart();
+    advanceDart(manualThrow);
     setStatus(state.possession === team ? `${teamName(team)} ist am Ball.` : state.possession ? `Ballbesitz ${teamName(state.possession)}.` : `Ball liegt auf ${fieldName(state.ballField)}.`);
     render();
     void persist('throw', { ...eventMeta, sectorResult: eventMeta.sectorResult || normalizedSector });
@@ -292,16 +293,17 @@
   }
 
   function switchTeamAfterTurn() {
+    state.awaitingTakeout = false;
     state.dartInTurn = 0;
     state.activeTeam = state.activeTeam === TEAM.ORANGE ? TEAM.BLUE : TEAM.ORANGE;
     addHistory(`Rundenwechsel: ${teamName(state.activeTeam)} wirft.`);
   }
 
-  function advanceDart() {
+  function advanceDart(manualThrow = false) {
     state.dartInTurn += 1;
     if (state.dartInTurn >= 3) {
-      state.awaitingTakeout = hasLiveScoliaOnlineGame();
-      if (!state.awaitingTakeout) switchTeamAfterTurn();
+      if (manualThrow || !hasLiveScoliaOnlineGame()) switchTeamAfterTurn();
+      else state.awaitingTakeout = true;
     }
   }
 
