@@ -656,6 +656,7 @@
     rings.forEach((ring, index) => addBoardRing(surface, ring, index));
     svg.appendChild(surface);
 
+    const targetCodes = new Set(targetHitCodes());
     const activeTeamClass = state.activeTeam === TEAM.ORANGE ? 'team-orange-target' : 'team-blue-target';
     const outerBullClass = targetCodes.has('25') ? ` target-highlight ${activeTeamClass}` : '';
     const bullClass = targetCodes.has('Bull') ? ` target-highlight ${activeTeamClass}` : '';
