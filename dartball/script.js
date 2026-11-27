@@ -149,6 +149,7 @@
   }
 
   function render() {
+    buildDartboard();
     $('orangeScore').textContent = String(state.scores.orange);
     $('blueScore').textContent = String(state.scores.blue);
     const orangeGoal = goalFor(TEAM.ORANGE);
@@ -163,6 +164,11 @@
     $('dartCounter').textContent = state.status === 'playing' || state.status === 'ready' ? `Dart ${Math.min(state.dartInTurn + 1, 3)} / 3` : 'Runde pausiert';
     $('target').textContent = targetLabel();
     $('targetHint').textContent = targetHint();
+    const activeTeamClass = state.activeTeam === TEAM.ORANGE ? 'team-orange-target' : 'team-blue-target';
+    $('targetCaption').classList.remove('team-orange-target', 'team-blue-target');
+    $('targetCaption').classList.add(activeTeamClass);
+    $('target').classList.remove('team-orange-target', 'team-blue-target');
+    $('target').classList.add(activeTeamClass);
     $('possessionBanner').textContent = possessionText();
     $('possessionBanner').classList.toggle('orange', state.possession === TEAM.ORANGE);
     $('possessionBanner').classList.toggle('blue', state.possession === TEAM.BLUE);
@@ -607,9 +613,10 @@
       const centerAngle = sectorCenterAngle(index);
       const startAngle = centerAngle - 9;
       const endAngle = centerAngle + 9;
+      const hitTeam = state.activeTeam === TEAM.ORANGE ? 'team-orange-target' : 'team-blue-target';
       const path = svgElement('path', {
         d: sectorPath(innerRadius, outerRadius, startAngle, endAngle),
-        class: `board-wedge ${ring.classes[index % 2]}`,
+        class: `board-wedge ${ring.classes[index % 2]}${ring.multiplier + field === targetLabel() ? ` target-highlight ${hitTeam}` : ''}`,
         tabindex: '0', role: 'button',
         'aria-label': `${ring.label} ${field}`,
         'data-hit': ring.multiplier + field,
@@ -641,10 +648,13 @@
     rings.forEach((ring, index) => addBoardRing(surface, ring, index));
     svg.appendChild(surface);
 
-    const outerBull = svgElement('circle', { cx: 250, cy: 250, r: 42, class: 'board-outer-bull', tabindex: '0', role: 'button', 'aria-label': 'Single Bull 25', 'data-hit': '25' });
+    const activeTeamClass = state.activeTeam === TEAM.ORANGE ? 'team-orange-target' : 'team-blue-target';
+    const outerBullClass = targetLabel() === 'Bull' ? ` target-highlight ${activeTeamClass}` : '';
+    const bullClass = targetLabel() === 'D25' ? ` target-highlight ${activeTeamClass}` : '';
+    const outerBull = svgElement('circle', { cx: 250, cy: 250, r: 42, class: `board-outer-bull${outerBullClass}`, tabindex: '0', role: 'button', 'aria-label': 'Single Bull 25', 'data-hit': '25' });
     outerBull.appendChild(svgElement('title')).textContent = 'Single Bull · 25';
     svg.appendChild(outerBull);
-    const bull = svgElement('circle', { cx: 250, cy: 250, r: 18, class: 'board-bull', tabindex: '0', role: 'button', 'aria-label': 'Bull 50', 'data-hit': 'Bull' });
+    const bull = svgElement('circle', { cx: 250, cy: 250, r: 18, class: `board-bull${bullClass}`, tabindex: '0', role: 'button', 'aria-label': 'Bull 50', 'data-hit': 'Bull' });
     bull.appendChild(svgElement('title')).textContent = 'Bull · 50';
     svg.appendChild(bull);
 

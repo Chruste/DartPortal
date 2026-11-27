@@ -52,8 +52,10 @@
 .target-panel { display: flex; flex-direction: column; align-items: center; padding: clamp(16px, 2vw, 28px); text-align: center; }
 .round-info { display: flex; justify-content: space-between; width: 100%; gap: 8px; color: #d4dae2; font-size: .9rem; }
 #activeTeamLabel { font-weight: 800; }
-.target-caption { margin-top: 25px; color: #aeb8c5; font-size: .85rem; letter-spacing: .14em; }
-.target { min-height: 1.1em; margin: 4px 0; font-size: clamp(3.3rem, 7vw, 6.4rem); line-height: 1.1; font-weight: 900; overflow-wrap: anywhere; }
+.target-caption { margin-top: 25px; color: #aeb8c5; font-size: .85rem; letter-spacing: .14em; transition: color .18s ease, text-shadow .18s ease; }
+.target { min-height: 1.1em; margin: 4px 0; font-size: clamp(3.3rem, 7vw, 6.4rem); line-height: 1.1; font-weight: 900; overflow-wrap: anywhere; transition: color .18s ease, text-shadow .18s ease; }
+.target-caption.team-orange-target, .target.team-orange-target { color: #ff9a3d; text-shadow: 0 0 18px #f28c2877; }
+.target-caption.team-blue-target, .target.team-blue-target { color: #56aaff; text-shadow: 0 0 18px #2585e877; }
 .target-hint { color: #d5d9de; min-height: 1.5em; }
 .action-status { min-height: 2.8em; margin-top: 12px; color: #e5e9ee; font-size: .92rem; }
 .throw-controls { width: min(100%, 620px); margin-top: 10px; text-align: center; }
@@ -61,6 +63,12 @@
 .dartboard-svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .board-back { fill: #101317; stroke: #c8cdd2; stroke-width: 5; }
 .board-wedge { stroke: #080a0c; stroke-width: 1.8; cursor: pointer; transition: filter .12s, opacity .12s; }
+.board-wedge.target-highlight { stroke: #fff; stroke-width: 5; filter: drop-shadow(0 0 5px #fff); }
+.board-wedge.target-highlight.team-orange-target { fill: #f28c28; }
+.board-wedge.target-highlight.team-blue-target { fill: #2585e8; }
+.board-outer-bull.target-highlight, .board-bull.target-highlight { stroke: #fff; stroke-width: 5; filter: drop-shadow(0 0 6px #fff); }
+.board-outer-bull.target-highlight.team-orange-target, .board-bull.target-highlight.team-orange-target { fill: #f28c28; }
+.board-outer-bull.target-highlight.team-blue-target, .board-bull.target-highlight.team-blue-target { fill: #2585e8; }
 .board-wedge:hover:not(.is-disabled), .board-outer-bull:hover:not(.is-disabled), .board-bull:hover:not(.is-disabled) { filter: brightness(1.45); }
 .board-black { fill: #16191d; }
 .board-cream { fill: #ddd6c9; }

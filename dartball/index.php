@@ -40,7 +40,7 @@ include __DIR__ . '/../header.php';
   <section class="dartball-play">
     <aside class="target-panel">
       <div class="round-info"><span id="activeTeamLabel">Team Orange am Zug</span><span id="dartCounter">Dart 1 / 3</span></div>
-      <div class="target-caption">AKTUELLES ZIEL</div>
+      <div id="targetCaption" class="target-caption">AKTUELLES ZIEL</div>
       <div id="target" class="target">Bull</div>
       <div id="targetHint" class="target-hint">Ball aufnehmen: Single Bull oder Bull</div>
       <div id="actionStatus" class="action-status" aria-live="polite">Spiel bereit. Treffer am Mittelkreis starten die Uhr.</div>
