@@ -25,9 +25,9 @@
     return {
       gameType: 'dartball', half: 1, status: 'ready', halfStartedAt: null,
       halfStartTimes: { 1: null, 2: null },
-      timeRemainingMs: HALF_MS, timeout: false,
+      timeRemainingMs: HALF_MS, timeout: false, lastTakeoutAt: 0,
       scores: { orange: 0, blue: 0 }, activeTeam: TEAM.ORANGE,
-      possession: null, ballField: 'bull', dartInTurn: 0,
+      possession: null, ballField: 'bull', dartInTurn: 0, awaitingTakeout: false,
       history: [], eventNo: 0,
     };
   }
@@ -45,6 +45,7 @@
       halfStartedAt: typeof raw.halfStartedAt === 'string' ? raw.halfStartedAt : null,
       timeRemainingMs: Math.max(0, Math.min(MAX_TIME_MS, Number.isFinite(Number(raw.timeRemainingMs)) ? Number(raw.timeRemainingMs) : HALF_MS)),
       timeout: Boolean(raw.timeout),
+      lastTakeoutAt: Math.max(0, Number(raw.lastTakeoutAt) || 0),
       halfStartTimes: {
         1: typeof raw.halfStartTimes?.[1] === 'string' ? raw.halfStartTimes[1] : null,
         2: typeof raw.halfStartTimes?.[2] === 'string' ? raw.halfStartTimes[2] : null,
@@ -54,6 +55,7 @@
       possession: raw.possession === TEAM.ORANGE || raw.possession === TEAM.BLUE ? raw.possession : null,
       ballField: ball === 'bull' || (Number.isInteger(Number(ball)) && Number(ball) >= 1 && Number(ball) <= 20) ? (ball === 'bull' ? 'bull' : Number(ball)) : 'bull',
       dartInTurn: Math.min(3, Math.max(0, Number(raw.dartInTurn) || 0)),
+      awaitingTakeout: Boolean(raw.awaitingTakeout),
       history: Array.isArray(raw.history) ? raw.history.filter(item => item && typeof item.text === 'string').slice(-200) : [],
       eventNo: Math.max(0, Number(raw.eventNo) || 0),
     };
@@ -124,6 +126,7 @@
   function endHalf() {
     if (state.status !== 'playing') return;
     state.status = state.half === 1 ? 'half-time' : 'finished';
+    state.awaitingTakeout = false;
     state.timeout = false;
     state.timeRemainingMs = 0;
     state.halfStartedAt = null;
@@ -186,7 +189,7 @@
     $('timeoutBtn').textContent = state.timeout ? 'Timeout beenden' : 'Timeout';
     document.querySelectorAll('[data-time-adjust]').forEach(button => { button.disabled = archived || !['playing', 'ready'].includes(state.status); });
     $('applyTimeAdjustBtn').disabled = archived || !['playing', 'ready'].includes(state.status);
-    const throwsDisabled = archived || state.timeout || state.status === 'half-time' || state.status === 'finished';
+    const throwsDisabled = archived || state.timeout || state.awaitingTakeout || state.status === 'half-time' || state.status === 'finished';
     document.querySelectorAll('.dartboard-svg [data-hit]').forEach(field => {
       field.classList.toggle('is-disabled', throwsDisabled);
       field.setAttribute('aria-disabled', String(throwsDisabled));
@@ -215,7 +218,7 @@
   }
 
   function processThrow(raw, eventMeta = {}) {
-    if (archived || state.timeout || ['half-time', 'finished'].includes(state.status)) return false;
+    if (archived || state.timeout || state.awaitingTakeout || ['half-time', 'finished'].includes(state.status)) return false;
     const hit = parseHit(raw);
     if (!hit) { setStatus('Ungültiger Wurf. Beispiele: S20, D6, T19, Bull, 25 oder Miss.', true); $('throwInput').focus(); return false; }
     if (state.status === 'playing' && secondsLeft() <= 0) { endHalf(); return false; }
@@ -278,13 +281,62 @@
     return true;
   }
 
+  function hasLiveScoliaOnlineGame() {
+    return Boolean(storageEnabled && activeSaveId && scoliaSocket && scoliaSocket.readyState === WebSocket.OPEN);
+  }
+
+  function switchTeamAfterTurn() {
+    state.dartInTurn = 0;
+    state.activeTeam = state.activeTeam === TEAM.ORANGE ? TEAM.BLUE : TEAM.ORANGE;
+    addHistory(`Rundenwechsel: ${teamName(state.activeTeam)} wirft.`);
+  }
+
   function advanceDart() {
     state.dartInTurn += 1;
     if (state.dartInTurn >= 3) {
-      state.dartInTurn = 0;
+      state.awaitingTakeout = hasLiveScoliaOnlineGame();
+      if (!state.awaitingTakeout) switchTeamAfterTurn();
+    }
+  }
+
+  function handleScoliaTakeoutFinished(message = {}) {
+    if (!hasLiveScoliaOnlineGame() || archived || state.timeout || !['ready', 'playing'].includes(state.status)) return;
+    const payload = message.payload && typeof message.payload === 'object' ? message.payload : {};
+    const eventKey = String(payload.detectionTime || payload.eventId || payload.id || '');
+    const now = Date.now();
+    if ((eventKey && eventKey === state.lastTakeoutEventKey) || (!eventKey && now - state.lastTakeoutAt < 900)) return;
+    state.lastTakeoutAt = now;
+    state.lastTakeoutEventKey = eventKey;
+
+    if (state.awaitingTakeout) {
+      // The final dart was detected, but the team switch waits until physical takeout.
+      snapshot();
+      const finishedTeam = state.activeTeam;
+      state.awaitingTakeout = false;
+      state.lastTakeoutEventKey = eventKey;
+      addHistory(`${teamName(finishedTeam)} hat die Pfeile aufgenommen.`);
       state.activeTeam = state.activeTeam === TEAM.ORANGE ? TEAM.BLUE : TEAM.ORANGE;
       addHistory(`Rundenwechsel: ${teamName(state.activeTeam)} wirft.`);
+      state.dartInTurn = 0;
+      setStatus(`Rundenwechsel: ${teamName(state.activeTeam)} ist am Zug.`);
+      render();
+      void persist('scolia_takeout_finished', { source: 'scolia_ws', payload: { finishedTeam, missingDarts: 0 } });
+      return;
     }
+
+    // A takeout after at least one detected dart closes the turn, including a missed dart 3.
+    // Ignore stale/duplicate takeout notifications after the turn has already advanced.
+    if (state.dartInTurn === 0) return;
+    snapshot();
+    const finishedTeam = state.activeTeam;
+    const missingDarts = Math.max(0, 3 - state.dartInTurn);
+    state.awaitingTakeout = false;
+    state.lastTakeoutEventKey = eventKey;
+    switchTeamAfterTurn();
+    addHistory(`${teamName(finishedTeam)} hat die Pfeile aufgenommen${missingDarts ? ` (${missingDarts} nicht erkannte Fehlwürfe)` : ''}.`);
+    setStatus(`Rundenwechsel: ${teamName(state.activeTeam)} ist am Zug.`);
+    render();
+    void persist('scolia_takeout_finished', { source: 'scolia_ws', payload: { finishedTeam, missingDarts } });
   }
 
   function startSecondHalf() {
@@ -299,6 +351,7 @@
     state.ballField = 'bull';
     state.activeTeam = TEAM.BLUE;
     state.dartInTurn = 0;
+    state.awaitingTakeout = false;
     addHistory('Seitenwechsel abgeschlossen. Zweite Halbzeit startet am Mittelkreis, die Uhr beginnt mit der Ballaufnahme.');
     setStatus('Zweite Halbzeit: Ballaufnahme am Mittelkreis startet die Uhr.');
     render();
@@ -309,6 +362,7 @@
     if (archived) return;
     if ((state.history.length || state.scores.orange || state.scores.blue) && !window.confirm('Das Dartball-Spiel wirklich zurücksetzen?')) return;
     state = initialState(); undoStack = [];
+    state.awaitingTakeout = false;
     addHistory('Neues Spiel bereit. Team Orange beginnt am Mittelkreis.');
     setStatus('Spiel bereit. Treffer am Mittelkreis starten die Uhr.');
     render();
@@ -396,6 +450,7 @@
   async function enableStorage() {
     if (!APP.isAuthenticated) return;
     try {
+      state.awaitingTakeout = false;
       const data = await fetchJson(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', csrfToken: APP.csrfToken, gameType: 'dartball', saveName: 'Dartball', state: stateForSave() }) });
       activeSaveId = Number(data.save?.id) || null; storageEnabled = Boolean(activeSaveId); archived = false;
       if (storageEnabled) localStorage.setItem(saveIdKey(), JSON.stringify({ saveId: activeSaveId }));
@@ -476,7 +531,12 @@
   }
 
   function handleScoliaMessage(message) {
-    if (!message || typeof message !== 'object' || message.type !== 'THROW_DETECTED' || archived) return;
+    if (!message || typeof message !== 'object' || archived) return;
+    if (message.type === 'TAKEOUT_FINISHED') {
+      handleScoliaTakeoutFinished(message);
+      return;
+    }
+    if (message.type !== 'THROW_DETECTED') return;
     const payload = message.payload && typeof message.payload === 'object' ? message.payload : {};
     const detectionId = String(payload.detectionTime || payload.detectionId || '');
     if (detectionId && detectionId === lastScoliaDetection) return;
