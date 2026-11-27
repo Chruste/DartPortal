@@ -23,7 +23,18 @@ include __DIR__ . '/../header.php';
   <?php endif; ?>
   <section class="scoreboard" aria-label="Spielstand">
     <div id="orangeScorePanel" class="team-score team-orange"><span>TEAM ORANGE</span><strong id="orangeScore">0</strong><small id="orangeGoalLabel">Rechtes Tor · Doppel 6</small></div>
-    <div class="match-clock"><span id="halfLabel">Halbzeit 1</span><strong id="clock">04:30</strong><span id="matchStatus">Anstoß: Mittelkreis</span></div>
+    <div class="match-clock"><span id="halfLabel">Halbzeit 1</span><strong id="clock">04:30</strong><span id="matchStatus">Anstoß: Mittelkreis</span>
+      <div class="clock-controls">
+        <button id="timeoutBtn" type="button" disabled>Timeout</button>
+        <div class="time-adjust-controls" aria-label="Zeitkorrektur">
+          <button type="button" data-time-adjust="-30">−30 s</button>
+          <button type="button" data-time-adjust="-5">−5 s</button>
+          <button type="button" data-time-adjust="5">+5 s</button>
+          <button type="button" data-time-adjust="30">+30 s</button>
+        </div>
+        <label class="custom-time-adjust">Zeitkorrektur (Sek.) <input id="customTimeAdjust" type="number" step="1" value="0"><button id="applyTimeAdjustBtn" type="button">Anwenden</button></label>
+      </div>
+    </div>
     <div id="blueScorePanel" class="team-score team-blue"><span>TEAM BLAU</span><strong id="blueScore">0</strong><small id="blueGoalLabel">Linkes Tor · Doppel 11</small></div>
   </section>
   <section class="dartball-play">

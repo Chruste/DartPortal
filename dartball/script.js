@@ -4,6 +4,7 @@
   const APP = window.DARTBALL_APP || {};
   const API = '/cloud-storage.php';
   const HALF_MS = 4 * 60 * 1000 + 30 * 1000;
+  const MAX_TIME_MS = 99 * 60 * 1000 + 59 * 1000;
   const STORAGE_KEY = 'dartball:local-state';
   const TEAM = { ORANGE: 'orange', BLUE: 'blue' };
   let scoliaSocket = null;
@@ -22,6 +23,7 @@
     return {
       gameType: 'dartball', half: 1, status: 'ready', halfStartedAt: null,
       halfStartTimes: { 1: null, 2: null },
+      timeRemainingMs: HALF_MS, timeout: false,
       scores: { orange: 0, blue: 0 }, activeTeam: TEAM.ORANGE,
       possession: null, ballField: 'bull', dartInTurn: 0,
       history: [], eventNo: 0,
@@ -39,6 +41,8 @@
       half: half === 2 ? 2 : 1,
       status: ['ready', 'playing', 'half-time', 'finished'].includes(raw.status) ? raw.status : 'ready',
       halfStartedAt: typeof raw.halfStartedAt === 'string' ? raw.halfStartedAt : null,
+      timeRemainingMs: Math.max(0, Math.min(MAX_TIME_MS, Number.isFinite(Number(raw.timeRemainingMs)) ? Number(raw.timeRemainingMs) : HALF_MS)),
+      timeout: Boolean(raw.timeout),
       halfStartTimes: {
         1: typeof raw.halfStartTimes?.[1] === 'string' ? raw.halfStartTimes[1] : null,
         2: typeof raw.halfStartTimes?.[2] === 'string' ? raw.halfStartTimes[2] : null,
@@ -96,18 +100,29 @@
     state.history = state.history.slice(0, 200);
   }
 
-  function secondsLeft() {
+  function remainingMs() {
     if (state.status === 'half-time' || state.status === 'finished') return 0;
-    const startedAt = state.halfStartedAt || state.halfStartTimes?.[state.half];
-    if (state.status !== 'playing' || !startedAt) return HALF_MS / 1000;
-    const started = Date.parse(startedAt);
-    if (!Number.isFinite(started)) return HALF_MS / 1000;
-    return Math.max(0, Math.ceil((started + HALF_MS - Date.now()) / 1000));
+    if (state.status !== 'playing' || state.timeout || !state.halfStartedAt) return state.timeRemainingMs;
+    const started = Date.parse(state.halfStartedAt);
+    if (!Number.isFinite(started)) return state.timeRemainingMs;
+    return Math.max(0, state.timeRemainingMs - (Date.now() - started));
+  }
+
+  function secondsLeft() { return Math.ceil(remainingMs() / 1000); }
+
+  function checkpointClock() {
+    if (state.status === 'playing' && !state.timeout && state.halfStartedAt) {
+      state.timeRemainingMs = remainingMs();
+      state.halfStartedAt = new Date().toISOString();
+      state.halfStartTimes[state.half] = state.halfStartedAt;
+    }
   }
 
   function endHalf() {
     if (state.status !== 'playing') return;
     state.status = state.half === 1 ? 'half-time' : 'finished';
+    state.timeout = false;
+    state.timeRemainingMs = 0;
     state.halfStartedAt = null;
     state.dartInTurn = 0;
     state.possession = null;
@@ -119,7 +134,7 @@
   }
 
   function updateClock() {
-    if (state.status === 'playing' && secondsLeft() <= 0) endHalf();
+    if (state.status === 'playing' && !state.timeout && secondsLeft() <= 0) endHalf();
     const remaining = secondsLeft();
     const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
     const seconds = (remaining % 60).toString().padStart(2, '0');
@@ -145,7 +160,7 @@
     $('possessionBanner').textContent = possessionText();
     $('possessionBanner').classList.toggle('orange', state.possession === TEAM.ORANGE);
     $('possessionBanner').classList.toggle('blue', state.possession === TEAM.BLUE);
-    $('matchStatus').textContent = state.status === 'ready' ? 'Anstoß: Mittelkreis' : state.status === 'playing' ? 'Spiel läuft' : state.status === 'half-time' ? 'Halbzeitpause · Seitenwechsel' : 'Spiel beendet';
+    $('matchStatus').textContent = state.timeout ? 'TIMEOUT · Uhr angehalten' : state.status === 'ready' ? 'Anstoß: Mittelkreis' : state.status === 'playing' ? 'Spiel läuft' : state.status === 'half-time' ? 'Halbzeitpause · Seitenwechsel' : 'Spiel beendet';
     const ticker = $('eventTicker');
     ticker.replaceChildren();
     if (!state.history.length) {
@@ -161,7 +176,11 @@
       });
     }
     $('startNextHalfBtn').hidden = state.status !== 'half-time';
-    $('throwBtn').disabled = archived || state.status === 'half-time' || state.status === 'finished';
+    $('timeoutBtn').disabled = archived || state.status !== 'playing';
+    $('timeoutBtn').textContent = state.timeout ? 'Timeout beenden' : 'Timeout';
+    document.querySelectorAll('[data-time-adjust]').forEach(button => { button.disabled = archived || !['playing', 'ready'].includes(state.status); });
+    $('applyTimeAdjustBtn').disabled = archived || !['playing', 'ready'].includes(state.status);
+    $('throwBtn').disabled = archived || state.timeout || state.status === 'half-time' || state.status === 'finished';
     $('throwInput').disabled = $('throwBtn').disabled;
     $('undoBtn').disabled = archived || undoStack.length === 0;
     $('resetBtn').disabled = archived;
@@ -176,6 +195,7 @@
   function startClockIfNeeded() {
     if (state.status === 'ready') {
       state.status = 'playing';
+      state.timeRemainingMs = state.timeRemainingMs ?? HALF_MS;
       state.halfStartedAt = new Date().toISOString();
       state.halfStartTimes[state.half] = state.halfStartedAt;
       addHistory(`${teamName(state.activeTeam)} nimmt am Mittelkreis den Ball auf. Die Uhr läuft.`, 'period');
@@ -184,7 +204,7 @@
   }
 
   function processThrow(raw, eventMeta = {}) {
-    if (archived || ['half-time', 'finished'].includes(state.status)) return false;
+    if (archived || state.timeout || ['half-time', 'finished'].includes(state.status)) return false;
     const hit = parseHit(raw);
     if (!hit) { setStatus('Ungültiger Wurf. Beispiele: S20, D6, T19, Bull, 25 oder Miss.', true); $('throwInput').focus(); return false; }
     if (state.status === 'playing' && secondsLeft() <= 0) { endHalf(); return false; }
@@ -261,6 +281,8 @@
     snapshot();
     state.half = 2;
     state.status = 'ready';
+    state.timeRemainingMs = HALF_MS;
+    state.timeout = false;
     state.halfStartedAt = null;
     state.possession = null;
     state.ballField = 'bull';
@@ -280,6 +302,38 @@
     setStatus('Spiel bereit. Treffer am Mittelkreis starten die Uhr.');
     render();
     void persist('reset');
+  }
+
+  function toggleTimeout() {
+    if (archived || state.status !== 'playing') return;
+    if (!state.timeout) checkpointClock();
+    state.timeout = !state.timeout;
+    state.halfStartedAt = state.timeout ? null : new Date().toISOString();
+    if (!state.timeout) {
+      if (state.timeRemainingMs <= 0) { endHalf(); return; }
+      state.halfStartTimes[state.half] = state.halfStartedAt;
+    }
+    addHistory(state.timeout ? `${teamName(state.activeTeam)} nahm ein Timeout. Die Uhr ist angehalten.` : `Timeout beendet. ${teamName(state.activeTeam)} setzt fort.`, 'period');
+    setStatus(state.timeout ? 'Timeout aktiv. Die Spielzeit steht.' : 'Timeout beendet. Die Uhr läuft weiter.');
+    render();
+    void persist(state.timeout ? 'timeout_start' : 'timeout_end');
+  }
+
+  function adjustTime(deltaSeconds) {
+    if (archived || !['playing', 'ready'].includes(state.status) || !Number.isFinite(deltaSeconds) || deltaSeconds === 0) return;
+    checkpointClock();
+    const before = state.timeRemainingMs;
+    state.timeRemainingMs = Math.max(0, Math.min(MAX_TIME_MS, before + deltaSeconds * 1000));
+    if (state.status === 'playing' && !state.timeout) {
+      state.halfStartedAt = new Date().toISOString();
+      state.halfStartTimes[state.half] = state.halfStartedAt;
+    }
+    const appliedSeconds = Math.round((state.timeRemainingMs - before) / 1000);
+    addHistory(`Zeitkorrektur: ${appliedSeconds > 0 ? '+' : ''}${appliedSeconds} s.`);
+    setStatus(`Spielzeit um ${appliedSeconds > 0 ? '+' : ''}${appliedSeconds} Sekunden angepasst.`);
+    if (state.status === 'playing' && state.timeRemainingMs <= 0 && !state.timeout) { render(); endHalf(); return; }
+    render();
+    void persist('time_adjust');
   }
 
   function undo() {
@@ -454,6 +508,15 @@
     $('throwInput').addEventListener('keydown', event => { if (event.key === 'Enter') $('throwBtn').click(); });
     document.querySelectorAll('[data-hit]').forEach(button => button.addEventListener('click', () => processThrow(button.dataset.hit)));
     $('undoBtn').addEventListener('click', undo);
+    $('timeoutBtn').addEventListener('click', toggleTimeout);
+    document.querySelectorAll('[data-time-adjust]').forEach(button => button.addEventListener('click', () => adjustTime(Number(button.dataset.timeAdjust))));
+    $('applyTimeAdjustBtn').addEventListener('click', () => {
+      const value = Number($('customTimeAdjust').value);
+      if (!Number.isFinite(value) || value === 0) { setStatus('Zeitkorrektur als von 0 verschiedene Sekundenanzahl eingeben.', true); return; }
+      adjustTime(value);
+      $('customTimeAdjust').value = '0';
+    });
+    $('customTimeAdjust').addEventListener('keydown', event => { if (event.key === 'Enter') $('applyTimeAdjustBtn').click(); });
     $('resetBtn').addEventListener('click', resetGame);
     $('startNextHalfBtn').addEventListener('click', startSecondHalf);
     $('newGameBtn')?.addEventListener('click', () => {
@@ -465,8 +528,10 @@
   }
 
   function recoverExpiredHalf() {
-    if (state.status !== 'playing' || secondsLeft() > 0) return false;
+    if (state.status !== 'playing' || state.timeout || secondsLeft() > 0) return false;
     state.status = state.half === 1 ? 'half-time' : 'finished';
+    state.timeout = false;
+    state.timeRemainingMs = 0;
     state.halfStartedAt = null;
     state.dartInTurn = 0;
     state.possession = null;
@@ -477,7 +542,7 @@
 
   function init() {
     try { state = cleanState(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')); } catch (_) { state = initialState(); }
-    if (state.status === 'playing') state.halfStartedAt = state.halfStartedAt || state.halfStartTimes[state.half];
+    if (state.status === 'playing' && !state.timeout) state.halfStartedAt = state.halfStartedAt || state.halfStartTimes[state.half];
     recoverExpiredHalf();
     if (!state.history.length) addHistory('Neues Spiel bereit. Team Orange beginnt am Mittelkreis.');
     bind(); render();

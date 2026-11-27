@@ -37,6 +37,15 @@
 .match-clock { border-inline: 1px solid #ffffff20; text-align: center; }
 #halfLabel { font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 700; }
 #clock { font-variant-numeric: tabular-nums; font-size: clamp(3.2rem, 8vw, 6.5rem); font-weight: 900; line-height: 1.05; }
+.clock-controls { width: min(100%, 410px); margin-top: 5px; }
+.clock-controls button { border: 1px solid #59616e; border-radius: 5px; color: #fff; background: #303741; cursor: pointer; }
+#timeoutBtn { width: 100%; padding: 5px 10px; font-size: .82rem; font-weight: 800; }
+#timeoutBtn:not(:disabled) { background: #a53d2d; border-color: #e88762; }
+.time-adjust-controls { display: flex; justify-content: center; gap: 4px; margin-top: 5px; }
+.time-adjust-controls button { padding: 3px 7px; font-size: .7rem; }
+.custom-time-adjust { display: flex; justify-content: center; align-items: center; gap: 4px; margin-top: 5px; font-size: .68rem; }
+.custom-time-adjust input { width: 58px; padding: 3px; border: 1px solid #59616e; border-radius: 4px; color: white; background: #14171c; font: inherit; }
+.custom-time-adjust button { padding: 3px 6px; font-size: .68rem; }
 #matchStatus { color: #d3d8df; font-size: clamp(.75rem, 1.2vw, 1rem); }
 .dartball-play { display: grid; grid-template-columns: minmax(320px, .82fr) minmax(380px, 1.18fr); gap: 16px; margin-top: 16px; min-height: 390px; }
 .target-panel, .ticker-panel { min-width: 0; background: var(--panel); border: 1px solid #414954; border-radius: 12px; box-shadow: 0 8px 25px #0005; }
