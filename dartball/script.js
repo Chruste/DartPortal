@@ -18,6 +18,7 @@
   let activeSaveId = null;
   let storageEnabled = false;
   let archived = false;
+  const DARTBOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
   function initialState() {
     return {
@@ -184,8 +185,9 @@
     $('timeoutBtn').textContent = state.timeout ? 'Timeout beenden' : 'Timeout';
     document.querySelectorAll('[data-time-adjust]').forEach(button => { button.disabled = archived || !['playing', 'ready'].includes(state.status); });
     $('applyTimeAdjustBtn').disabled = archived || !['playing', 'ready'].includes(state.status);
-    $('throwBtn').disabled = archived || state.timeout || state.status === 'half-time' || state.status === 'finished';
-    $('throwInput').disabled = $('throwBtn').disabled;
+    const throwsDisabled = archived || state.timeout || state.status === 'half-time' || state.status === 'finished';
+    document.querySelectorAll('.dartboard-input button').forEach(button => { button.disabled = throwsDisabled; });
+    $('numberMultiplier').disabled = throwsDisabled;
     $('undoBtn').disabled = archived || undoStack.length === 0;
     $('resetBtn').disabled = archived;
     updateClock();
@@ -507,10 +509,41 @@
     }
   }
 
+  function buildDartboard() {
+    const sectors = $('dartboardSectors');
+    sectors.replaceChildren();
+    DARTBOARD_ORDER.forEach((field, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `dart-hit dart-hit--${index % 2 === 0 ? 'double' : 'single'}`;
+      button.textContent = String(field);
+      button.setAttribute('aria-label', `Single ${field} (klicken), Triple ${field} (Shift-Klick), Double ${field} (Alt-Klick oder Rechtsklick)`);
+      button.title = `${field}: Klick = Single · Shift-Klick = Triple · Alt-/Rechtsklick = Double`;
+      button.dataset.sector = String(field);
+      sectors.appendChild(button);
+    });
+  }
+
   function bind() {
-    $('throwBtn').addEventListener('click', () => { const input = $('throwInput'); if (!input.value.trim()) return; processThrow(input.value); input.value = ''; input.focus(); });
-    $('throwInput').addEventListener('keydown', event => { if (event.key === 'Enter') $('throwBtn').click(); });
-    document.querySelectorAll('[data-hit]').forEach(button => button.addEventListener('click', () => processThrow(button.dataset.hit)));
+    buildDartboard();
+    $('numberMultiplier').addEventListener('change', event => {
+      $('dartboardSectors').dataset.multiplier = event.target.value;
+    });
+    $('dartboardSectors').dataset.multiplier = $('numberMultiplier').value;
+    $('dartboardSectors').addEventListener('click', event => {
+      const button = event.target.closest('button[data-sector]');
+      if (!button || button.disabled) return;
+      const field = button.dataset.sector;
+      const multiplier = event.shiftKey ? 'T' : event.altKey ? 'D' : $('dartboardSectors').dataset.multiplier;
+      processThrow(`${multiplier}${field}`);
+    });
+    $('dartboardSectors').addEventListener('contextmenu', event => {
+      const button = event.target.closest('button[data-sector]');
+      if (!button) return;
+      event.preventDefault();
+      processThrow(`D${button.dataset.sector}`);
+    });
+    document.querySelectorAll('.dartboard-center [data-hit]').forEach(button => button.addEventListener('click', () => processThrow(button.dataset.hit)));
     $('undoBtn').addEventListener('click', undo);
     $('timeoutBtn').addEventListener('click', toggleTimeout);
     document.querySelectorAll('[data-time-adjust]').forEach(button => button.addEventListener('click', () => adjustTime(Number(button.dataset.timeAdjust))));

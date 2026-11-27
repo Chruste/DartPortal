@@ -45,11 +45,15 @@ include __DIR__ . '/../header.php';
       <div id="targetHint" class="target-hint">Ball aufnehmen: Single Bull oder Bull</div>
       <div id="actionStatus" class="action-status" aria-live="polite">Spiel bereit. Treffer am Mittelkreis starten die Uhr.</div>
       <div class="throw-controls">
-        <label for="throwInput">Wurf eingeben</label>
-        <div><input id="throwInput" type="text" autocomplete="off" placeholder="z. B. T20, D6, Bull, 25, Miss"><button id="throwBtn" type="button">Eintragen</button></div>
-        <div class="quick-hits">
-          <button type="button" data-hit="Bull">Bull</button><button type="button" data-hit="25">Single Bull</button><button type="button" data-hit="Miss">Fehlwurf</button>
+        <div class="dartboard-input" role="group" aria-label="Wurfeingabe wie auf einer Dartscheibe">
+          <div class="dartboard-sectors" id="dartboardSectors" aria-label="Single- und Double-Sektoren 1 bis 20"></div>
+          <div class="dartboard-center" aria-label="Bull und Fehlwurf">
+            <button type="button" class="dart-hit dart-hit--outer-bull" data-hit="25" aria-label="Single Bull">25</button>
+            <button type="button" class="dart-hit dart-hit--bull" data-hit="Bull" aria-label="Bull">Bull</button>
+            <button type="button" class="dart-hit dart-hit--miss" data-hit="Miss" aria-label="Fehlwurf">Miss</button>
+          </div>
         </div>
+        <label class="number-multiplier">Zahlenfeld-Modus <select id="numberMultiplier"><option value="S">Single</option><option value="T">Triple</option></select></label>
         <button id="undoBtn" class="undo-button" type="button">Letzten Dart zurücknehmen</button>
       </div>
       <div class="match-controls"><button id="startNextHalfBtn" type="button" hidden>Halbzeit starten</button><button id="resetBtn" type="button">Spiel zurücksetzen</button></div>
