@@ -97,6 +97,12 @@
 .event-ticker li.goal-blue { border-color: #55a9ff; }
 .event-ticker .ticker-empty { color: #9da7b4; text-align: center; }
 .rules-note { margin: 16px 2px 0; padding: 12px 14px; border-left: 3px solid #778493; background: #11151bbd; color: #c8cdd5; line-height: 1.45; font-size: .88rem; }
+@media (min-width: 781px) {
+  .dartball-play { height: auto; min-height: 0; align-items: stretch; }
+  .target-panel { min-height: 0; }
+  .ticker-panel { height: auto; min-height: 0; max-height: none; }
+  .rules-note { margin-top: 16px; }
+}
 button:disabled { opacity: .48; cursor: not-allowed; }
 @media (max-width: 780px) {
   #dartballApp { padding-inline: 8px; }
